@@ -195,6 +195,24 @@ log_diaper_pee:
       example: VZiSnxmU3KawWzsSLTqyuPTlsuX2
       advanced: true
       required: false
+    pee_amount:
+      description: Amount of pee (shows indicator in app)
+      required: false
+      selector:
+        select:
+          options:
+            - little
+            - medium
+            - big
+    diaper_rash:
+      description: Baby has diaper rash
+      required: false
+      selector:
+        boolean:
+    notes:
+      description: Optional notes about this diaper change
+      required: false
+      example: "Changed after feeding"
 
 log_diaper_poo:
   name: Log Diaper - Poo
@@ -211,6 +229,15 @@ log_diaper_poo:
       example: VZiSnxmU3KawWzsSLTqyuPTlsuX2
       advanced: true
       required: false
+    poo_amount:
+      description: Amount of poo (shows indicator in app)
+      required: false
+      selector:
+        select:
+          options:
+            - little
+            - medium
+            - big
     color:
       description: Poo color
       required: false
@@ -232,6 +259,15 @@ log_diaper_poo:
             - soft
             - solid
             - hard
+    diaper_rash:
+      description: Baby has diaper rash
+      required: false
+      selector:
+        boolean:
+    notes:
+      description: Optional notes about this diaper change
+      required: false
+      example: "Changed after feeding"
 
 log_diaper_both:
   name: Log Diaper - Both
@@ -248,6 +284,24 @@ log_diaper_both:
       example: VZiSnxmU3KawWzsSLTqyuPTlsuX2
       advanced: true
       required: false
+    pee_amount:
+      description: Amount of pee (shows indicator in app)
+      required: false
+      selector:
+        select:
+          options:
+            - little
+            - medium
+            - big
+    poo_amount:
+      description: Amount of poo (shows indicator in app)
+      required: false
+      selector:
+        select:
+          options:
+            - little
+            - medium
+            - big
     color:
       description: Poo color
       required: false
@@ -269,6 +323,15 @@ log_diaper_both:
             - soft
             - solid
             - hard
+    diaper_rash:
+      description: Baby has diaper rash
+      required: false
+      selector:
+        boolean:
+    notes:
+      description: Optional notes about this diaper change
+      required: false
+      example: "Changed after feeding"
 
 log_diaper_dry:
   name: Log Diaper - Dry Check
@@ -285,6 +348,15 @@ log_diaper_dry:
       example: VZiSnxmU3KawWzsSLTqyuPTlsuX2
       advanced: true
       required: false
+    diaper_rash:
+      description: Baby has diaper rash
+      required: false
+      selector:
+        boolean:
+    notes:
+      description: Optional notes about this diaper check
+      required: false
+      example: "Still dry after 2 hours"
 
 log_growth:
   name: Log Growth Measurements

@@ -173,8 +173,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if not child_uid:
             _LOGGER.error("No child_uid could be determined from service call")
             return
-        _LOGGER.info("Logging pee diaper for child %s", child_uid)
-        await hass.async_add_executor_job(api.log_diaper, child_uid, "pee")
+        pee_amount = call.data.get("pee_amount")
+        diaper_rash = call.data.get("diaper_rash", False)
+        notes = call.data.get("notes")
+        _LOGGER.info("Logging pee diaper for child %s (amount=%s)", child_uid, pee_amount)
+        await hass.async_add_executor_job(
+            api.log_diaper, child_uid, "pee", pee_amount, None, None, None, diaper_rash, notes
+        )
 
     async def handle_log_diaper_poo(call):
         api: HuckleberryAPI = hass.data[DOMAIN][entry.entry_id]["api"]
@@ -182,12 +187,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if not child_uid:
             _LOGGER.error("No child_uid could be determined from service call")
             return
+        poo_amount = call.data.get("poo_amount")
         color = call.data.get("color")
         consistency = call.data.get("consistency")
-        _LOGGER.info("Logging poo diaper for child %s (color=%s, consistency=%s)",
-                     child_uid, color, consistency)
+        diaper_rash = call.data.get("diaper_rash", False)
+        notes = call.data.get("notes")
+        _LOGGER.info("Logging poo diaper for child %s (amount=%s, color=%s, consistency=%s)",
+                     child_uid, poo_amount, color, consistency)
         await hass.async_add_executor_job(
-            api.log_diaper, child_uid, "poo", False, False, color, consistency
+            api.log_diaper, child_uid, "poo", None, poo_amount, color, consistency, diaper_rash, notes
         )
 
     async def handle_log_diaper_both(call):
@@ -196,11 +204,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if not child_uid:
             _LOGGER.error("No child_uid could be determined from service call")
             return
+        pee_amount = call.data.get("pee_amount")
+        poo_amount = call.data.get("poo_amount")
         color = call.data.get("color")
         consistency = call.data.get("consistency")
+        diaper_rash = call.data.get("diaper_rash", False)
+        notes = call.data.get("notes")
         _LOGGER.info("Logging both (pee+poo) diaper for child %s", child_uid)
         await hass.async_add_executor_job(
-            api.log_diaper, child_uid, "both", True, True, color, consistency
+            api.log_diaper, child_uid, "both", pee_amount, poo_amount, color, consistency, diaper_rash, notes
         )
 
     async def handle_log_diaper_dry(call):
@@ -209,8 +221,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if not child_uid:
             _LOGGER.error("No child_uid could be determined from service call")
             return
+        diaper_rash = call.data.get("diaper_rash", False)
+        notes = call.data.get("notes")
         _LOGGER.info("Logging dry diaper check for child %s", child_uid)
-        await hass.async_add_executor_job(api.log_diaper, child_uid, "dry")
+        await hass.async_add_executor_job(
+            api.log_diaper, child_uid, "dry", None, None, None, None, diaper_rash, notes
+        )
 
     async def handle_log_growth(call):
         api: HuckleberryAPI = hass.data[DOMAIN][entry.entry_id]["api"]
@@ -249,16 +265,36 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         vol.Optional("child_uid"): cv.string,
     })
 
+    diaper_pee_schema = vol.Schema({
+        vol.Optional("child_uid"): cv.string,
+        vol.Optional("pee_amount"): vol.In(["little", "medium", "big"]),
+        vol.Optional("diaper_rash"): cv.boolean,
+        vol.Optional("notes"): cv.string,
+    })
+
     diaper_poo_schema = vol.Schema({
         vol.Optional("child_uid"): cv.string,
+        vol.Optional("poo_amount"): vol.In(["little", "medium", "big"]),
         vol.Optional("color"): vol.In(["yellow", "green", "brown", "black", "red"]),
         vol.Optional("consistency"): vol.In(["runny", "soft", "solid", "hard"]),
+        vol.Optional("diaper_rash"): cv.boolean,
+        vol.Optional("notes"): cv.string,
     })
 
     diaper_both_schema = vol.Schema({
         vol.Optional("child_uid"): cv.string,
+        vol.Optional("pee_amount"): vol.In(["little", "medium", "big"]),
+        vol.Optional("poo_amount"): vol.In(["little", "medium", "big"]),
         vol.Optional("color"): vol.In(["yellow", "green", "brown", "black", "red"]),
         vol.Optional("consistency"): vol.In(["runny", "soft", "solid", "hard"]),
+        vol.Optional("diaper_rash"): cv.boolean,
+        vol.Optional("notes"): cv.string,
+    })
+
+    diaper_dry_schema = vol.Schema({
+        vol.Optional("child_uid"): cv.string,
+        vol.Optional("diaper_rash"): cv.boolean,
+        vol.Optional("notes"): cv.string,
     })
 
     growth_schema = vol.Schema({
@@ -282,10 +318,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.services.async_register(DOMAIN, "cancel_feeding", handle_cancel_feeding, schema=feeding_service_schema)
     hass.services.async_register(DOMAIN, "complete_feeding", handle_complete_feeding, schema=feeding_service_schema)
 
-    hass.services.async_register(DOMAIN, "log_diaper_pee", handle_log_diaper_pee, schema=service_schema)
+    hass.services.async_register(DOMAIN, "log_diaper_pee", handle_log_diaper_pee, schema=diaper_pee_schema)
     hass.services.async_register(DOMAIN, "log_diaper_poo", handle_log_diaper_poo, schema=diaper_poo_schema)
     hass.services.async_register(DOMAIN, "log_diaper_both", handle_log_diaper_both, schema=diaper_both_schema)
-    hass.services.async_register(DOMAIN, "log_diaper_dry", handle_log_diaper_dry, schema=service_schema)
+    hass.services.async_register(DOMAIN, "log_diaper_dry", handle_log_diaper_dry, schema=diaper_dry_schema)
 
     hass.services.async_register(DOMAIN, "log_growth", handle_log_growth, schema=growth_schema)
 
