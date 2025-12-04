@@ -245,20 +245,24 @@ log_diaper_poo:
         select:
           options:
             - yellow
-            - green
             - brown
             - black
+            - green
             - red
+            - gray
     consistency:
       description: Poo consistency
       required: false
       selector:
         select:
           options:
-            - runny
-            - soft
             - solid
+            - loose
+            - runny
+            - mucousy
             - hard
+            - pebbles
+            - diarrhea
     diaper_rash:
       description: Baby has diaper rash
       required: false
@@ -309,20 +313,24 @@ log_diaper_both:
         select:
           options:
             - yellow
-            - green
             - brown
             - black
+            - green
             - red
+            - gray
     consistency:
       description: Poo consistency
       required: false
       selector:
         select:
           options:
-            - runny
-            - soft
             - solid
+            - loose
+            - runny
+            - mucousy
             - hard
+            - pebbles
+            - diarrhea
     diaper_rash:
       description: Baby has diaper rash
       required: false
