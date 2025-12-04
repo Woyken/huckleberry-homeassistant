@@ -281,8 +281,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         vol.Required("device_id"): cv.string,
         vol.Optional("child_uid"): cv.string,
         vol.Optional("poo_amount"): vol.In(["little", "medium", "big"]),
-        vol.Optional("color"): vol.In(["yellow", "green", "brown", "black", "red"]),
-        vol.Optional("consistency"): vol.In(["runny", "soft", "solid", "hard"]),
+        vol.Optional("color"): vol.In(["yellow", "brown", "black", "green", "red", "gray"]),
+        vol.Optional("consistency"): vol.In(["solid", "loose", "runny", "mucousy", "hard", "pebbles", "diarrhea"]),
         vol.Optional("diaper_rash"): cv.boolean,
         vol.Optional("notes"): cv.string,
     })
@@ -292,8 +292,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         vol.Optional("child_uid"): cv.string,
         vol.Optional("pee_amount"): vol.In(["little", "medium", "big"]),
         vol.Optional("poo_amount"): vol.In(["little", "medium", "big"]),
-        vol.Optional("color"): vol.In(["yellow", "green", "brown", "black", "red"]),
-        vol.Optional("consistency"): vol.In(["runny", "soft", "solid", "hard"]),
+        vol.Optional("color"): vol.In(["yellow", "brown", "black", "green", "red", "gray"]),
+        vol.Optional("consistency"): vol.In(["solid", "loose", "runny", "mucousy", "hard", "pebbles", "diarrhea"]),
         vol.Optional("diaper_rash"): cv.boolean,
         vol.Optional("notes"): cv.string,
     })
