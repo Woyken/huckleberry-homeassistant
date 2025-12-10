@@ -482,6 +482,12 @@ class HuckleberryDataUpdateCoordinator(DataUpdateCoordinator[dict[str, ChildReal
 
     async def _async_update_data(self) -> dict[str, ChildRealtimeData]:
         """Update data via library (fallback when listeners aren't active)."""
+        # Ensure session is valid (refresh token if needed) to keep listeners alive
+        try:
+            await self.hass.async_add_executor_job(self.api.maintain_session)
+        except Exception as err:
+            _LOGGER.error("Failed to maintain Huckleberry session: %s", err)
+
         # If we have real-time data, return it (listeners populate sleep, feed, health, diaper)
         if self._realtime_data:
             return dict(self._realtime_data)
