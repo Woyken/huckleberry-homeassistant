@@ -405,8 +405,9 @@ class HuckleberryFeedingSensor(HuckleberryBaseEntity, SensorEntity):
 
             if timer.get("active"):
                 # Currently feeding (active or paused)
-                if "timestamp" in timer:
-                    attrs["feeding_start"] = timer["timestamp"].get("seconds")
+                # Use feedStartTime (absolute start) not timestamp (last update)
+                if "feedStartTime" in timer:
+                    attrs["feeding_start"] = timer["feedStartTime"]
                 attrs["left_duration_seconds"] = timer.get("leftDuration", 0)
                 attrs["right_duration_seconds"] = timer.get("rightDuration", 0)
                 attrs["last_side"] = timer.get("lastSide", "unknown")
