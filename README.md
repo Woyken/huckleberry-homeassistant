@@ -54,6 +54,9 @@ This integration provides real-time baby tracking in Home Assistant by connectin
   - `switch.{child_name}_feeding_left` - Left side feeding
   - `switch.{child_name}_feeding_right` - Right side feeding
 
+- **Calendar** (1):
+  - `calendar.{child_name}_events` - All historical events (sleep, feeding, diaper, growth)
+
 ### Global:
 - `sensor.huckleberry_children` - Number of children
 
@@ -84,6 +87,26 @@ All services support device selection for easy use in automations:
 
 ### Growth Tracking
 - `huckleberry.log_growth`
+
+## Calendar
+
+Each child gets a calendar entity that displays all historical events:
+
+- **💤 Sleep events**: Shows duration and timing of all sleep sessions
+- **🍼 Feeding events**: Shows duration, left/right side information
+- **🩲 Diaper changes**: Shows type (pee/poo/both/dry) and details
+- **📏 Growth measurements**: Shows weight, height, head circumference
+
+The calendar can be added to dashboards and used in automations. Events are automatically fetched when you view the calendar for a specific date range.
+
+### Adding to Dashboard
+
+Add the calendar card to your dashboard:
+```yaml
+type: calendar
+entities:
+  - calendar.baby_name_events
+```
 
 ## Example Automations
 
