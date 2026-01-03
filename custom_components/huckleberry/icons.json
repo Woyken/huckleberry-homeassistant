@@ -1,0 +1,23 @@
+{
+  "services": {
+    "start_sleep": { "service": "mdi:bed" },
+    "pause_sleep": { "service": "mdi:pause-circle" },
+    "resume_sleep": { "service": "mdi:play-circle" },
+    "cancel_sleep": { "service": "mdi:close-circle" },
+    "complete_sleep": { "service": "mdi:check-circle" },
+
+    "start_feeding": { "service": "mdi:baby-bottle" },
+    "pause_feeding": { "service": "mdi:pause-circle" },
+    "resume_feeding": { "service": "mdi:play-circle" },
+    "switch_feeding_side": { "service": "mdi:swap-horizontal" },
+    "cancel_feeding": { "service": "mdi:close-circle" },
+    "complete_feeding": { "service": "mdi:check-circle" },
+
+    "log_diaper_pee": { "service": "mdi:water" },
+    "log_diaper_poo": { "service": "mdi:emoticon-poop" },
+    "log_diaper_both": { "service": "mdi:water-plus" },
+    "log_diaper_dry": { "service": "mdi:water-outline" },
+
+    "log_growth": { "service": "mdi:ruler" }
+  }
+}
