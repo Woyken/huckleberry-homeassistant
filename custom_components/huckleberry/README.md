@@ -57,6 +57,7 @@ Each child gets a dedicated device with 7 entities. The device includes the chil
      - `is_paused`: Whether sleep is paused (when active)
      - `sleep_start`: Current sleep start time (if active)
      - `timer_start_time`: Timer start timestamp for chronometer
+     - `timer_end_time`: Timer end timestamp when timer is paused
      - `last_sleep_duration_seconds`: Last completed sleep duration
      - `last_sleep_start`: When last sleep started
 

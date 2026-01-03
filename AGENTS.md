@@ -104,7 +104,7 @@ This groups entities under one device per child in HA UI.
 
 **`sensor.{child_name}_sleep_status`**:
 - State: `sleeping`, `paused`, `none`
-- Attributes: `is_paused`, `sleep_start`, `timer_start_time`, `last_sleep_start`, `last_sleep_duration_seconds`
+- Attributes: `is_paused`, `sleep_start`, `timer_start_time`, `timer_end_time`, `last_sleep_start`, `last_sleep_duration_seconds`
 - Device class: `enum`
 - Updates: Real-time via sleep listener
 

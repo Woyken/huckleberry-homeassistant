@@ -336,6 +336,12 @@ class HuckleberrySleepSensor(HuckleberryBaseEntity, SensorEntity):
                 if "timestamp" in timer:
                     attrs["sleep_start"] = timer["timestamp"].get("seconds")
 
+            if timer.get("paused"):
+                # Sleep is currently paused
+                if "timerEndTime" in timer:
+                    attrs["timer_end_time_ms"] = timer.get("timerEndTime")
+                    attrs["timer_end_time"] = int(timer.get("timerEndTime") / 1000)
+
             # Last sleep info
             if "lastSleep" in prefs:
                 last_sleep = prefs["lastSleep"]
