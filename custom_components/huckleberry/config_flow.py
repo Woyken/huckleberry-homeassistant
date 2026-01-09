@@ -10,6 +10,7 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.data_entry_flow import FlowResult
+from homeassistant.util import dt as dt_util
 
 from huckleberry_api import HuckleberryAPI
 from .const import DOMAIN
@@ -41,6 +42,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 api = HuckleberryAPI(
                     email=user_input[CONF_EMAIL],
                     password=user_input[CONF_PASSWORD],
+                    timezone='UTC',
                 )
 
                 await self.hass.async_add_executor_job(api.authenticate)
