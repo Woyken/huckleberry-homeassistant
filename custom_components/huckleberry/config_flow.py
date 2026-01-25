@@ -35,6 +35,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> FlowResult:
         """Handle the initial step."""
         errors: dict[str, str] = {}
+        description_placeholders: dict[str, str] = {}
 
         if user_input is not None:
             try:
@@ -42,7 +43,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 api = HuckleberryAPI(
                     email=user_input[CONF_EMAIL],
                     password=user_input[CONF_PASSWORD],
-                    timezone='UTC',
+                    timezone=str(self.hass.config.time_zone),
                 )
 
                 await self.hass.async_add_executor_job(api.authenticate)
@@ -64,16 +65,54 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             except requests.exceptions.HTTPError as err:
                 _LOGGER.exception("HTTP error during authentication")
-                if err.response is not None and err.response.status_code == 400:
-                    errors["base"] = "invalid_auth"
-                else:
-                    errors["base"] = "cannot_connect"
-            except Exception:  # pylint: disable=broad-except
-                _LOGGER.exception("Unexpected exception")
+                error_code = "cannot_connect"
+                error_detail = str(err)
+                if err.response is not None:
+                    # Try to parse Firebase error message
+                    try:
+                        error_data = err.response.json()
+                        firebase_error = error_data.get("error", {}).get("message", "")
+                        _LOGGER.error("Firebase error: %s", firebase_error)
+                        if firebase_error:
+                            error_detail = f"{firebase_error} ({err})"
+
+                        # Map Firebase errors to user-friendly messages
+                        # Use startswith() to handle errors with extra info like "INVALID_PASSWORD : ..."
+                        if any(firebase_error.startswith(e) for e in ("INVALID_PASSWORD", "EMAIL_NOT_FOUND", "INVALID_EMAIL")):
+                            error_code = "invalid_auth"
+                        elif firebase_error.startswith("USER_DISABLED"):
+                            error_code = "account_disabled"
+                        elif firebase_error.startswith("TOO_MANY_ATTEMPTS_TRY_LATER"):
+                            error_code = "too_many_attempts"
+                        elif err.response.status_code == 400:
+                            error_code = "invalid_auth"
+                    except Exception:  # pylint: disable=broad-except
+                        # JSON parsing failed, try to include response body for debugging
+                        try:
+                            response_text = err.response.text[:200]
+                            error_detail = f"{err} - Response: {response_text}"
+                        except Exception:  # pylint: disable=broad-except
+                            pass  # Keep original error_detail = str(err)
+                        if err.response.status_code == 400:
+                            error_code = "invalid_auth"
+                errors["base"] = error_code
+                description_placeholders["error_details"] = f"\n\n**Error:** {error_detail}"
+            except requests.exceptions.ConnectionError as err:
+                _LOGGER.exception("Connection error during authentication")
                 errors["base"] = "cannot_connect"
+                description_placeholders["error_details"] = f"\n\n**Error:** {err}"
+            except requests.exceptions.Timeout as err:
+                _LOGGER.exception("Timeout during authentication")
+                errors["base"] = "timeout"
+                description_placeholders["error_details"] = f"\n\n**Error:** {err}"
+            except Exception as err:  # pylint: disable=broad-except
+                _LOGGER.exception("Unexpected exception: %s", type(err).__name__)
+                errors["base"] = "unknown"
+                description_placeholders["error_details"] = f"\n\n**Error:** {type(err).__name__}: {err}"
 
         return self.async_show_form(
             step_id="user",
             data_schema=STEP_USER_DATA_SCHEMA,
             errors=errors,
+            description_placeholders={"error_details": description_placeholders.get("error_details", "")},
         )

@@ -68,7 +68,8 @@ async def test_flow_user_invalid_auth(hass: HomeAssistant, mock_huckleberry_api)
 
 async def test_flow_user_cannot_connect(hass: HomeAssistant, mock_huckleberry_api):
     """Test flow with connection error."""
-    mock_huckleberry_api.authenticate.side_effect = Exception("Connection error")
+    import requests.exceptions
+    mock_huckleberry_api.authenticate.side_effect = requests.exceptions.ConnectionError("Connection refused")
 
     with patch(
         "custom_components.huckleberry.config_flow.HuckleberryAPI",
@@ -85,6 +86,27 @@ async def test_flow_user_cannot_connect(hass: HomeAssistant, mock_huckleberry_ap
 
     assert result["type"] == data_entry_flow.FlowResultType.FORM
     assert result["errors"] == {"base": "cannot_connect"}
+
+
+async def test_flow_user_unknown_error(hass: HomeAssistant, mock_huckleberry_api):
+    """Test flow with unknown error."""
+    mock_huckleberry_api.authenticate.side_effect = Exception("Something unexpected")
+
+    with patch(
+        "custom_components.huckleberry.config_flow.HuckleberryAPI",
+        return_value=mock_huckleberry_api,
+    ), patch("custom_components.huckleberry.config_flow._LOGGER"):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN,
+            context={"source": config_entries.SOURCE_USER},
+            data={
+                CONF_EMAIL: "test@example.com",
+                CONF_PASSWORD: "test_password",
+            },
+        )
+
+    assert result["type"] == data_entry_flow.FlowResultType.FORM
+    assert result["errors"] == {"base": "unknown"}
 
 async def test_flow_user_no_children(hass: HomeAssistant, mock_huckleberry_api):
     """Test flow with no children found."""
