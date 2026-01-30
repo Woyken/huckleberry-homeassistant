@@ -156,9 +156,9 @@ automation:
         target:
           device_id: YOUR_DEVICE_ID  # Select your child's device
         data:
-          amount: 4.0
+          amount: 120.0
           bottle_type: Formula
-          units: oz
+          units: ml
 ```
 
 ## Device Actions

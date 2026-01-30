@@ -256,7 +256,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             return
         amount = call.data.get("amount")
         bottle_type = call.data.get("bottle_type")
-        units = call.data.get("units", "oz")
+        units = call.data.get("units", "ml")
         _LOGGER.info("Logging bottle feeding for child %s (amount=%s %s, type=%s)",
                      child_uid, amount, units, bottle_type)
         await hass.async_add_executor_job(

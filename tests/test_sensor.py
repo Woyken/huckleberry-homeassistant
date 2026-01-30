@@ -76,3 +76,53 @@ async def test_sensors(hass: HomeAssistant, mock_huckleberry_api):
     assert state.state != "No changes logged"
     assert state.attributes["mode"] == "pee"
     assert state.attributes["timestamp"] == 1234567890
+
+async def test_bottle_sensor(hass: HomeAssistant, mock_huckleberry_api):
+    """Test bottle sensor."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_EMAIL: "test@example.com",
+            CONF_PASSWORD: "test_password",
+        },
+    )
+    entry.add_to_hass(hass)
+
+    with patch(
+        "custom_components.huckleberry.HuckleberryAPI",
+        return_value=mock_huckleberry_api,
+    ):
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+    # Get the coordinator
+    coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+
+    # Simulate bottle data
+    coordinator._realtime_data = {
+        "child_1": {
+            "feed_status": {
+                "prefs": {
+                    "lastBottle": {
+                        "start": 1234567890,
+                        "amount": 120.0,
+                        "units": "ml",
+                        "bottleType": "Formula"
+                    }
+                }
+            }
+        }
+    }
+    coordinator.async_set_updated_data(coordinator._realtime_data)
+    await hass.async_block_till_done()
+
+    # Check bottle sensor
+    state = hass.states.get("sensor.test_child_last_bottle")
+    assert state is not None
+    # TIMESTAMP sensor returns datetime object, check it's not None
+    assert state.state is not None
+    assert state.attributes["amount"] == 120.0
+    assert state.attributes["units"] == "ml"
+    assert state.attributes["bottle_type"] == "Formula"
+    assert state.attributes["amount_display"] == "120.0 ml"
+    assert state.attributes["timestamp"] == 1234567890

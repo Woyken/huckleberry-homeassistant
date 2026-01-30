@@ -281,6 +281,7 @@ class HuckleberryBottleSensor(HuckleberryBaseEntity, SensorEntity):
     """Sensor showing last bottle feeding information."""
 
     _attr_icon = "mdi:baby-bottle"
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
 
     def __init__(self, coordinator, child: dict[str, Any]) -> None:
         """Initialize the sensor."""
@@ -289,7 +290,7 @@ class HuckleberryBottleSensor(HuckleberryBaseEntity, SensorEntity):
         self._attr_unique_id = f"{self.child_uid}_last_bottle"
 
     @property
-    def native_value(self) -> str | None:
+    def native_value(self):
         """Return the last bottle feeding timestamp."""
         child_data = self.coordinator.data.get(self.child_uid, {})
         feed_data = child_data.get("feed_status", {})
@@ -297,15 +298,12 @@ class HuckleberryBottleSensor(HuckleberryBaseEntity, SensorEntity):
         prefs = feed_data.get("prefs", {})
         last_bottle = prefs.get("lastBottle", {})
 
-        if not last_bottle:
-            return "No bottles logged"
+        start = last_bottle.get("start")
+        if start is not None:
+            from datetime import datetime, timezone
+            return datetime.fromtimestamp(start, tz=timezone.utc)
 
-        timestamp = last_bottle.get("start")
-        if timestamp:
-            from datetime import datetime
-            return datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M")
-
-        return "Unknown"
+        return None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -333,7 +331,7 @@ class HuckleberryBottleSensor(HuckleberryBaseEntity, SensorEntity):
         if amount is not None:
             attrs["amount"] = amount
             
-        units = last_bottle.get("units", "oz")
+        units = last_bottle.get("units", "ml")
         attrs["units"] = units
         
         # Display amount with units

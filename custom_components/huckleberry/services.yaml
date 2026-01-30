@@ -556,10 +556,10 @@ log_bottle:
     units:
       name: Units
       description: Measurement units for amount
-      default: oz
+      default: ml
       required: false
       selector:
         select:
           options:
-            - oz
             - ml
+            - oz
