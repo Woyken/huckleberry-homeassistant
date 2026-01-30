@@ -143,6 +143,24 @@ automation:
           message: "Baby has been feeding for 20 minutes"
 ```
 
+### Log Bottle Feeding
+```yaml
+automation:
+  - alias: "Log Bottle at Scheduled Time"
+    trigger:
+      - platform: time
+        at: "09:00:00"
+    action:
+      - service: huckleberry.log_bottle
+        target:
+          device_id: YOUR_DEVICE_ID  # Select your child's device
+        data:
+          amount: 4.0
+          bottle_type: Formula
+          units: oz
+          notes: "Morning bottle"
+```
+
 ## Device Actions
 
 The integration provides 18 device actions for use in device-based automations:
