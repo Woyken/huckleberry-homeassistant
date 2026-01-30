@@ -35,6 +35,8 @@ async def async_setup_entry(
         entities.append(HuckleberryGrowthSensor(coordinator, child))
         # Add diaper sensor for each child
         entities.append(HuckleberryDiaperSensor(coordinator, child))
+        # Add bottle sensor for each child
+        entities.append(HuckleberryBottleSensor(coordinator, child))
         # Add sleep sensor for each child
         entities.append(HuckleberrySleepSensor(coordinator, child))
         # Add feeding sensor for each child
@@ -269,6 +271,83 @@ class HuckleberryDiaperSensor(HuckleberryBaseEntity, SensorEntity):
 
         # Add offset (timezone)
         offset = last_diaper.get("offset")
+        if offset is not None:
+            attrs["timezone_offset_minutes"] = offset
+
+        return attrs
+
+
+class HuckleberryBottleSensor(HuckleberryBaseEntity, SensorEntity):
+    """Sensor showing last bottle feeding information."""
+
+    _attr_icon = "mdi:baby-bottle"
+
+    def __init__(self, coordinator, child: dict[str, Any]) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator, child)
+        self._attr_name = "Last Bottle"
+        self._attr_unique_id = f"{self.child_uid}_last_bottle"
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the last bottle feeding timestamp."""
+        child_data = self.coordinator.data.get(self.child_uid, {})
+        feed_data = child_data.get("feed_status", {})
+
+        prefs = feed_data.get("prefs", {})
+        last_bottle = prefs.get("lastBottle", {})
+
+        if not last_bottle:
+            return "No bottles logged"
+
+        timestamp = last_bottle.get("start")
+        if timestamp:
+            from datetime import datetime
+            return datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M")
+
+        return "Unknown"
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return bottle feeding attributes."""
+        child_data = self.coordinator.data.get(self.child_uid, {})
+        feed_data = child_data.get("feed_status", {})
+
+        prefs = feed_data.get("prefs", {})
+        last_bottle = prefs.get("lastBottle", {})
+
+        if not last_bottle:
+            return {}
+
+        attrs = {}
+
+        # Add timestamp
+        timestamp = last_bottle.get("start")
+        if timestamp:
+            from datetime import datetime
+            attrs["timestamp"] = timestamp
+            attrs["time"] = datetime.fromtimestamp(timestamp).isoformat()
+
+        # Add amount and units
+        amount = last_bottle.get("amount")
+        if amount is not None:
+            attrs["amount"] = amount
+            
+        units = last_bottle.get("units", "oz")
+        attrs["units"] = units
+        
+        # Display amount with units
+        if amount is not None:
+            attrs["amount_display"] = f"{amount} {units}"
+
+        # Add bottle type (Formula or Breastmilk)
+        bottle_type = last_bottle.get("bottleType")
+        if bottle_type:
+            attrs["bottle_type"] = bottle_type
+            attrs["type"] = bottle_type
+
+        # Add offset (timezone)
+        offset = last_bottle.get("offset")
         if offset is not None:
             attrs["timezone_offset_minutes"] = offset
 

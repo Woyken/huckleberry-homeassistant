@@ -15,7 +15,7 @@ This integration provides real-time baby tracking in Home Assistant by connectin
 - 🧷 **Diaper Changes**: Log pee, poo, both, or dry checks
 - 📏 **Growth Measurements**: Track weight, height, head circumference
 - 🔄 **Real-time Sync**: Instant updates via Firebase listeners
-- 🤖 **Automations**: 18 device actions for advanced automations
+- 🤖 **Automations**: Device actions for advanced automations
 - 👶 **Multi-child Support**: Separate devices per child
 
 ## Installation
@@ -43,11 +43,12 @@ This integration provides real-time baby tracking in Home Assistant by connectin
 ## Entities Created
 
 ### Per Child:
-- **Sensors** (4):
+- **Sensors**:
   - `sensor.{child_name}_sleep_status` - Sleep status (sleeping, paused, none)
   - `sensor.{child_name}_feeding_status` - Feeding status (feeding, paused, none)
   - `sensor.{child_name}_profile` - Child profile information
   - `sensor.{child_name}_growth` - Latest growth measurements
+  - `sensor.{child_name}_last_bottle` - Last bottle feeding (time, amount, type)
 
 - **Switches** (3):
   - `switch.{child_name}_sleep` - Start/stop sleep tracking
@@ -162,12 +163,12 @@ automation:
 
 ## Device Actions
 
-The integration provides 18 device actions for use in device-based automations:
-- Sleep actions (5): start, pause, resume, cancel, complete
-- Feeding actions (6): start left/right, pause, resume, switch side, cancel, complete
-- Diaper actions (4): log pee, poo, both, dry
-- Growth actions (1): log growth
-- Bottle actions (1): log bottle feeding
+The integration provides device actions for use in device-based automations:
+- Sleep actions: start, pause, resume, cancel, complete
+- Feeding actions: start left/right, pause, resume, switch side, cancel, complete
+- Diaper actions: log pee, poo, both, dry
+- Growth actions: log growth
+- Bottle actions: log bottle feeding
 
 ## Documentation
 
