@@ -11,11 +11,11 @@ This integration provides real-time baby tracking in Home Assistant by connectin
 ## Features
 
 - 💤 **Sleep Tracking**: Sensors, switches, and automation actions
-- 🍼 **Feeding Tracking**: Left/right side tracking with switches
+- 🍼 **Feeding Tracking**: Left/right side tracking with switches, bottle feeding with amount and type
 - 🧷 **Diaper Changes**: Log pee, poo, both, or dry checks
 - 📏 **Growth Measurements**: Track weight, height, head circumference
 - 🔄 **Real-time Sync**: Instant updates via Firebase listeners
-- 🤖 **Automations**: 17 device actions for advanced automations
+- 🤖 **Automations**: 18 device actions for advanced automations
 - 👶 **Multi-child Support**: Separate devices per child
 
 ## Installation
@@ -78,6 +78,7 @@ All services support device selection for easy use in automations:
 - `huckleberry.switch_feeding_side`
 - `huckleberry.cancel_feeding`
 - `huckleberry.complete_feeding`
+- `huckleberry.log_bottle` - Log bottle feeding (formula or breastmilk) with amount in oz or ml
 
 ### Diaper Changes
 - `huckleberry.log_diaper_pee`
@@ -144,11 +145,12 @@ automation:
 
 ## Device Actions
 
-The integration provides 17 device actions for use in device-based automations:
+The integration provides 18 device actions for use in device-based automations:
 - Sleep actions (5): start, pause, resume, cancel, complete
 - Feeding actions (6): start left/right, pause, resume, switch side, cancel, complete
 - Diaper actions (4): log pee, poo, both, dry
-- Growth actions (2): log metric, log imperial
+- Growth actions (1): log growth
+- Bottle actions (1): log bottle feeding
 
 ## Documentation
 

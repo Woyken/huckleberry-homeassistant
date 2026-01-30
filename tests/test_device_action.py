@@ -18,7 +18,7 @@ async def test_get_actions(hass: HomeAssistant):
         "start_feeding_left", "start_feeding_right", "pause_feeding", "resume_feeding",
         "switch_feeding_side", "cancel_feeding", "complete_feeding",
         "log_diaper_pee", "log_diaper_poo", "log_diaper_both", "log_diaper_dry",
-        "log_growth"
+        "log_growth", "log_bottle"
     }
 
     found_actions = {action[CONF_TYPE] for action in actions}
@@ -59,6 +59,7 @@ async def test_call_action(hass: HomeAssistant):
         ("log_diaper_both", "log_diaper_both", {"child_uid": "test_child_uid"}),
         ("log_diaper_dry", "log_diaper_dry", {"child_uid": "test_child_uid"}),
         ("log_growth", "log_growth", {"child_uid": "test_child_uid"}),
+        ("log_bottle", "log_bottle", {"child_uid": "test_child_uid"}),
     ]
 
     for action_type, service, service_data in test_cases:

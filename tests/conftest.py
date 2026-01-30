@@ -68,6 +68,7 @@ def mock_huckleberry_api():
     mock.setup_health_listener = MagicMock()
     mock.setup_diaper_listener = MagicMock()
     mock.stop_all_listeners = MagicMock()
+    mock.log_bottle_feeding = MagicMock()
     return mock
 
 
@@ -106,6 +107,7 @@ def mock_huckleberry_api_multiple_children():
     mock.setup_health_listener = MagicMock()
     mock.setup_diaper_listener = MagicMock()
     mock.stop_all_listeners = MagicMock()
+    mock.log_bottle_feeding = MagicMock()
     return mock
 
 @pytest.fixture

@@ -143,6 +143,14 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
         "test_child_uid", 10.5, 75.0, 45.0, "metric"
     )
 
+    # Test log_bottle
+    await hass.services.async_call(
+        DOMAIN, "log_bottle", {"device_id": device.id, "amount": 4.0, "bottle_type": "Formula", "units": "oz"}, blocking=True
+    )
+    mock_huckleberry_api.log_bottle_feeding.assert_called_with(
+        "test_child_uid", 4.0, "Formula", "oz"
+    )
+
 async def test_service_explicit_child_uid(hass: HomeAssistant, mock_huckleberry_api):
     """Test service call with explicit child_uid."""
     entry = MockConfigEntry(
