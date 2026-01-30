@@ -257,7 +257,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         amount = call.data.get("amount")
         bottle_type = call.data.get("bottle_type")
         units = call.data.get("units", "oz")
-        notes = call.data.get("notes")
         _LOGGER.info("Logging bottle feeding for child %s (amount=%s %s, type=%s)",
                      child_uid, amount, units, bottle_type)
         await hass.async_add_executor_job(
@@ -337,7 +336,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         vol.Required("amount"): vol.Coerce(float),
         vol.Required("bottle_type"): vol.In(["Formula", "Breastmilk"]),
         vol.Optional("units"): vol.In(["oz", "ml"]),
-        vol.Optional("notes"): cv.string,
     })
 
     hass.services.async_register(DOMAIN, "start_sleep", handle_start_sleep, schema=service_schema)

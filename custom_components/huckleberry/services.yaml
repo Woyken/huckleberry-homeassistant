@@ -563,10 +563,3 @@ log_bottle:
           options:
             - oz
             - ml
-    notes:
-      name: Notes
-      description: Optional notes about this bottle feeding
-      required: false
-      example: Fed well
-      selector:
-        text:

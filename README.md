@@ -158,7 +158,6 @@ automation:
           amount: 4.0
           bottle_type: Formula
           units: oz
-          notes: "Morning bottle"
 ```
 
 ## Device Actions
