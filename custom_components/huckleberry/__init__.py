@@ -334,7 +334,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         vol.Required("device_id"): cv.string,
         vol.Optional("child_uid"): cv.string,
         vol.Required("amount"): vol.Coerce(float),
-        vol.Required("bottle_type"): vol.In(["Formula", "Breastmilk"]),
+        vol.Required("bottle_type"): vol.In([
+            "Formula",
+            "Breast Milk",
+            "Tube Feeding",
+            "Cow Milk",
+            "Goat Milk",
+            "Soy Milk",
+            "Other",
+        ]),
         vol.Optional("units"): vol.In(["oz", "ml"]),
     })
 

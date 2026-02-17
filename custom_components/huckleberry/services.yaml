@@ -516,7 +516,7 @@ log_growth:
 
 log_bottle:
   name: Log Bottle Feeding
-  description: Log a bottle feeding with amount and type (formula or breastmilk).
+  description: Log a bottle feeding with amount and type.
   fields:
     device_id:
       name: Child device
@@ -552,7 +552,12 @@ log_bottle:
         select:
           options:
             - Formula
-            - Breastmilk
+            - Breast Milk
+            - Tube Feeding
+            - Cow Milk
+            - Goat Milk
+            - Soy Milk
+            - Other
     units:
       name: Units
       description: Measurement units for amount
