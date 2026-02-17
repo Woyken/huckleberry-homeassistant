@@ -77,3 +77,81 @@ async def test_async_get_events(calendar, hass):
 
         assert isinstance(events, list)
         assert len(events) == 0  # All mocked to return empty lists
+
+
+def test_fetch_feed_events_excludes_bottle_intervals(calendar):
+    """Bottle intervals should not render as regular feed events."""
+    calendar._api.get_feed_intervals.return_value = [
+        {
+            "start": 1700000000,
+            "leftDuration": 900,
+            "rightDuration": 600,
+            "is_multi_entry": False,
+            "mode": "breast",
+        },
+        {
+            "start": 1700000600,
+            "leftDuration": 0,
+            "rightDuration": 0,
+            "is_multi_entry": False,
+            "mode": "bottle",
+            "amount": 120,
+            "units": "ml",
+        },
+    ]
+
+    events = calendar._fetch_feed_events(datetime.now(), datetime.now() + timedelta(days=1))
+
+    assert len(events) == 1
+    assert events[0].summary.startswith("🍼 Feed")
+    assert "L:15m" in events[0].summary
+    assert "R:10m" in events[0].summary
+
+
+def test_fetch_feed_events_formats_seconds_description(calendar):
+    """Feed event descriptions should format seconds as min/sec text."""
+    calendar._api.get_feed_intervals.return_value = [
+        {
+            "start": 1700000000,
+            "leftDuration": 111,
+            "rightDuration": 103,
+            "is_multi_entry": False,
+            "mode": "breast",
+        },
+    ]
+
+    events = calendar._fetch_feed_events(datetime.now(), datetime.now() + timedelta(days=1))
+
+    assert len(events) == 1
+    assert "Feeding - Total: 3 min 34 sec" in (events[0].description or "")
+    assert "Left: 1 min 51 sec" in (events[0].description or "")
+    assert "Right: 1 min 43 sec" in (events[0].description or "")
+
+
+def test_fetch_bottle_events_from_feed_intervals(calendar):
+    """Bottle intervals should render as bottle events."""
+    calendar._api.get_feed_intervals.return_value = [
+        {
+            "start": 1700000600,
+            "leftDuration": 0,
+            "rightDuration": 0,
+            "is_multi_entry": False,
+            "mode": "bottle",
+            "bottleType": "Formula",
+            "amount": 120,
+            "units": "ml",
+        },
+        {
+            "start": 1700001200,
+            "leftDuration": 20,
+            "rightDuration": 0,
+            "is_multi_entry": False,
+            "mode": "breast",
+        },
+    ]
+
+    events = calendar._fetch_bottle_events(datetime.now(), datetime.now() + timedelta(days=1))
+
+    assert len(events) == 1
+    assert events[0].summary == "🍼 Bottle (120 ml)"
+    assert "Type: Formula" in (events[0].description or "")

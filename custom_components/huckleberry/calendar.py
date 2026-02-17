@@ -182,23 +182,22 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
             intervals = self._api.get_feed_intervals(child_uid, start_s, end_s)
 
             for interval in intervals:
+                if self._is_bottle_interval(interval):
+                    continue
+
                 start_time = datetime.fromtimestamp(
                     interval["start"], tz=dt_util.DEFAULT_TIME_ZONE
                 )
 
-                # Check if this is a multi-entry document (durations in seconds)
-                # or regular document (durations in minutes)
-                if interval.get("is_multi_entry"):
-                    # Multi-entry: durations are in SECONDS, convert to minutes
-                    left_duration = round(interval.get("leftDuration", 0) / 60)
-                    right_duration = round(interval.get("rightDuration", 0) / 60)
-                else:
-                    # Regular doc: durations are in minutes
-                    left_duration = int(interval.get("leftDuration", 0))
-                    right_duration = int(interval.get("rightDuration", 0))
+                # Feed interval durations are stored in seconds.
+                left_duration_seconds = float(interval.get("leftDuration", 0) or 0)
+                right_duration_seconds = float(interval.get("rightDuration", 0) or 0)
 
-                total_duration = left_duration + right_duration
-                end_time = start_time + timedelta(minutes=total_duration)
+                total_duration_seconds = int(round(left_duration_seconds + right_duration_seconds))
+                end_time = start_time + timedelta(seconds=total_duration_seconds)
+
+                left_duration = int(round(left_duration_seconds / 60))
+                right_duration = int(round(right_duration_seconds / 60))
 
                 # Build summary based on sides used
                 sides = []
@@ -207,13 +206,13 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
                 if right_duration > 0:
                     sides.append(f"R:{right_duration}m")
 
-                sides_str = " ".join(sides) if sides else f"{total_duration}m"
+                sides_str = " ".join(sides) if sides else self._format_duration(total_duration_seconds)
                 summary = f"🍼 Feed ({sides_str})"
-                description = f"Feeding - Total: {total_duration} minutes"
-                if left_duration > 0:
-                    description += f"\nLeft: {left_duration} minutes"
-                if right_duration > 0:
-                    description += f"\nRight: {right_duration} minutes"
+                description = f"Feeding - Total: {self._format_duration(total_duration_seconds)}"
+                if left_duration_seconds > 0:
+                    description += f"\nLeft: {self._format_duration(left_duration_seconds)}"
+                if right_duration_seconds > 0:
+                    description += f"\nRight: {self._format_duration(right_duration_seconds)}"
 
                 events.append(
                     CalendarEvent(
@@ -243,15 +242,13 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
             start_s = int(start_date.timestamp())
             end_s = int(end_date.timestamp())
 
-            # Fetch bottle intervals from API
-            # Check if the API has a get_bottle_intervals method
-            if hasattr(self._api, "get_bottle_intervals"):
-                intervals = self._api.get_bottle_intervals(child_uid, start_s, end_s)
-            else:
-                # If no specific bottle method, try to get from feed intervals
-                # and filter for bottle type
-                all_intervals = self._api.get_feed_intervals(child_uid, start_s, end_s)
-                intervals = [i for i in all_intervals if i.get("type") == "bottle" or i.get("bottleType")]
+            # Bottle feedings are stored in feed intervals; filter from feed entries.
+            all_intervals = self._api.get_feed_intervals(child_uid, start_s, end_s)
+            intervals = [
+                interval
+                for interval in all_intervals
+                if self._is_bottle_interval(interval)
+            ]
 
             for interval in intervals:
                 event_time = datetime.fromtimestamp(
@@ -259,8 +256,8 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
                 )
 
                 # Bottle feeding is an instant event (same start/end)
-                amount = interval.get("amount", 0)
-                units = interval.get("units", "ml")
+                amount = interval.get("amount", interval.get("bottleAmount", 0))
+                units = interval.get("units", interval.get("bottleUnits", "ml"))
                 bottle_type = interval.get("bottleType", "Unknown")
 
                 summary = f"🍼 Bottle ({amount} {units})"
@@ -279,13 +276,33 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
 
             _LOGGER.debug("Found %d bottle events", len(events))
 
-        except AttributeError:
-            # API method doesn't exist yet, skip bottle events
-            _LOGGER.debug("Bottle intervals not yet supported by API")
         except Exception as err:
             _LOGGER.error("Error fetching bottle events: %s", err)
 
         return events
+
+    @staticmethod
+    def _is_bottle_interval(interval: dict[str, Any]) -> bool:
+        """Return True if interval represents a bottle feeding event."""
+        return (
+            interval.get("mode") == "bottle"
+            or interval.get("type") == "bottle"
+            or interval.get("bottleType") is not None
+            or "amount" in interval
+            or "bottleAmount" in interval
+        )
+
+    @staticmethod
+    def _format_duration(duration_seconds: float | int) -> str:
+        """Format duration in seconds as readable min/sec text."""
+        total_seconds = int(round(float(duration_seconds)))
+        minutes, seconds = divmod(total_seconds, 60)
+
+        if minutes > 0 and seconds > 0:
+            return f"{minutes} min {seconds} sec"
+        if minutes > 0:
+            return f"{minutes} min"
+        return f"{seconds} sec"
 
     def _fetch_diaper_events(
         self, start_date: datetime, end_date: datetime

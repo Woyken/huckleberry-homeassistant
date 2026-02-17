@@ -38,7 +38,7 @@ This integration provides:
 - `device_action`: 18 device-specific automation actions
 
 **External Dependencies:**
-- `huckleberry-api>=0.1.18` - Firebase operations
+- `huckleberry-api>=0.1.19` - Firebase operations
 - `google-cloud-firestore>=2.11.0` - Required by huckleberry-api
 
 ### Integration Structure
@@ -783,7 +783,7 @@ except Exception as err:
   "dependencies": [],
   "documentation": "https://github.com/your-repo",
   "iot_class": "cloud_push",
-  "requirements": ["huckleberry-api>=0.1.18"],
+    "requirements": ["huckleberry-api>=0.1.19"],
   "version": "0.2.7"
 }
 ```
@@ -888,7 +888,7 @@ Follow [semver.org](https://semver.org/):
 
 **Last Updated**: December 15, 2025
 **Integration Version**: 0.2.7
-**API Library Version**: 0.1.18
+**API Library Version**: 0.1.19
 **Status**: Stable, feature-complete for sleep, feeding, diaper, and growth tracking
 **Home Assistant Compatibility**: 2023.1+
 **Test Coverage**: Automated test suite covering config flow, entities, services, and device actions
