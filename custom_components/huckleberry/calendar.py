@@ -86,6 +86,13 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
             )
         )
 
+        # Fetch bottle feeding intervals
+        events.extend(
+            await self.hass.async_add_executor_job(
+                self._fetch_bottle_events, start_date, end_date
+            )
+        )
+
         # Fetch diaper intervals
         events.extend(
             await self.hass.async_add_executor_job(
@@ -221,6 +228,62 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
 
         except Exception as err:
             _LOGGER.error("Error fetching feed events: %s", err)
+
+        return events
+
+    def _fetch_bottle_events(
+        self, start_date: datetime, end_date: datetime
+    ) -> list[CalendarEvent]:
+        """Fetch bottle feeding intervals using API."""
+        events = []
+        child_uid = self._child["uid"]
+
+        try:
+            # Convert to timestamps (seconds)
+            start_s = int(start_date.timestamp())
+            end_s = int(end_date.timestamp())
+
+            # Fetch bottle intervals from API
+            # Check if the API has a get_bottle_intervals method
+            if hasattr(self._api, "get_bottle_intervals"):
+                intervals = self._api.get_bottle_intervals(child_uid, start_s, end_s)
+            else:
+                # If no specific bottle method, try to get from feed intervals
+                # and filter for bottle type
+                all_intervals = self._api.get_feed_intervals(child_uid, start_s, end_s)
+                intervals = [i for i in all_intervals if i.get("type") == "bottle" or i.get("bottleType")]
+
+            for interval in intervals:
+                event_time = datetime.fromtimestamp(
+                    interval["start"], tz=dt_util.DEFAULT_TIME_ZONE
+                )
+
+                # Bottle feeding is an instant event (same start/end)
+                amount = interval.get("amount", 0)
+                units = interval.get("units", "ml")
+                bottle_type = interval.get("bottleType", "Unknown")
+
+                summary = f"🍼 Bottle ({amount} {units})"
+                description = f"Bottle feeding: {amount} {units}"
+                if bottle_type:
+                    description += f"\nType: {bottle_type}"
+
+                events.append(
+                    CalendarEvent(
+                        start=event_time,
+                        end=event_time,
+                        summary=summary,
+                        description=description,
+                    )
+                )
+
+            _LOGGER.debug("Found %d bottle events", len(events))
+
+        except AttributeError:
+            # API method doesn't exist yet, skip bottle events
+            _LOGGER.debug("Bottle intervals not yet supported by API")
+        except Exception as err:
+            _LOGGER.error("Error fetching bottle events: %s", err)
 
         return events
 

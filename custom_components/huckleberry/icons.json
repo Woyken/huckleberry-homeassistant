@@ -18,6 +18,7 @@
     "log_diaper_both": { "service": "mdi:water-plus" },
     "log_diaper_dry": { "service": "mdi:water-outline" },
 
-    "log_growth": { "service": "mdi:ruler" }
+    "log_growth": { "service": "mdi:ruler" },
+    "log_bottle": { "service": "mdi:baby-bottle-outline" }
   }
 }
