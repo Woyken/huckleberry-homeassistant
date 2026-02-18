@@ -11,6 +11,14 @@ This is a **Home Assistant custom integration** for the Huckleberry baby trackin
 - **[Project Overview](../AGENTS.md)** - High-level context, history, decompiled source analysis
 - **[API Library](../huckleberry-api/AGENTS.md)** - Underlying Firebase operations and data structures
 
+## Critical Agent Rule
+
+When adding or changing any enum value, state value, mode, unit, key name, option list, or any other value that originates from the Huckleberry app or Firebase schema, you **must** validate the value against API and make sure to find evidence that it exists first.
+
+Never add guessed, inferred, placeholder, or convenience values.
+
+If a value cannot be validated as factual and true in API evidence, do not add it.
+
 ## Project Purpose
 
 This integration provides:
