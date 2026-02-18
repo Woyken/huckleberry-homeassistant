@@ -5,7 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "huckleberry-api>=0.1.18",
+    "huckleberry-api>=0.1.19",
 ]
 
 [dependency-groups]

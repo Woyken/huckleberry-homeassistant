@@ -19,6 +19,10 @@ Never add guessed, inferred, placeholder, or convenience values.
 
 If a value cannot be validated as factual and true in API evidence, do not add it.
 
+When changing dependencies for this integration, always update both `custom_components/huckleberry/manifest.json` and `pyproject.toml` so metadata and local development dependencies stay in sync.
+
+For Python commands in this repository (including running tests), always use the `uv` CLI (for example: `uv run pytest ...`) instead of invoking tools directly.
+
 ## Project Purpose
 
 This integration provides:
@@ -572,6 +576,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 ## Home Assistant Testing Workflow
 
+**Command rule**: Use `uv` for test execution commands (for example: `uv run pytest`).
+
 ### Development Cycle
 
 1. **Edit code** in `custom_components/huckleberry/`
@@ -778,6 +784,8 @@ except Exception as err:
 ```
 
 ## Dependencies & Compatibility
+
+**Dependency sync rule**: If you add, remove, or bump integration dependencies, update both `custom_components/huckleberry/manifest.json` and `pyproject.toml` in the same change.
 
 ### Required Dependencies
 
