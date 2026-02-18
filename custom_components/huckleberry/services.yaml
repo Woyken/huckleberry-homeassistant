@@ -513,3 +513,58 @@ log_growth:
           options:
             - metric
             - imperial
+
+log_bottle:
+  name: Log Bottle Feeding
+  description: Log a bottle feeding with amount and type.
+  fields:
+    device_id:
+      name: Child device
+      description: Select child device
+      required: true
+      selector:
+        device:
+          integration: huckleberry
+    child_uid:
+      name: Child UID
+      description: Child UID (optional, overrides device selection)
+      example: VZiSnxmU3KawWzsSLTqyuPTlsuX2
+      advanced: true
+      required: false
+      selector:
+        text:
+    amount:
+      name: Amount
+      description: Amount of bottle feeding (in oz or ml)
+      example: 4.0
+      required: true
+      selector:
+        number:
+          min: 0.0
+          max: 2000.0
+          step: 0.5
+          mode: box
+    bottle_type:
+      name: Bottle type
+      description: Type of bottle feeding
+      required: true
+      selector:
+        select:
+          options:
+            - Formula
+            - Breast Milk
+            - Tube Feeding
+            - Cow Milk
+            - Goat Milk
+            - Soy Milk
+            - Other
+    units:
+      name: Units
+      description: Measurement units for amount
+      default: ml
+      required: false
+      selector:
+        select:
+          options:
+            - ml
+            - oz

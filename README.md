@@ -11,11 +11,11 @@ This integration provides real-time baby tracking in Home Assistant by connectin
 ## Features
 
 - 💤 **Sleep Tracking**: Sensors, switches, and automation actions
-- 🍼 **Feeding Tracking**: Left/right side tracking with switches
+- 🍼 **Feeding Tracking**: Left/right side tracking with switches, bottle feeding with amount and type
 - 🧷 **Diaper Changes**: Log pee, poo, both, or dry checks
 - 📏 **Growth Measurements**: Track weight, height, head circumference
 - 🔄 **Real-time Sync**: Instant updates via Firebase listeners
-- 🤖 **Automations**: 17 device actions for advanced automations
+- 🤖 **Automations**: Device actions for advanced automations
 - 👶 **Multi-child Support**: Separate devices per child
 
 ## Installation
@@ -43,11 +43,12 @@ This integration provides real-time baby tracking in Home Assistant by connectin
 ## Entities Created
 
 ### Per Child:
-- **Sensors** (4):
+- **Sensors**:
   - `sensor.{child_name}_sleep_status` - Sleep status (sleeping, paused, none)
   - `sensor.{child_name}_feeding_status` - Feeding status (feeding, paused, none)
   - `sensor.{child_name}_profile` - Child profile information
   - `sensor.{child_name}_growth` - Latest growth measurements
+  - `sensor.{child_name}_last_bottle` - Last bottle feeding (time, amount, type)
 
 - **Switches** (3):
   - `switch.{child_name}_sleep` - Start/stop sleep tracking
@@ -78,6 +79,7 @@ All services support device selection for easy use in automations:
 - `huckleberry.switch_feeding_side`
 - `huckleberry.cancel_feeding`
 - `huckleberry.complete_feeding`
+- `huckleberry.log_bottle` - Log bottle feeding (formula or breastmilk) with amount in oz or ml
 
 ### Diaper Changes
 - `huckleberry.log_diaper_pee`
@@ -142,13 +144,31 @@ automation:
           message: "Baby has been feeding for 20 minutes"
 ```
 
+### Log Bottle Feeding
+```yaml
+automation:
+  - alias: "Log Bottle at Scheduled Time"
+    trigger:
+      - platform: time
+        at: "09:00:00"
+    action:
+      - service: huckleberry.log_bottle
+        target:
+          device_id: YOUR_DEVICE_ID  # Select your child's device
+        data:
+          amount: 120.0
+          bottle_type: Formula
+          units: ml
+```
+
 ## Device Actions
 
-The integration provides 17 device actions for use in device-based automations:
-- Sleep actions (5): start, pause, resume, cancel, complete
-- Feeding actions (6): start left/right, pause, resume, switch side, cancel, complete
-- Diaper actions (4): log pee, poo, both, dry
-- Growth actions (2): log metric, log imperial
+The integration provides device actions for use in device-based automations:
+- Sleep actions: start, pause, resume, cancel, complete
+- Feeding actions: start left/right, pause, resume, switch side, cancel, complete
+- Diaper actions: log pee, poo, both, dry
+- Growth actions: log growth
+- Bottle actions: log bottle feeding
 
 ## Documentation
 

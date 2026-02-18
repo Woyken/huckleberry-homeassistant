@@ -27,6 +27,7 @@ ACTION_TYPES = {
     "log_diaper_both",
     "log_diaper_dry",
     "log_growth",
+    "log_bottle",
 }
 
 ACTION_SCHEMA = cv.DEVICE_ACTION_BASE_SCHEMA.extend(
@@ -97,6 +98,15 @@ async def async_get_actions(
             CONF_DEVICE_ID: device_id,
             CONF_DOMAIN: DOMAIN,
             CONF_TYPE: "log_growth",
+        }
+    )
+
+    # Add bottle action
+    actions.append(
+        {
+            CONF_DEVICE_ID: device_id,
+            CONF_DOMAIN: DOMAIN,
+            CONF_TYPE: "log_bottle",
         }
     )
 
@@ -258,6 +268,14 @@ async def async_call_action_from_config(
         await hass.services.async_call(
             DOMAIN,
             "log_growth",
+            {"child_uid": child_uid},
+            blocking=True,
+            context=context,
+        )
+    elif action_type == "log_bottle":
+        await hass.services.async_call(
+            DOMAIN,
+            "log_bottle",
             {"child_uid": child_uid},
             blocking=True,
             context=context,

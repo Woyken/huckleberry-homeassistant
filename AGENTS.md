@@ -11,6 +11,18 @@ This is a **Home Assistant custom integration** for the Huckleberry baby trackin
 - **[Project Overview](../AGENTS.md)** - High-level context, history, decompiled source analysis
 - **[API Library](../huckleberry-api/AGENTS.md)** - Underlying Firebase operations and data structures
 
+## Critical Agent Rule
+
+When adding or changing any enum value, state value, mode, unit, key name, option list, or any other value that originates from the Huckleberry app or Firebase schema, you **must** validate the value against API and make sure to find evidence that it exists first.
+
+Never add guessed, inferred, placeholder, or convenience values.
+
+If a value cannot be validated as factual and true in API evidence, do not add it.
+
+When changing dependencies for this integration, always update both `custom_components/huckleberry/manifest.json` and `pyproject.toml` so metadata and local development dependencies stay in sync.
+
+For Python commands in this repository (including running tests), always use the `uv` CLI (for example: `uv run pytest ...`) instead of invoking tools directly.
+
 ## Project Purpose
 
 This integration provides:
@@ -38,7 +50,7 @@ This integration provides:
 - `device_action`: 18 device-specific automation actions
 
 **External Dependencies:**
-- `huckleberry-api>=0.1.18` - Firebase operations
+- `huckleberry-api>=0.1.19` - Firebase operations
 - `google-cloud-firestore>=2.11.0` - Required by huckleberry-api
 
 ### Integration Structure
@@ -564,6 +576,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 ## Home Assistant Testing Workflow
 
+**Command rule**: Use `uv` for test execution commands (for example: `uv run pytest`).
+
 ### Development Cycle
 
 1. **Edit code** in `custom_components/huckleberry/`
@@ -771,6 +785,8 @@ except Exception as err:
 
 ## Dependencies & Compatibility
 
+**Dependency sync rule**: If you add, remove, or bump integration dependencies, update both `custom_components/huckleberry/manifest.json` and `pyproject.toml` in the same change.
+
 ### Required Dependencies
 
 **manifest.json**:
@@ -783,7 +799,7 @@ except Exception as err:
   "dependencies": [],
   "documentation": "https://github.com/your-repo",
   "iot_class": "cloud_push",
-  "requirements": ["huckleberry-api>=0.1.18"],
+    "requirements": ["huckleberry-api>=0.1.19"],
   "version": "0.2.7"
 }
 ```
@@ -888,7 +904,7 @@ Follow [semver.org](https://semver.org/):
 
 **Last Updated**: December 15, 2025
 **Integration Version**: 0.2.7
-**API Library Version**: 0.1.18
+**API Library Version**: 0.1.19
 **Status**: Stable, feature-complete for sleep, feeding, diaper, and growth tracking
 **Home Assistant Compatibility**: 2023.1+
 **Test Coverage**: Automated test suite covering config flow, entities, services, and device actions

@@ -80,11 +80,11 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
         )
 
         # Fetch feeding intervals
-        events.extend(
-            await self.hass.async_add_executor_job(
-                self._fetch_feed_events, start_date, end_date
-            )
+        feed_events, bottle_events = await self.hass.async_add_executor_job(
+            self._fetch_feed_and_bottle_events, start_date, end_date
         )
+        events.extend(feed_events)
+        events.extend(bottle_events)
 
         # Fetch diaper intervals
         events.extend(
@@ -159,11 +159,12 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
 
         return events
 
-    def _fetch_feed_events(
+    def _fetch_feed_and_bottle_events(
         self, start_date: datetime, end_date: datetime
-    ) -> list[CalendarEvent]:
-        """Fetch feeding intervals using API."""
-        events = []
+    ) -> tuple[list[CalendarEvent], list[CalendarEvent]]:
+        """Fetch feed and bottle intervals using a single API call."""
+        feed_events: list[CalendarEvent] = []
+        bottle_events: list[CalendarEvent] = []
         child_uid = self._child["uid"]
 
         try:
@@ -171,7 +172,6 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
             start_s = int(start_date.timestamp())
             end_s = int(end_date.timestamp())
 
-            # Fetch intervals from API
             intervals = self._api.get_feed_intervals(child_uid, start_s, end_s)
 
             for interval in intervals:
@@ -179,19 +179,38 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
                     interval["start"], tz=dt_util.DEFAULT_TIME_ZONE
                 )
 
-                # Check if this is a multi-entry document (durations in seconds)
-                # or regular document (durations in minutes)
-                if interval.get("is_multi_entry"):
-                    # Multi-entry: durations are in SECONDS, convert to minutes
-                    left_duration = round(interval.get("leftDuration", 0) / 60)
-                    right_duration = round(interval.get("rightDuration", 0) / 60)
-                else:
-                    # Regular doc: durations are in minutes
-                    left_duration = int(interval.get("leftDuration", 0))
-                    right_duration = int(interval.get("rightDuration", 0))
+                if self._is_bottle_interval(interval):
+                    # Bottle feeding is an instant event (same start/end)
+                    amount = interval.get("amount", interval.get("bottleAmount", 0))
+                    units = interval.get("units", interval.get("bottleUnits", "ml"))
+                    bottle_type = interval.get("bottleType", "Unknown")
 
-                total_duration = left_duration + right_duration
-                end_time = start_time + timedelta(minutes=total_duration)
+                    summary = f"🍼 Bottle ({amount} {units})"
+                    description = f"Bottle feeding: {amount} {units}"
+                    if bottle_type:
+                        description += f"\nType: {bottle_type}"
+
+                    bottle_events.append(
+                        CalendarEvent(
+                            start=start_time,
+                            end=start_time,
+                            summary=summary,
+                            description=description,
+                        )
+                    )
+                    continue
+
+                # Feed interval durations are stored in seconds.
+                left_duration_seconds = float(interval.get("leftDuration", 0) or 0)
+                right_duration_seconds = float(interval.get("rightDuration", 0) or 0)
+
+                total_duration_seconds = int(
+                    round(left_duration_seconds + right_duration_seconds)
+                )
+                end_time = start_time + timedelta(seconds=total_duration_seconds)
+
+                left_duration = int(round(left_duration_seconds / 60))
+                right_duration = int(round(right_duration_seconds / 60))
 
                 # Build summary based on sides used
                 sides = []
@@ -200,15 +219,21 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
                 if right_duration > 0:
                     sides.append(f"R:{right_duration}m")
 
-                sides_str = " ".join(sides) if sides else f"{total_duration}m"
+                sides_str = (
+                    " ".join(sides)
+                    if sides
+                    else self._format_duration(total_duration_seconds)
+                )
                 summary = f"🍼 Feed ({sides_str})"
-                description = f"Feeding - Total: {total_duration} minutes"
-                if left_duration > 0:
-                    description += f"\nLeft: {left_duration} minutes"
-                if right_duration > 0:
-                    description += f"\nRight: {right_duration} minutes"
+                description = (
+                    f"Feeding - Total: {self._format_duration(total_duration_seconds)}"
+                )
+                if left_duration_seconds > 0:
+                    description += f"\nLeft: {self._format_duration(left_duration_seconds)}"
+                if right_duration_seconds > 0:
+                    description += f"\nRight: {self._format_duration(right_duration_seconds)}"
 
-                events.append(
+                feed_events.append(
                     CalendarEvent(
                         start=start_time,
                         end=end_time,
@@ -217,12 +242,36 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
                     )
                 )
 
-            _LOGGER.debug("Found %d feed events", len(events))
+            _LOGGER.debug("Found %d feed events", len(feed_events))
+            _LOGGER.debug("Found %d bottle events", len(bottle_events))
 
         except Exception as err:
-            _LOGGER.error("Error fetching feed events: %s", err)
+            _LOGGER.error("Error fetching feed and bottle events: %s", err)
 
-        return events
+        return feed_events, bottle_events
+
+    @staticmethod
+    def _is_bottle_interval(interval: dict[str, Any]) -> bool:
+        """Return True if interval represents a bottle feeding event."""
+        return (
+            interval.get("mode") == "bottle"
+            or interval.get("type") == "bottle"
+            or interval.get("bottleType") is not None
+            or "amount" in interval
+            or "bottleAmount" in interval
+        )
+
+    @staticmethod
+    def _format_duration(duration_seconds: float | int) -> str:
+        """Format duration in seconds as readable min/sec text."""
+        total_seconds = int(round(float(duration_seconds)))
+        minutes, seconds = divmod(total_seconds, 60)
+
+        if minutes > 0 and seconds > 0:
+            return f"{minutes} min {seconds} sec"
+        if minutes > 0:
+            return f"{minutes} min"
+        return f"{seconds} sec"
 
     def _fetch_diaper_events(
         self, start_date: datetime, end_date: datetime

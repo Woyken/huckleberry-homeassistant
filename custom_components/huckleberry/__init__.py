@@ -248,6 +248,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         coordinator: HuckleberryDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
         await coordinator.async_request_refresh()
 
+    async def handle_log_bottle(call):
+        api: HuckleberryAPI = hass.data[DOMAIN][entry.entry_id]["api"]
+        child_uid = _get_child_uid_from_call(call)
+        if not child_uid:
+            _LOGGER.error("No child_uid could be determined from service call")
+            return
+        amount = call.data.get("amount")
+        bottle_type = call.data.get("bottle_type")
+        units = call.data.get("units", "ml")
+        _LOGGER.info("Logging bottle feeding for child %s (amount=%s %s, type=%s)",
+                     child_uid, amount, units, bottle_type)
+        await hass.async_add_executor_job(
+            api.log_bottle_feeding, child_uid, amount, bottle_type, units
+        )
+
     service_schema = vol.Schema({
         vol.Required("device_id"): cv.string,
         vol.Optional("child_uid"): cv.string,
@@ -315,6 +330,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         vol.Optional("units"): vol.In(["metric", "imperial"]),
     })
 
+    bottle_schema = vol.Schema({
+        vol.Required("device_id"): cv.string,
+        vol.Optional("child_uid"): cv.string,
+        vol.Required("amount"): vol.Coerce(float),
+        vol.Required("bottle_type"): vol.In([
+            "Formula",
+            "Breast Milk",
+            "Tube Feeding",
+            "Cow Milk",
+            "Goat Milk",
+            "Soy Milk",
+            "Other",
+        ]),
+        vol.Optional("units"): vol.In(["oz", "ml"]),
+    })
+
     hass.services.async_register(DOMAIN, "start_sleep", handle_start_sleep, schema=service_schema)
     hass.services.async_register(DOMAIN, "pause_sleep", handle_pause_sleep, schema=service_schema)
     hass.services.async_register(DOMAIN, "resume_sleep", handle_resume_sleep, schema=service_schema)
@@ -334,6 +365,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.services.async_register(DOMAIN, "log_diaper_dry", handle_log_diaper_dry, schema=diaper_dry_schema)
 
     hass.services.async_register(DOMAIN, "log_growth", handle_log_growth, schema=growth_schema)
+    hass.services.async_register(DOMAIN, "log_bottle", handle_log_bottle, schema=bottle_schema)
 
     return True
 
