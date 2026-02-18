@@ -80,18 +80,11 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
         )
 
         # Fetch feeding intervals
-        events.extend(
-            await self.hass.async_add_executor_job(
-                self._fetch_feed_events, start_date, end_date
-            )
+        feed_events, bottle_events = await self.hass.async_add_executor_job(
+            self._fetch_feed_and_bottle_events, start_date, end_date
         )
-
-        # Fetch bottle feeding intervals
-        events.extend(
-            await self.hass.async_add_executor_job(
-                self._fetch_bottle_events, start_date, end_date
-            )
-        )
+        events.extend(feed_events)
+        events.extend(bottle_events)
 
         # Fetch diaper intervals
         events.extend(
@@ -166,11 +159,12 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
 
         return events
 
-    def _fetch_feed_events(
+    def _fetch_feed_and_bottle_events(
         self, start_date: datetime, end_date: datetime
-    ) -> list[CalendarEvent]:
-        """Fetch feeding intervals using API."""
-        events = []
+    ) -> tuple[list[CalendarEvent], list[CalendarEvent]]:
+        """Fetch feed and bottle intervals using a single API call."""
+        feed_events: list[CalendarEvent] = []
+        bottle_events: list[CalendarEvent] = []
         child_uid = self._child["uid"]
 
         try:
@@ -178,22 +172,41 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
             start_s = int(start_date.timestamp())
             end_s = int(end_date.timestamp())
 
-            # Fetch intervals from API
             intervals = self._api.get_feed_intervals(child_uid, start_s, end_s)
 
             for interval in intervals:
-                if self._is_bottle_interval(interval):
-                    continue
-
                 start_time = datetime.fromtimestamp(
                     interval["start"], tz=dt_util.DEFAULT_TIME_ZONE
                 )
+
+                if self._is_bottle_interval(interval):
+                    # Bottle feeding is an instant event (same start/end)
+                    amount = interval.get("amount", interval.get("bottleAmount", 0))
+                    units = interval.get("units", interval.get("bottleUnits", "ml"))
+                    bottle_type = interval.get("bottleType", "Unknown")
+
+                    summary = f"🍼 Bottle ({amount} {units})"
+                    description = f"Bottle feeding: {amount} {units}"
+                    if bottle_type:
+                        description += f"\nType: {bottle_type}"
+
+                    bottle_events.append(
+                        CalendarEvent(
+                            start=start_time,
+                            end=start_time,
+                            summary=summary,
+                            description=description,
+                        )
+                    )
+                    continue
 
                 # Feed interval durations are stored in seconds.
                 left_duration_seconds = float(interval.get("leftDuration", 0) or 0)
                 right_duration_seconds = float(interval.get("rightDuration", 0) or 0)
 
-                total_duration_seconds = int(round(left_duration_seconds + right_duration_seconds))
+                total_duration_seconds = int(
+                    round(left_duration_seconds + right_duration_seconds)
+                )
                 end_time = start_time + timedelta(seconds=total_duration_seconds)
 
                 left_duration = int(round(left_duration_seconds / 60))
@@ -206,15 +219,21 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
                 if right_duration > 0:
                     sides.append(f"R:{right_duration}m")
 
-                sides_str = " ".join(sides) if sides else self._format_duration(total_duration_seconds)
+                sides_str = (
+                    " ".join(sides)
+                    if sides
+                    else self._format_duration(total_duration_seconds)
+                )
                 summary = f"🍼 Feed ({sides_str})"
-                description = f"Feeding - Total: {self._format_duration(total_duration_seconds)}"
+                description = (
+                    f"Feeding - Total: {self._format_duration(total_duration_seconds)}"
+                )
                 if left_duration_seconds > 0:
                     description += f"\nLeft: {self._format_duration(left_duration_seconds)}"
                 if right_duration_seconds > 0:
                     description += f"\nRight: {self._format_duration(right_duration_seconds)}"
 
-                events.append(
+                feed_events.append(
                     CalendarEvent(
                         start=start_time,
                         end=end_time,
@@ -223,63 +242,13 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
                     )
                 )
 
-            _LOGGER.debug("Found %d feed events", len(events))
+            _LOGGER.debug("Found %d feed events", len(feed_events))
+            _LOGGER.debug("Found %d bottle events", len(bottle_events))
 
         except Exception as err:
-            _LOGGER.error("Error fetching feed events: %s", err)
+            _LOGGER.error("Error fetching feed and bottle events: %s", err)
 
-        return events
-
-    def _fetch_bottle_events(
-        self, start_date: datetime, end_date: datetime
-    ) -> list[CalendarEvent]:
-        """Fetch bottle feeding intervals using API."""
-        events = []
-        child_uid = self._child["uid"]
-
-        try:
-            # Convert to timestamps (seconds)
-            start_s = int(start_date.timestamp())
-            end_s = int(end_date.timestamp())
-
-            # Bottle feedings are stored in feed intervals; filter from feed entries.
-            all_intervals = self._api.get_feed_intervals(child_uid, start_s, end_s)
-            intervals = [
-                interval
-                for interval in all_intervals
-                if self._is_bottle_interval(interval)
-            ]
-
-            for interval in intervals:
-                event_time = datetime.fromtimestamp(
-                    interval["start"], tz=dt_util.DEFAULT_TIME_ZONE
-                )
-
-                # Bottle feeding is an instant event (same start/end)
-                amount = interval.get("amount", interval.get("bottleAmount", 0))
-                units = interval.get("units", interval.get("bottleUnits", "ml"))
-                bottle_type = interval.get("bottleType", "Unknown")
-
-                summary = f"🍼 Bottle ({amount} {units})"
-                description = f"Bottle feeding: {amount} {units}"
-                if bottle_type:
-                    description += f"\nType: {bottle_type}"
-
-                events.append(
-                    CalendarEvent(
-                        start=event_time,
-                        end=event_time,
-                        summary=summary,
-                        description=description,
-                    )
-                )
-
-            _LOGGER.debug("Found %d bottle events", len(events))
-
-        except Exception as err:
-            _LOGGER.error("Error fetching bottle events: %s", err)
-
-        return events
+        return feed_events, bottle_events
 
     @staticmethod
     def _is_bottle_interval(interval: dict[str, Any]) -> bool:

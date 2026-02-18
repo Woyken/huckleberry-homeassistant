@@ -64,7 +64,7 @@ async def test_async_get_events(calendar, hass):
     with patch.object(
         calendar, "_fetch_sleep_events", return_value=[]
     ), patch.object(
-        calendar, "_fetch_feed_events", return_value=[]
+        calendar, "_fetch_feed_and_bottle_events", return_value=([], [])
     ), patch.object(
         calendar, "_fetch_diaper_events", return_value=[]
     ), patch.object(
@@ -79,8 +79,8 @@ async def test_async_get_events(calendar, hass):
         assert len(events) == 0  # All mocked to return empty lists
 
 
-def test_fetch_feed_events_excludes_bottle_intervals(calendar):
-    """Bottle intervals should not render as regular feed events."""
+def test_fetch_feed_and_bottle_events_splits_intervals(calendar):
+    """Feed and bottle intervals should be split from one API response."""
     calendar._api.get_feed_intervals.return_value = [
         {
             "start": 1700000000,
@@ -100,15 +100,19 @@ def test_fetch_feed_events_excludes_bottle_intervals(calendar):
         },
     ]
 
-    events = calendar._fetch_feed_events(datetime.now(), datetime.now() + timedelta(days=1))
+    feed_events, bottle_events = calendar._fetch_feed_and_bottle_events(
+        datetime.now(), datetime.now() + timedelta(days=1)
+    )
 
-    assert len(events) == 1
-    assert events[0].summary.startswith("🍼 Feed")
-    assert "L:15m" in events[0].summary
-    assert "R:10m" in events[0].summary
+    assert len(feed_events) == 1
+    assert len(bottle_events) == 1
+    assert feed_events[0].summary.startswith("🍼 Feed")
+    assert "L:15m" in feed_events[0].summary
+    assert "R:10m" in feed_events[0].summary
+    assert bottle_events[0].summary == "🍼 Bottle (120 ml)"
 
 
-def test_fetch_feed_events_formats_seconds_description(calendar):
+def test_fetch_feed_and_bottle_events_formats_feed_description(calendar):
     """Feed event descriptions should format seconds as min/sec text."""
     calendar._api.get_feed_intervals.return_value = [
         {
@@ -120,15 +124,18 @@ def test_fetch_feed_events_formats_seconds_description(calendar):
         },
     ]
 
-    events = calendar._fetch_feed_events(datetime.now(), datetime.now() + timedelta(days=1))
+    feed_events, bottle_events = calendar._fetch_feed_and_bottle_events(
+        datetime.now(), datetime.now() + timedelta(days=1)
+    )
 
-    assert len(events) == 1
-    assert "Feeding - Total: 3 min 34 sec" in (events[0].description or "")
-    assert "Left: 1 min 51 sec" in (events[0].description or "")
-    assert "Right: 1 min 43 sec" in (events[0].description or "")
+    assert len(feed_events) == 1
+    assert len(bottle_events) == 0
+    assert "Feeding - Total: 3 min 34 sec" in (feed_events[0].description or "")
+    assert "Left: 1 min 51 sec" in (feed_events[0].description or "")
+    assert "Right: 1 min 43 sec" in (feed_events[0].description or "")
 
 
-def test_fetch_bottle_events_from_feed_intervals(calendar):
+def test_fetch_feed_and_bottle_events_extracts_bottle_event(calendar):
     """Bottle intervals should render as bottle events."""
     calendar._api.get_feed_intervals.return_value = [
         {
@@ -150,8 +157,11 @@ def test_fetch_bottle_events_from_feed_intervals(calendar):
         },
     ]
 
-    events = calendar._fetch_bottle_events(datetime.now(), datetime.now() + timedelta(days=1))
+    feed_events, bottle_events = calendar._fetch_feed_and_bottle_events(
+        datetime.now(), datetime.now() + timedelta(days=1)
+    )
 
-    assert len(events) == 1
-    assert events[0].summary == "🍼 Bottle (120 ml)"
-    assert "Type: Formula" in (events[0].description or "")
+    assert len(feed_events) == 1
+    assert len(bottle_events) == 1
+    assert bottle_events[0].summary == "🍼 Bottle (120 ml)"
+    assert "Type: Formula" in (bottle_events[0].description or "")
