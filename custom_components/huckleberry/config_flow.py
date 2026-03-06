@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import inspect
 from typing import Any
 
 import requests
@@ -10,6 +11,7 @@ import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.data_entry_flow import FlowResult
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.util import dt as dt_util
 
 from huckleberry_api import HuckleberryAPI
@@ -23,6 +25,39 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
         vol.Required(CONF_PASSWORD): str,
     }
 )
+
+
+async def _async_call_api_method(
+    hass,
+    api: HuckleberryAPI,
+    method_names: str | tuple[str, ...],
+    *args: Any,
+) -> Any:
+    """Call sync or async API methods, trying method aliases in order."""
+    names = (method_names,) if isinstance(method_names, str) else method_names
+
+    def _has_real_method(method_name: str) -> bool:
+        if hasattr(type(api), method_name):
+            return True
+        if method_name in getattr(api, "__dict__", {}):
+            return True
+        mock_methods = getattr(api, "mock_methods", None)
+        if mock_methods is not None and method_name in mock_methods:
+            return True
+        return False
+
+    method = None
+    for method_name in names:
+        if _has_real_method(method_name):
+            method = getattr(api, method_name)
+            break
+
+    if method is None:
+        raise AttributeError(f"None of the API methods exist: {', '.join(names)}")
+
+    if inspect.iscoroutinefunction(method):
+        return await method(*args)
+    return await hass.async_add_executor_job(method, *args)
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -40,22 +75,43 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             try:
                 # Test authentication
+                api_kwargs: dict[str, Any] = {}
+                try:
+                    if "websession" in inspect.signature(HuckleberryAPI).parameters:
+                        api_kwargs["websession"] = async_get_clientsession(self.hass)
+                except (TypeError, ValueError):
+                    pass
+
                 api = HuckleberryAPI(
                     email=user_input[CONF_EMAIL],
                     password=user_input[CONF_PASSWORD],
                     timezone=str(self.hass.config.time_zone),
+                    **api_kwargs,
                 )
 
-                await self.hass.async_add_executor_job(api.authenticate)
+                await _async_call_api_method(self.hass, api, "authenticate")
 
                 # Get children to verify account has data
-                children = await self.hass.async_add_executor_job(api.get_children)
+                user_doc = None
+                has_get_children = (
+                    hasattr(type(api), "get_children")
+                    or "get_children" in getattr(api, "__dict__", {})
+                    or "get_children" in (getattr(api, "mock_methods", None) or [])
+                )
+                if has_get_children:
+                    children = await _async_call_api_method(self.hass, api, "get_children")
+                else:
+                    user_doc = await _async_call_api_method(self.hass, api, "get_user")
+                    children = getattr(user_doc, "childList", None) or []
 
                 if not children:
                     errors["base"] = "no_children"
                 else:
                     # Create entry
-                    await self.async_set_unique_id(api.user_uid)
+                    user_uid = getattr(api, "user_uid", None) or getattr(getattr(api, "user", None), "uid", None)
+                    if not user_uid and user_doc is not None:
+                        user_uid = getattr(user_doc, "uid", None)
+                    await self.async_set_unique_id(user_uid or user_input[CONF_EMAIL])
                     self._abort_if_unique_id_configured()
 
                     return self.async_create_entry(
