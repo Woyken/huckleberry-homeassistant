@@ -35,6 +35,8 @@ async def async_setup_entry(
         entities.append(HuckleberryGrowthSensor(coordinator, child))
         # Add diaper sensor for each child
         entities.append(HuckleberryDiaperSensor(coordinator, child))
+        # Add potty sensor for each child
+        entities.append(HuckleberryPottySensor(coordinator, child))
         # Add bottle sensor for each child
         entities.append(HuckleberryBottleSensor(coordinator, child))
         # Add sleep sensor for each child
@@ -330,10 +332,10 @@ class HuckleberryBottleSensor(HuckleberryBaseEntity, SensorEntity):
         amount = last_bottle.get("amount")
         if amount is not None:
             attrs["amount"] = amount
-            
+
         units = last_bottle.get("units", "ml")
         attrs["units"] = units
-        
+
         # Display amount with units
         if amount is not None:
             attrs["amount_display"] = f"{amount} {units}"
@@ -346,6 +348,71 @@ class HuckleberryBottleSensor(HuckleberryBaseEntity, SensorEntity):
 
         # Add offset (timezone)
         offset = last_bottle.get("offset")
+        if offset is not None:
+            attrs["timezone_offset_minutes"] = offset
+
+        return attrs
+
+
+class HuckleberryPottySensor(HuckleberryBaseEntity, SensorEntity):
+    """Sensor showing last potty information."""
+
+    _attr_icon = "mdi:toilet"
+
+    def __init__(self, coordinator, child: dict[str, Any]) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator, child)
+        self._attr_name = "Last Potty"
+        self._attr_unique_id = f"{self.child_uid}_last_potty"
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the last potty timestamp."""
+        child_data = self.coordinator.data.get(self.child_uid, {})
+        potty_data = child_data.get("potty_data", {})
+
+        prefs = potty_data.get("prefs", {})
+        last_potty = prefs.get("lastPotty", {})
+
+        if not last_potty:
+            return "No changes logged"
+
+        timestamp = last_potty.get("start")
+        if timestamp:
+            from datetime import datetime
+            return datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M")
+
+        return "Unknown"
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return potty attributes."""
+        child_data = self.coordinator.data.get(self.child_uid, {})
+        potty_data = child_data.get("potty_data", {})
+
+        prefs = potty_data.get("prefs", {})
+        last_potty = prefs.get("lastPotty", {})
+
+        if not last_potty:
+            return {}
+
+        attrs = {}
+
+        # Add timestamp
+        timestamp = last_potty.get("start")
+        if timestamp:
+            from datetime import datetime
+            attrs["timestamp"] = timestamp
+            attrs["time"] = datetime.fromtimestamp(timestamp).isoformat()
+
+        # Add mode (pee, poo, both, dry)
+        mode = last_potty.get("mode")
+        if mode:
+            attrs["mode"] = mode
+            attrs["type"] = mode.capitalize()
+
+        # Add offset (timezone)
+        offset = last_potty.get("offset")
         if offset is not None:
             attrs["timezone_offset_minutes"] = offset
 
