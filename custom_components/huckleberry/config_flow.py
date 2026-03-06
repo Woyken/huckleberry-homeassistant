@@ -92,6 +92,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 await _async_call_api_method(self.hass, api, "authenticate")
 
                 # Get children to verify account has data
+                user_doc = None
                 has_get_children = (
                     hasattr(type(api), "get_children")
                     or "get_children" in getattr(api, "__dict__", {})
@@ -108,7 +109,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 else:
                     # Create entry
                     user_uid = getattr(api, "user_uid", None) or getattr(getattr(api, "user", None), "uid", None)
-                    if not user_uid and "user_doc" in locals():
+                    if not user_uid and user_doc is not None:
                         user_uid = getattr(user_doc, "uid", None)
                     await self.async_set_unique_id(user_uid or user_input[CONF_EMAIL])
                     self._abort_if_unique_id_configured()

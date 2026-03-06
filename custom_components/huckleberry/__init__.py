@@ -82,14 +82,18 @@ def _normalize_child(child: Any) -> dict[str, Any]:
             normalized["uid"] = normalized["cid"]
         return normalized
 
-    normalized: dict[str, Any] = {}
     if hasattr(child, "model_dump"):
         normalized = child.model_dump()
     elif hasattr(child, "__dict__"):
         normalized = dict(child.__dict__)
+    else:
+        normalized = {}
 
-    if "uid" not in normalized:
-        normalized["uid"] = normalized.get("cid") or getattr(child, "cid", None)
+    if "uid" not in normalized or not normalized["uid"]:
+        if "cid" in normalized and normalized["cid"]:
+            normalized["uid"] = normalized["cid"]
+        else:
+            normalized["uid"] = getattr(child, "cid", None)
     if "name" not in normalized:
         normalized["name"] = getattr(child, "name", normalized.get("name", "Unknown"))
     if normalized.get("picture") is None and hasattr(child, "profilePictureUrl"):
@@ -112,13 +116,15 @@ async def _async_get_children(hass: HomeAssistant, api: HuckleberryAPI) -> list[
     user_doc = await _async_call_api_method(hass, api, "get_user")
     child_list = getattr(user_doc, "childList", None)
     if not child_list:
+        _LOGGER.warning("Could not resolve children from get_user(): missing or empty childList")
         return []
 
     children: list[dict[str, Any]] = []
     for child_ref in child_list:
-        child_uid = getattr(child_ref, "cid", None)
-        if child_uid is None and isinstance(child_ref, dict):
+        if isinstance(child_ref, dict):
             child_uid = child_ref.get("cid")
+        else:
+            child_uid = getattr(child_ref, "cid", None)
         if not child_uid:
             continue
         child = await _async_call_api_method(hass, api, "get_child", child_uid)
