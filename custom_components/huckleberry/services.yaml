@@ -260,6 +260,12 @@ log_diaper_pee:
       required: false
       selector:
         boolean:
+    is_potty:
+      name: Is potty
+      description: Whether log is potty or diaper
+      required: false
+      selector:
+        boolean:
     notes:
       name: Notes
       description: Optional notes about this diaper change
@@ -327,6 +333,12 @@ log_diaper_poo:
     diaper_rash:
       name: Diaper rash
       description: Baby has diaper rash
+      required: false
+      selector:
+        boolean:
+    is_potty:
+      name: Is potty
+      description: Whether log is potty or diaper
       required: false
       selector:
         boolean:
@@ -410,6 +422,12 @@ log_diaper_both:
       required: false
       selector:
         boolean:
+    is_potty:
+      name: Is potty
+      description: Whether log is potty or diaper
+      required: false
+      selector:
+        boolean:
     notes:
       name: Notes
       description: Optional notes about this diaper change
@@ -440,6 +458,12 @@ log_diaper_dry:
     diaper_rash:
       name: Diaper rash
       description: Baby has diaper rash
+      required: false
+      selector:
+        boolean:
+    is_potty:
+      name: Is potty
+      description: Whether log is potty or diaper
       required: false
       selector:
         boolean:

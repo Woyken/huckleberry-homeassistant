@@ -108,7 +108,7 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
         DOMAIN, "log_diaper_pee", {"device_id": device.id, "pee_amount": "medium"}, blocking=True
     )
     mock_huckleberry_api.log_diaper.assert_called_with(
-        "test_child_uid", "pee", "medium", None, None, None, False, None
+        "test_child_uid", "pee", "medium", None, None, None, False, False, None, None
     )
 
     # Test log_diaper_poo
@@ -116,7 +116,7 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
         DOMAIN, "log_diaper_poo", {"device_id": device.id, "poo_amount": "big", "color": "brown", "consistency": "solid"}, blocking=True
     )
     mock_huckleberry_api.log_diaper.assert_called_with(
-        "test_child_uid", "poo", None, "big", "brown", "solid", False, None
+        "test_child_uid", "poo", None, "big", "brown", "solid", False, False, None, None
     )
 
     # Test log_diaper_both
@@ -124,7 +124,7 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
         DOMAIN, "log_diaper_both", {"device_id": device.id, "pee_amount": "little", "poo_amount": "medium"}, blocking=True
     )
     mock_huckleberry_api.log_diaper.assert_called_with(
-        "test_child_uid", "both", "little", "medium", None, None, False, None
+        "test_child_uid", "both", "little", "medium", None, None, False, False, None, None
     )
 
     # Test log_diaper_dry
@@ -132,7 +132,7 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
         DOMAIN, "log_diaper_dry", {"device_id": device.id}, blocking=True
     )
     mock_huckleberry_api.log_diaper.assert_called_with(
-        "test_child_uid", "dry", None, None, None, None, False, None
+        "test_child_uid", "dry", None, None, None, None, False, False, None, None
     )
 
     # Test log_growth
