@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import inspect
 from typing import Any
 
 from homeassistant.components.switch import SwitchEntity
@@ -13,6 +14,36 @@ from .const import DOMAIN
 from .entity import HuckleberryBaseEntity
 
 _LOGGER = logging.getLogger(__name__)
+
+
+async def _async_call_api_method(
+    hass: HomeAssistant, api: Any, method_names: str | tuple[str, ...], *args: Any
+) -> Any:
+    """Call sync or async API methods, trying aliases in order."""
+    names = (method_names,) if isinstance(method_names, str) else method_names
+
+    def _has_real_method(method_name: str) -> bool:
+        if hasattr(type(api), method_name):
+            return True
+        if method_name in getattr(api, "__dict__", {}):
+            return True
+        mock_methods = getattr(api, "mock_methods", None)
+        if mock_methods is not None and method_name in mock_methods:
+            return True
+        return False
+
+    method = None
+    for method_name in names:
+        if _has_real_method(method_name):
+            method = getattr(api, method_name)
+            break
+
+    if method is None:
+        raise AttributeError(f"None of the API methods exist: {', '.join(names)}")
+
+    if inspect.iscoroutinefunction(method):
+        return await method(*args)
+    return await hass.async_add_executor_job(method, *args)
 
 
 async def async_setup_entry(
@@ -59,8 +90,8 @@ class HuckleberrySleepSwitch(HuckleberryBaseEntity, SwitchEntity):  # pylint: di
         """Start sleep tracking."""
         _LOGGER.info("Starting sleep tracking for %s", self.child_name)
         try:
-            await self.hass.async_add_executor_job(
-                self._api.start_sleep, self.child_uid
+            await _async_call_api_method(
+                self.hass, self._api, "start_sleep", self.child_uid
             )
             # Real-time listener will update state automatically
         except Exception as err:
@@ -71,8 +102,8 @@ class HuckleberrySleepSwitch(HuckleberryBaseEntity, SwitchEntity):  # pylint: di
         """Stop sleep tracking."""
         _LOGGER.info("Stopping sleep tracking for %s", self.child_name)
         try:
-            await self.hass.async_add_executor_job(
-                self._api.complete_sleep, self.child_uid
+            await _async_call_api_method(
+                self.hass, self._api, "complete_sleep", self.child_uid
             )
             # Real-time listener will update state automatically
         except Exception as err:
@@ -133,8 +164,8 @@ class HuckleberryFeedingSwitch(HuckleberryBaseEntity, SwitchEntity):  # pylint: 
         """Start feeding tracking on this side."""
         _LOGGER.info("Starting %s breast feeding for %s", self._side, self.child_name)
         try:
-            await self.hass.async_add_executor_job(
-                self._api.start_feeding, self.child_uid, self._side
+            await _async_call_api_method(
+                self.hass, self._api, ("start_nursing", "start_feeding"), self.child_uid, self._side
             )
             # Real-time listener will update state automatically
         except Exception as err:
@@ -145,8 +176,8 @@ class HuckleberryFeedingSwitch(HuckleberryBaseEntity, SwitchEntity):  # pylint: 
         """Complete feeding tracking and save to history."""
         _LOGGER.info("Completing %s breast feeding for %s", self._side, self.child_name)
         try:
-            await self.hass.async_add_executor_job(
-                self._api.complete_feeding, self.child_uid
+            await _async_call_api_method(
+                self.hass, self._api, ("complete_nursing", "complete_feeding"), self.child_uid
             )
             # Real-time listener will update state automatically
         except Exception as err:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sys
 import socket
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -67,6 +67,20 @@ def mock_huckleberry_api():
     mock.setup_feed_listener = MagicMock()
     mock.setup_health_listener = MagicMock()
     mock.setup_diaper_listener = MagicMock()
+    mock.start_sleep = MagicMock()
+    mock.pause_sleep = MagicMock()
+    mock.resume_sleep = MagicMock()
+    mock.cancel_sleep = MagicMock()
+    mock.complete_sleep = MagicMock()
+    mock.start_feeding = MagicMock()
+    mock.pause_feeding = MagicMock()
+    mock.resume_feeding = MagicMock()
+    mock.switch_feeding_side = MagicMock()
+    mock.cancel_feeding = MagicMock()
+    mock.complete_feeding = MagicMock()
+    mock.log_diaper = MagicMock()
+    mock.log_growth = MagicMock()
+    mock.maintain_session = MagicMock()
     mock.stop_all_listeners = MagicMock()
     mock.log_bottle_feeding = MagicMock()
     return mock
@@ -106,6 +120,20 @@ def mock_huckleberry_api_multiple_children():
     mock.setup_feed_listener = MagicMock()
     mock.setup_health_listener = MagicMock()
     mock.setup_diaper_listener = MagicMock()
+    mock.start_sleep = MagicMock()
+    mock.pause_sleep = MagicMock()
+    mock.resume_sleep = MagicMock()
+    mock.cancel_sleep = MagicMock()
+    mock.complete_sleep = MagicMock()
+    mock.start_feeding = MagicMock()
+    mock.pause_feeding = MagicMock()
+    mock.resume_feeding = MagicMock()
+    mock.switch_feeding_side = MagicMock()
+    mock.cancel_feeding = MagicMock()
+    mock.complete_feeding = MagicMock()
+    mock.log_diaper = MagicMock()
+    mock.log_growth = MagicMock()
+    mock.maintain_session = MagicMock()
     mock.stop_all_listeners = MagicMock()
     mock.log_bottle_feeding = MagicMock()
     return mock
@@ -117,3 +145,65 @@ def mock_setup_entry():
         "custom_components.huckleberry.async_setup_entry", return_value=True
     ) as mock_setup:
         yield mock_setup
+
+
+@pytest.fixture
+def mock_huckleberry_api_refactored():
+    """Mock the refactored async huckleberry API surface."""
+    mock = MagicMock(
+        spec_set=[
+            "authenticate",
+            "get_user",
+            "get_child",
+            "start_sleep",
+            "complete_sleep",
+            "start_nursing",
+            "pause_nursing",
+            "resume_nursing",
+            "switch_nursing_side",
+            "cancel_nursing",
+            "complete_nursing",
+            "log_diaper",
+            "log_growth",
+            "log_bottle",
+            "setup_sleep_listener",
+            "setup_nursing_listener",
+            "setup_health_listener",
+            "setup_diaper_listener",
+            "ensure_session",
+            "stop_all_listeners",
+        ]
+    )
+    mock.authenticate = AsyncMock()
+    mock.get_user = AsyncMock(
+        return_value=MagicMock(
+            uid="test_user_uid",
+            childList=[MagicMock(cid="child_1")],
+        )
+    )
+    mock.get_child = AsyncMock(
+        return_value={
+            "uid": "child_1",
+            "name": "Test Child",
+            "birthday": "2023-01-01",
+            "picture": None,
+        }
+    )
+    mock.start_sleep = AsyncMock()
+    mock.complete_sleep = AsyncMock()
+    mock.start_nursing = AsyncMock()
+    mock.pause_nursing = AsyncMock()
+    mock.resume_nursing = AsyncMock()
+    mock.switch_nursing_side = AsyncMock()
+    mock.cancel_nursing = AsyncMock()
+    mock.complete_nursing = AsyncMock()
+    mock.log_diaper = AsyncMock()
+    mock.log_growth = AsyncMock()
+    mock.log_bottle = AsyncMock()
+    mock.setup_sleep_listener = AsyncMock()
+    mock.setup_nursing_listener = AsyncMock()
+    mock.setup_health_listener = AsyncMock()
+    mock.setup_diaper_listener = AsyncMock()
+    mock.ensure_session = AsyncMock()
+    mock.stop_all_listeners = AsyncMock()
+    return mock
