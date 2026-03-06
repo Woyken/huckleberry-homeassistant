@@ -369,9 +369,9 @@ class HuckleberryPottySensor(HuckleberryBaseEntity, SensorEntity):
     def native_value(self) -> str | None:
         """Return the last potty timestamp."""
         child_data = self.coordinator.data.get(self.child_uid, {})
-        potty_data = child_data.get("potty_data", {})
+        diaper_data = child_data.get("diaper_data", {})
 
-        prefs = potty_data.get("prefs", {})
+        prefs = diaper_data.get("prefs", {})
         last_potty = prefs.get("lastPotty", {})
 
         if not last_potty:
@@ -388,9 +388,9 @@ class HuckleberryPottySensor(HuckleberryBaseEntity, SensorEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return potty attributes."""
         child_data = self.coordinator.data.get(self.child_uid, {})
-        potty_data = child_data.get("potty_data", {})
+        diaper_data = child_data.get("diaper_data", {})
 
-        prefs = potty_data.get("prefs", {})
+        prefs = diaper_data.get("prefs", {})
         last_potty = prefs.get("lastPotty", {})
 
         if not last_potty:
