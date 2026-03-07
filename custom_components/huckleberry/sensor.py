@@ -416,6 +416,11 @@ class HuckleberryPottySensor(HuckleberryBaseEntity, SensorEntity):
         if offset is not None:
             attrs["timezone_offset_minutes"] = offset
 
+        # Add reminder
+        reminder = prefs.get("reminderV2", {})
+        if reminder:
+            attrs["reminder"] = reminder
+
         return attrs
 
 
