@@ -4,7 +4,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import timedelta
-from typing import Any, NotRequired, TypedDict
+from typing import NotRequired, TypedDict, cast
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -53,6 +53,145 @@ class GrowthData(TypedDict, total=False):
     timestamp: float | int | None
 
 
+class RealtimeTimestamp(TypedDict, total=False):
+    """Realtime timestamp data."""
+
+    seconds: int | float
+
+
+class LastSleepData(TypedDict, total=False):
+    """Last sleep data from realtime prefs."""
+
+    start: int | float
+    duration: int | float
+
+
+class SleepPrefsData(TypedDict, total=False):
+    """Sleep preferences data."""
+
+    lastSleep: LastSleepData
+
+
+class SleepTimerData(TypedDict, total=False):
+    """Realtime sleep timer data."""
+
+    active: bool
+    paused: bool
+    timestamp: RealtimeTimestamp
+    timerStartTime: int | float
+    timerEndTime: int | float
+
+
+class SleepStatusData(TypedDict, total=False):
+    """Realtime sleep status payload."""
+
+    timer: SleepTimerData
+    prefs: SleepPrefsData
+    last_updated: int | float
+    sleep_duration: int | float
+    sleep_start: int | float
+
+
+class LastNursingData(TypedDict, total=False):
+    """Last nursing data from realtime prefs."""
+
+    start: int | float
+    duration: int | float
+    leftDuration: int | float
+    rightDuration: int | float
+    timestamp: int | float
+
+
+class LastBottleData(TypedDict, total=False):
+    """Last bottle data from realtime prefs."""
+
+    start: int | float
+    bottleAmount: int | float
+    amount: int | float
+    bottleUnits: str
+    units: str
+    bottleType: str
+    offset: int
+
+
+class LastSideData(TypedDict, total=False):
+    """Last feeding side from realtime prefs."""
+
+    lastSide: str
+
+
+class FeedPrefsData(TypedDict, total=False):
+    """Feed preferences data."""
+
+    lastNursing: LastNursingData
+    lastBottle: LastBottleData
+    lastSide: LastSideData
+
+
+class FeedTimerData(TypedDict, total=False):
+    """Realtime feed timer data."""
+
+    active: bool
+    paused: bool
+    feedStartTime: int | float
+    leftDuration: int | float
+    rightDuration: int | float
+    lastSide: str
+    activeSide: str
+    timestamp: RealtimeTimestamp
+
+
+class FeedStatusData(TypedDict, total=False):
+    """Realtime feed status payload."""
+
+    timer: FeedTimerData
+    prefs: FeedPrefsData
+
+
+class LastDiaperData(TypedDict, total=False):
+    """Last diaper data from realtime prefs."""
+
+    start: int | float
+    mode: str
+    offset: int
+
+
+class DiaperPrefsData(TypedDict, total=False):
+    """Diaper preferences data."""
+
+    lastDiaper: LastDiaperData
+
+
+class DiaperData(TypedDict, total=False):
+    """Realtime diaper payload."""
+
+    prefs: DiaperPrefsData
+
+
+class LastGrowthEntryData(TypedDict, total=False):
+    """Last growth entry from realtime health data."""
+
+    weight: int | float
+    height: int | float
+    head: int | float
+    weightUnits: str
+    heightUnits: str
+    headUnits: str
+    start: int | float
+
+
+class HealthPrefsData(TypedDict, total=False):
+    """Health preferences data."""
+
+    lastGrowthEntry: LastGrowthEntryData
+
+
+class HealthData(TypedDict, total=False):
+    """Realtime health payload."""
+
+    prefs: HealthPrefsData
+
+
 class HuckleberryEntryData(TypedDict):
     """Data stored in hass.data[DOMAIN][entry.entry_id]."""
 
@@ -65,13 +204,13 @@ class ChildRealtimeData(TypedDict):
     """Real-time data structure for a single child."""
 
     child: ChildData
-    sleep_status: NotRequired[dict[str, Any]]
-    feed_status: NotRequired[dict[str, Any]]
+    sleep_status: NotRequired[SleepStatusData]
+    feed_status: NotRequired[FeedStatusData]
     growth_data: NotRequired[GrowthData]
-    diaper_data: NotRequired[dict[str, Any]]
+    diaper_data: NotRequired[DiaperData]
 
 
-def _normalize_model_data(data: Any) -> dict[str, Any]:
+def _normalize_model_data(data: object) -> object:
     """Normalize API model instances to plain dictionaries."""
     if isinstance(data, dict):
         return data
@@ -83,6 +222,26 @@ def _normalize_model_data(data: Any) -> dict[str, Any]:
             return normalized
 
     return {}
+
+
+def _normalize_sleep_status(data: object) -> SleepStatusData:
+    """Normalize realtime sleep payloads to the local typed structure."""
+    return cast(SleepStatusData, _normalize_model_data(data))
+
+
+def _normalize_feed_status(data: object) -> FeedStatusData:
+    """Normalize realtime feed payloads to the local typed structure."""
+    return cast(FeedStatusData, _normalize_model_data(data))
+
+
+def _normalize_diaper_data(data: object) -> DiaperData:
+    """Normalize realtime diaper payloads to the local typed structure."""
+    return cast(DiaperData, _normalize_model_data(data))
+
+
+def _normalize_health_data(data: object) -> HealthData:
+    """Normalize realtime health payloads to the local typed structure."""
+    return cast(HealthData, _normalize_model_data(data))
 
 
 def _normalize_child_data(
@@ -495,7 +654,7 @@ class HuckleberryDataUpdateCoordinator(DataUpdateCoordinator[dict[str, ChildReal
                     """Handle real-time sleep updates."""
                     if uid not in self._realtime_data:
                         self._realtime_data[uid] = {"child": child_data}
-                    self._realtime_data[uid]["sleep_status"] = _normalize_model_data(data)
+                    self._realtime_data[uid]["sleep_status"] = _normalize_sleep_status(data)
                     # Trigger coordinator update
                     self.hass.loop.call_soon_threadsafe(
                         self.async_set_updated_data, dict(self._realtime_data)
@@ -510,7 +669,7 @@ class HuckleberryDataUpdateCoordinator(DataUpdateCoordinator[dict[str, ChildReal
                     """Handle real-time feed updates."""
                     if uid not in self._realtime_data:
                         self._realtime_data[uid] = {"child": child_data}
-                    self._realtime_data[uid]["feed_status"] = _normalize_model_data(data)
+                    self._realtime_data[uid]["feed_status"] = _normalize_feed_status(data)
                     # Trigger coordinator update
                     self.hass.loop.call_soon_threadsafe(
                         self.async_set_updated_data, dict(self._realtime_data)
@@ -526,10 +685,10 @@ class HuckleberryDataUpdateCoordinator(DataUpdateCoordinator[dict[str, ChildReal
                     if uid not in self._realtime_data:
                         self._realtime_data[uid] = {"child": child_data}
 
-                    health_data = _normalize_model_data(data)
+                    health_data = _normalize_health_data(data)
                     # Extract growth data from prefs.lastGrowthEntry
-                    prefs = health_data.get("prefs", {})
-                    last_growth = prefs.get("lastGrowthEntry", {})
+                    prefs = health_data.get("prefs")
+                    last_growth = prefs.get("lastGrowthEntry") if prefs else None
 
                     _LOGGER.debug("Health data received for %s: has_prefs=%s, has_lastGrowthEntry=%s",
                                   uid, bool(prefs), bool(last_growth))
@@ -572,7 +731,7 @@ class HuckleberryDataUpdateCoordinator(DataUpdateCoordinator[dict[str, ChildReal
                     """Handle real-time diaper updates."""
                     if uid not in self._realtime_data:
                         self._realtime_data[uid] = {"child": child_data}
-                    self._realtime_data[uid]["diaper_data"] = _normalize_model_data(data)
+                    self._realtime_data[uid]["diaper_data"] = _normalize_diaper_data(data)
                     # Trigger coordinator update
                     self.hass.loop.call_soon_threadsafe(
                         self.async_set_updated_data, dict(self._realtime_data)
