@@ -41,7 +41,8 @@ async def test_multiple_children_all_entities_created(
         await hass.async_block_till_done()
 
     assert entry.state.value == "loaded"
-    mock_huckleberry_api_multiple_children.get_children.assert_called()
+    mock_huckleberry_api_multiple_children.get_user.assert_awaited()
+    assert mock_huckleberry_api_multiple_children.get_child.await_count == 3
 
     # Check children count sensor
     children_sensor = hass.states.get("sensor.huckleberry_children")

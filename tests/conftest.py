@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import sys
 import socket
-from unittest.mock import MagicMock, patch
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -51,24 +52,58 @@ def auto_enable_custom_integrations(enable_custom_integrations):
 def mock_huckleberry_api():
     """Mock the Huckleberry API."""
     mock = MagicMock()
-    mock.authenticate = MagicMock()
-    mock.get_children = MagicMock(
-        return_value=[
-            {
-                "uid": "child_1",
-                "name": "Test Child",
-                "birthday": "2023-01-01",
-                "gender": "boy",
-                "profilePictureUrl": None,
-            }
-        ]
+    mock.user_uid = "test_user_uid"
+    mock.authenticate = AsyncMock()
+    mock.get_user = AsyncMock(
+        return_value=SimpleNamespace(
+            childList=[
+                SimpleNamespace(
+                    cid="child_1",
+                    nickname="Test Child",
+                    picture=None,
+                    color=None,
+                )
+            ]
+        )
     )
-    mock.setup_realtime_listener = MagicMock()
-    mock.setup_feed_listener = MagicMock()
-    mock.setup_health_listener = MagicMock()
-    mock.setup_diaper_listener = MagicMock()
-    mock.stop_all_listeners = MagicMock()
-    mock.log_bottle_feeding = MagicMock()
+    mock.get_child = AsyncMock(
+        return_value=SimpleNamespace(
+            childsName="Test Child",
+            birthdate="2023-01-01",
+            gender="M",
+            picture=None,
+            color=None,
+            createdAt=None,
+            nightStart=None,
+            morningCutoff=None,
+            naps=None,
+            categories=None,
+        )
+    )
+    mock.start_sleep = AsyncMock()
+    mock.pause_sleep = AsyncMock()
+    mock.resume_sleep = AsyncMock()
+    mock.cancel_sleep = AsyncMock()
+    mock.complete_sleep = AsyncMock()
+    mock.start_nursing = AsyncMock()
+    mock.pause_nursing = AsyncMock()
+    mock.resume_nursing = AsyncMock()
+    mock.switch_nursing_side = AsyncMock()
+    mock.cancel_nursing = AsyncMock()
+    mock.complete_nursing = AsyncMock()
+    mock.log_diaper = AsyncMock()
+    mock.log_growth = AsyncMock()
+    mock.log_bottle = AsyncMock()
+    mock.setup_sleep_listener = AsyncMock()
+    mock.setup_feed_listener = AsyncMock()
+    mock.setup_health_listener = AsyncMock()
+    mock.setup_diaper_listener = AsyncMock()
+    mock.stop_all_listeners = AsyncMock()
+    mock.ensure_session = AsyncMock()
+    mock.list_sleep_intervals = AsyncMock(return_value=[])
+    mock.list_feed_intervals = AsyncMock(return_value=[])
+    mock.list_diaper_intervals = AsyncMock(return_value=[])
+    mock.list_health_entries = AsyncMock(return_value=[])
     return mock
 
 
@@ -76,38 +111,80 @@ def mock_huckleberry_api():
 def mock_huckleberry_api_multiple_children():
     """Mock the Huckleberry API with multiple children."""
     mock = MagicMock()
-    mock.authenticate = MagicMock()
-    mock.get_children = MagicMock(
-        return_value=[
-            {
-                "uid": "child_1",
-                "name": "First Child",
-                "birthday": "2023-01-01",
-                "gender": "boy",
-                "profilePictureUrl": None,
-            },
-            {
-                "uid": "child_2",
-                "name": "Second Child",
-                "birthday": "2023-06-15",
-                "gender": "girl",
-                "profilePictureUrl": None,
-            },
-            {
-                "uid": "child_3",
-                "name": "Third Child",
-                "birthday": "2024-03-20",
-                "gender": "boy",
-                "profilePictureUrl": None,
-            },
-        ]
+    mock.user_uid = "test_user_uid"
+    mock.authenticate = AsyncMock()
+    mock.get_user = AsyncMock(
+        return_value=SimpleNamespace(
+            childList=[
+                SimpleNamespace(cid="child_1", nickname="First Child", picture=None, color=None),
+                SimpleNamespace(cid="child_2", nickname="Second Child", picture=None, color=None),
+                SimpleNamespace(cid="child_3", nickname="Third Child", picture=None, color=None),
+            ]
+        )
     )
-    mock.setup_realtime_listener = MagicMock()
-    mock.setup_feed_listener = MagicMock()
-    mock.setup_health_listener = MagicMock()
-    mock.setup_diaper_listener = MagicMock()
-    mock.stop_all_listeners = MagicMock()
-    mock.log_bottle_feeding = MagicMock()
+    child_docs = {
+        "child_1": SimpleNamespace(
+            childsName="First Child",
+            birthdate="2023-01-01",
+            gender="M",
+            picture=None,
+            color=None,
+            createdAt=None,
+            nightStart=None,
+            morningCutoff=None,
+            naps=None,
+            categories=None,
+        ),
+        "child_2": SimpleNamespace(
+            childsName="Second Child",
+            birthdate="2023-06-15",
+            gender="F",
+            picture=None,
+            color=None,
+            createdAt=None,
+            nightStart=None,
+            morningCutoff=None,
+            naps=None,
+            categories=None,
+        ),
+        "child_3": SimpleNamespace(
+            childsName="Third Child",
+            birthdate="2024-03-20",
+            gender="M",
+            picture=None,
+            color=None,
+            createdAt=None,
+            nightStart=None,
+            morningCutoff=None,
+            naps=None,
+            categories=None,
+        ),
+    }
+    mock.get_child = AsyncMock(side_effect=lambda child_uid: child_docs[child_uid])
+    mock.start_sleep = AsyncMock()
+    mock.pause_sleep = AsyncMock()
+    mock.resume_sleep = AsyncMock()
+    mock.cancel_sleep = AsyncMock()
+    mock.complete_sleep = AsyncMock()
+    mock.start_nursing = AsyncMock()
+    mock.pause_nursing = AsyncMock()
+    mock.resume_nursing = AsyncMock()
+    mock.switch_nursing_side = AsyncMock()
+    mock.cancel_nursing = AsyncMock()
+    mock.complete_nursing = AsyncMock()
+    mock.log_diaper = AsyncMock()
+    mock.log_growth = AsyncMock()
+    mock.log_bottle = AsyncMock()
+    mock.setup_sleep_listener = AsyncMock()
+    mock.setup_feed_listener = AsyncMock()
+    mock.setup_health_listener = AsyncMock()
+    mock.setup_diaper_listener = AsyncMock()
+    mock.stop_all_listeners = AsyncMock()
+    mock.ensure_session = AsyncMock()
+    mock.list_sleep_intervals = AsyncMock(return_value=[])
+    mock.list_feed_intervals = AsyncMock(return_value=[])
+    mock.list_diaper_intervals = AsyncMock(return_value=[])
+    mock.list_health_entries = AsyncMock(return_value=[])
     return mock
 
 @pytest.fixture

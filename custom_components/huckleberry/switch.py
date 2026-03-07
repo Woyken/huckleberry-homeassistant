@@ -59,9 +59,7 @@ class HuckleberrySleepSwitch(HuckleberryBaseEntity, SwitchEntity):  # pylint: di
         """Start sleep tracking."""
         _LOGGER.info("Starting sleep tracking for %s", self.child_name)
         try:
-            await self.hass.async_add_executor_job(
-                self._api.start_sleep, self.child_uid
-            )
+            await self._api.start_sleep(self.child_uid)
             # Real-time listener will update state automatically
         except Exception as err:
             _LOGGER.error("Failed to start sleep tracking: %s", err)
@@ -71,9 +69,7 @@ class HuckleberrySleepSwitch(HuckleberryBaseEntity, SwitchEntity):  # pylint: di
         """Stop sleep tracking."""
         _LOGGER.info("Stopping sleep tracking for %s", self.child_name)
         try:
-            await self.hass.async_add_executor_job(
-                self._api.complete_sleep, self.child_uid
-            )
+            await self._api.complete_sleep(self.child_uid)
             # Real-time listener will update state automatically
         except Exception as err:
             _LOGGER.error("Failed to stop sleep tracking: %s", err)
@@ -133,9 +129,7 @@ class HuckleberryFeedingSwitch(HuckleberryBaseEntity, SwitchEntity):  # pylint: 
         """Start feeding tracking on this side."""
         _LOGGER.info("Starting %s breast feeding for %s", self._side, self.child_name)
         try:
-            await self.hass.async_add_executor_job(
-                self._api.start_feeding, self.child_uid, self._side
-            )
+            await self._api.start_nursing(self.child_uid, self._side)
             # Real-time listener will update state automatically
         except Exception as err:
             _LOGGER.error("Failed to start feeding tracking: %s", err)
@@ -145,9 +139,7 @@ class HuckleberryFeedingSwitch(HuckleberryBaseEntity, SwitchEntity):  # pylint: 
         """Complete feeding tracking and save to history."""
         _LOGGER.info("Completing %s breast feeding for %s", self._side, self.child_name)
         try:
-            await self.hass.async_add_executor_job(
-                self._api.complete_feeding, self.child_uid
-            )
+            await self._api.complete_nursing(self.child_uid)
             # Real-time listener will update state automatically
         except Exception as err:
             _LOGGER.error("Failed to complete feeding tracking: %s", err)

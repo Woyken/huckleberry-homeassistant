@@ -73,32 +73,18 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
         events: list[CalendarEvent] = []
 
         # Fetch sleep intervals
-        events.extend(
-            await self.hass.async_add_executor_job(
-                self._fetch_sleep_events, start_date, end_date
-            )
-        )
+        events.extend(await self._fetch_sleep_events(start_date, end_date))
 
         # Fetch feeding intervals
-        feed_events, bottle_events = await self.hass.async_add_executor_job(
-            self._fetch_feed_and_bottle_events, start_date, end_date
-        )
+        feed_events, bottle_events = await self._fetch_feed_and_bottle_events(start_date, end_date)
         events.extend(feed_events)
         events.extend(bottle_events)
 
         # Fetch diaper intervals
-        events.extend(
-            await self.hass.async_add_executor_job(
-                self._fetch_diaper_events, start_date, end_date
-            )
-        )
+        events.extend(await self._fetch_diaper_events(start_date, end_date))
 
         # Fetch health/growth entries
-        events.extend(
-            await self.hass.async_add_executor_job(
-                self._fetch_health_events, start_date, end_date
-            )
-        )
+        events.extend(await self._fetch_health_events(start_date, end_date))
 
         # Sort by start time
         events.sort(key=lambda e: e.start)
@@ -108,7 +94,21 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
 
         return events
 
-    def _fetch_sleep_events(
+    @staticmethod
+    def _as_interval_dict(item: Any) -> dict[str, Any]:
+        """Normalize API interval models into mapping objects."""
+        if isinstance(item, dict):
+            return item
+
+        model_dump = getattr(item, "model_dump", None)
+        if callable(model_dump):
+            data = model_dump(by_alias=True, exclude_none=True)
+            if isinstance(data, dict):
+                return data
+
+        return {}
+
+    async def _fetch_sleep_events(
         self, start_date: datetime, end_date: datetime
     ) -> list[CalendarEvent]:
         """Fetch sleep intervals using API."""
@@ -121,14 +121,15 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
             end_s = int(end_date.timestamp())
 
             # Fetch intervals from API
-            intervals = self._api.get_sleep_intervals(child_uid, start_s, end_s)
+            intervals = await self._api.list_sleep_intervals(child_uid, start_s, end_s)
 
             for interval in intervals:
+                interval_data = self._as_interval_dict(interval)
                 start_time = datetime.fromtimestamp(
-                    interval["start"], tz=dt_util.DEFAULT_TIME_ZONE
+                    interval_data["start"], tz=dt_util.DEFAULT_TIME_ZONE
                 )
 
-                duration_seconds = interval.get("duration", 0)
+                duration_seconds = interval_data.get("duration", 0)
                 duration_minutes = int(duration_seconds / 60)
                 end_time = start_time + timedelta(minutes=duration_minutes)
 
@@ -159,7 +160,7 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
 
         return events
 
-    def _fetch_feed_and_bottle_events(
+    async def _fetch_feed_and_bottle_events(
         self, start_date: datetime, end_date: datetime
     ) -> tuple[list[CalendarEvent], list[CalendarEvent]]:
         """Fetch feed and bottle intervals using a single API call."""
@@ -172,18 +173,19 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
             start_s = int(start_date.timestamp())
             end_s = int(end_date.timestamp())
 
-            intervals = self._api.get_feed_intervals(child_uid, start_s, end_s)
+            intervals = await self._api.list_feed_intervals(child_uid, start_s, end_s)
 
             for interval in intervals:
+                interval_data = self._as_interval_dict(interval)
                 start_time = datetime.fromtimestamp(
-                    interval["start"], tz=dt_util.DEFAULT_TIME_ZONE
+                    interval_data["start"], tz=dt_util.DEFAULT_TIME_ZONE
                 )
 
-                if self._is_bottle_interval(interval):
+                if self._is_bottle_interval(interval_data):
                     # Bottle feeding is an instant event (same start/end)
-                    amount = interval.get("amount", interval.get("bottleAmount", 0))
-                    units = interval.get("units", interval.get("bottleUnits", "ml"))
-                    bottle_type = interval.get("bottleType", "Unknown")
+                    amount = interval_data.get("amount", interval_data.get("bottleAmount", 0))
+                    units = interval_data.get("units", interval_data.get("bottleUnits", "ml"))
+                    bottle_type = interval_data.get("bottleType", "Unknown")
 
                     summary = f"🍼 Bottle ({amount} {units})"
                     description = f"Bottle feeding: {amount} {units}"
@@ -201,8 +203,8 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
                     continue
 
                 # Feed interval durations are stored in seconds.
-                left_duration_seconds = float(interval.get("leftDuration", 0) or 0)
-                right_duration_seconds = float(interval.get("rightDuration", 0) or 0)
+                left_duration_seconds = float(interval_data.get("leftDuration", 0) or 0)
+                right_duration_seconds = float(interval_data.get("rightDuration", 0) or 0)
 
                 total_duration_seconds = int(
                     round(left_duration_seconds + right_duration_seconds)
@@ -273,7 +275,7 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
             return f"{minutes} min"
         return f"{seconds} sec"
 
-    def _fetch_diaper_events(
+    async def _fetch_diaper_events(
         self, start_date: datetime, end_date: datetime
     ) -> list[CalendarEvent]:
         """Fetch diaper intervals using API."""
@@ -286,15 +288,16 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
             end_s = int(end_date.timestamp())
 
             # Fetch intervals from API
-            intervals = self._api.get_diaper_intervals(child_uid, start_s, end_s)
+            intervals = await self._api.list_diaper_intervals(child_uid, start_s, end_s)
 
             for interval in intervals:
+                interval_data = self._as_interval_dict(interval)
                 event_time = datetime.fromtimestamp(
-                    interval["start"], tz=dt_util.DEFAULT_TIME_ZONE
+                    interval_data["start"], tz=dt_util.DEFAULT_TIME_ZONE
                 )
 
                 # Diaper change is an instant event (same start/end)
-                mode = interval.get("mode", "unknown")
+                mode = interval_data.get("mode", "unknown")
                 mode_emoji = {
                     "pee": "💧",
                     "poo": "💩",
@@ -306,12 +309,16 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
                 description = f"Diaper change: {mode}"
 
                 # Add details if available
-                if "pooColor" in interval:
-                    description += f"\nColor: {interval['pooColor']}"
-                if "pooConsistency" in interval:
-                    description += f"\nConsistency: {interval['pooConsistency']}"
-                if "amount" in interval:
-                    description += f"\nAmount: {interval['amount']}"
+                if "color" in interval_data:
+                    description += f"\nColor: {interval_data['color']}"
+                if "consistency" in interval_data:
+                    description += f"\nConsistency: {interval_data['consistency']}"
+                quantity = interval_data.get("quantity", {})
+                if isinstance(quantity, dict):
+                    if quantity.get("pee") is not None:
+                        description += f"\nPee amount: {quantity['pee']}"
+                    if quantity.get("poo") is not None:
+                        description += f"\nPoo amount: {quantity['poo']}"
 
                 events.append(
                     CalendarEvent(
@@ -329,7 +336,7 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
 
         return events
 
-    def _fetch_health_events(
+    async def _fetch_health_events(
         self, start_date: datetime, end_date: datetime
     ) -> list[CalendarEvent]:
         """Fetch health/growth entries using API."""
@@ -342,11 +349,12 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
             end_s = int(end_date.timestamp())
 
             # Fetch entries from API
-            entries = self._api.get_health_entries(child_uid, start_s, end_s)
+            entries = await self._api.list_health_entries(child_uid, start_s, end_s)
 
             for entry in entries:
+                entry_data = self._as_interval_dict(entry)
                 event_time = datetime.fromtimestamp(
-                    entry["start"], tz=dt_util.DEFAULT_TIME_ZONE
+                    entry_data["start"], tz=dt_util.DEFAULT_TIME_ZONE
                 )
 
                 # Growth entry is an instant event
@@ -355,12 +363,12 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
 
                 # Build description from available measurements
                 measurements = []
-                if "weight" in entry:
-                    measurements.append(f"Weight: {entry['weight']}")
-                if "height" in entry:
-                    measurements.append(f"Height: {entry['height']}")
-                if "head" in entry:
-                    measurements.append(f"Head: {entry['head']}")
+                if "weight" in entry_data:
+                    measurements.append(f"Weight: {entry_data['weight']}")
+                if "height" in entry_data:
+                    measurements.append(f"Height: {entry_data['height']}")
+                if "head" in entry_data:
+                    measurements.append(f"Head: {entry_data['head']}")
 
                 if measurements:
                     description += "\n" + "\n".join(measurements)

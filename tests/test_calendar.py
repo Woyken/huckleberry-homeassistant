@@ -12,7 +12,10 @@ from custom_components.huckleberry.calendar import HuckleberryCalendar
 def mock_api():
     """Create a mock API."""
     api = MagicMock()
-    api._get_firestore_client = MagicMock()
+    api.list_sleep_intervals = AsyncMock(return_value=[])
+    api.list_feed_intervals = AsyncMock(return_value=[])
+    api.list_diaper_intervals = AsyncMock(return_value=[])
+    api.list_health_entries = AsyncMock(return_value=[])
     return api
 
 
@@ -62,13 +65,13 @@ async def test_async_get_events(calendar, hass):
 
     # Mock all fetch methods
     with patch.object(
-        calendar, "_fetch_sleep_events", return_value=[]
+        calendar, "_fetch_sleep_events", new=AsyncMock(return_value=[])
     ), patch.object(
-        calendar, "_fetch_feed_and_bottle_events", return_value=([], [])
+        calendar, "_fetch_feed_and_bottle_events", new=AsyncMock(return_value=([], []))
     ), patch.object(
-        calendar, "_fetch_diaper_events", return_value=[]
+        calendar, "_fetch_diaper_events", new=AsyncMock(return_value=[])
     ), patch.object(
-        calendar, "_fetch_health_events", return_value=[]
+        calendar, "_fetch_health_events", new=AsyncMock(return_value=[])
     ):
         start_date = datetime.now() - timedelta(days=1)
         end_date = datetime.now() + timedelta(days=1)
@@ -79,9 +82,10 @@ async def test_async_get_events(calendar, hass):
         assert len(events) == 0  # All mocked to return empty lists
 
 
-def test_fetch_feed_and_bottle_events_splits_intervals(calendar):
+@pytest.mark.asyncio
+async def test_fetch_feed_and_bottle_events_splits_intervals(calendar):
     """Feed and bottle intervals should be split from one API response."""
-    calendar._api.get_feed_intervals.return_value = [
+    calendar._api.list_feed_intervals.return_value = [
         {
             "start": 1700000000,
             "leftDuration": 900,
@@ -100,7 +104,7 @@ def test_fetch_feed_and_bottle_events_splits_intervals(calendar):
         },
     ]
 
-    feed_events, bottle_events = calendar._fetch_feed_and_bottle_events(
+    feed_events, bottle_events = await calendar._fetch_feed_and_bottle_events(
         datetime.now(), datetime.now() + timedelta(days=1)
     )
 
@@ -112,9 +116,10 @@ def test_fetch_feed_and_bottle_events_splits_intervals(calendar):
     assert bottle_events[0].summary == "🍼 Bottle (120 ml)"
 
 
-def test_fetch_feed_and_bottle_events_formats_feed_description(calendar):
+@pytest.mark.asyncio
+async def test_fetch_feed_and_bottle_events_formats_feed_description(calendar):
     """Feed event descriptions should format seconds as min/sec text."""
-    calendar._api.get_feed_intervals.return_value = [
+    calendar._api.list_feed_intervals.return_value = [
         {
             "start": 1700000000,
             "leftDuration": 111,
@@ -124,7 +129,7 @@ def test_fetch_feed_and_bottle_events_formats_feed_description(calendar):
         },
     ]
 
-    feed_events, bottle_events = calendar._fetch_feed_and_bottle_events(
+    feed_events, bottle_events = await calendar._fetch_feed_and_bottle_events(
         datetime.now(), datetime.now() + timedelta(days=1)
     )
 
@@ -135,9 +140,10 @@ def test_fetch_feed_and_bottle_events_formats_feed_description(calendar):
     assert "Right: 1 min 43 sec" in (feed_events[0].description or "")
 
 
-def test_fetch_feed_and_bottle_events_extracts_bottle_event(calendar):
+@pytest.mark.asyncio
+async def test_fetch_feed_and_bottle_events_extracts_bottle_event(calendar):
     """Bottle intervals should render as bottle events."""
-    calendar._api.get_feed_intervals.return_value = [
+    calendar._api.list_feed_intervals.return_value = [
         {
             "start": 1700000600,
             "leftDuration": 0,
@@ -157,7 +163,7 @@ def test_fetch_feed_and_bottle_events_extracts_bottle_event(calendar):
         },
     ]
 
-    feed_events, bottle_events = calendar._fetch_feed_and_bottle_events(
+    feed_events, bottle_events = await calendar._fetch_feed_and_bottle_events(
         datetime.now(), datetime.now() + timedelta(days=1)
     )
 

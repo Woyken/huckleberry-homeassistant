@@ -3,15 +3,15 @@ name = "huckleberry-homeassistant"
 version = "0.4.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 dependencies = [
-    "huckleberry-api>=0.1.19",
+    "huckleberry-api>=0.2.0",
 ]
 
 [dependency-groups]
 dev = [
     "pytest>=8.0.2",
-    "pytest-homeassistant-custom-component>=0.13.109",
+    "pytest-homeassistant-custom-component==0.13.206",
     "tzdata>=2025.2",
 ]
 

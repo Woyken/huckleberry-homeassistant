@@ -1,6 +1,8 @@
 """Test Huckleberry config flow."""
+import aiohttp
+from types import SimpleNamespace
 from unittest.mock import patch
-import pytest
+from yarl import URL
 from homeassistant import config_entries, data_entry_flow
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
@@ -44,10 +46,11 @@ async def test_flow_user_success(hass: HomeAssistant, mock_huckleberry_api):
 
 async def test_flow_user_invalid_auth(hass: HomeAssistant, mock_huckleberry_api):
     """Test flow with invalid authentication."""
-    import requests
-
-    mock_huckleberry_api.authenticate.side_effect = requests.exceptions.HTTPError(
-        response=type("Response", (), {"status_code": 400})()
+    mock_huckleberry_api.authenticate.side_effect = aiohttp.ClientResponseError(
+        request_info=type("RequestInfo", (), {"real_url": URL("https://example.test")})(),
+        history=(),
+        status=400,
+        message="INVALID_PASSWORD",
     )
 
     with patch(
@@ -68,8 +71,7 @@ async def test_flow_user_invalid_auth(hass: HomeAssistant, mock_huckleberry_api)
 
 async def test_flow_user_cannot_connect(hass: HomeAssistant, mock_huckleberry_api):
     """Test flow with connection error."""
-    import requests.exceptions
-    mock_huckleberry_api.authenticate.side_effect = requests.exceptions.ConnectionError("Connection refused")
+    mock_huckleberry_api.authenticate.side_effect = aiohttp.ClientConnectionError("Connection refused")
 
     with patch(
         "custom_components.huckleberry.config_flow.HuckleberryAPI",
@@ -110,7 +112,7 @@ async def test_flow_user_unknown_error(hass: HomeAssistant, mock_huckleberry_api
 
 async def test_flow_user_no_children(hass: HomeAssistant, mock_huckleberry_api):
     """Test flow with no children found."""
-    mock_huckleberry_api.get_children.return_value = []
+    mock_huckleberry_api.get_user.return_value = SimpleNamespace(childList=[])
 
     with patch(
         "custom_components.huckleberry.config_flow.HuckleberryAPI",

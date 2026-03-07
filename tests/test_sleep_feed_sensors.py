@@ -16,17 +16,6 @@ async def test_sleep_feed_sensors(hass: HomeAssistant, mock_huckleberry_api):
     )
     entry.add_to_hass(hass)
 
-    # Mock coordinator data
-    mock_huckleberry_api.get_children.return_value = [
-        {
-            "uid": "child_1",
-            "name": "Test Child",
-            "birthDate": "2023-01-01",
-            "gender": "boy",
-            "profilePictureUrl": None
-        }
-    ]
-
     with patch(
         "custom_components.huckleberry.HuckleberryAPI",
         return_value=mock_huckleberry_api,

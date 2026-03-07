@@ -54,16 +54,16 @@ async def test_switches(hass: HomeAssistant, mock_huckleberry_api):
     await hass.services.async_call(
         "switch", "turn_off", {"entity_id": "switch.test_child_sleep_tracking"}, blocking=True
     )
-    mock_huckleberry_api.complete_sleep.assert_called_with("child_1")
+    mock_huckleberry_api.complete_sleep.assert_awaited_with("child_1")
 
     # Test turning on sleep
     await hass.services.async_call(
         "switch", "turn_on", {"entity_id": "switch.test_child_sleep_tracking"}, blocking=True
     )
-    mock_huckleberry_api.start_sleep.assert_called_with("child_1")
+    mock_huckleberry_api.start_sleep.assert_awaited_with("child_1")
 
     # Test turning on right feeding (should switch side)
     await hass.services.async_call(
         "switch", "turn_on", {"entity_id": "switch.test_child_feeding_right"}, blocking=True
     )
-    mock_huckleberry_api.start_feeding.assert_called_with("child_1", "right")
+    mock_huckleberry_api.start_nursing.assert_awaited_with("child_1", "right")

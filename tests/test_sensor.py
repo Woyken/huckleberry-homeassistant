@@ -105,8 +105,8 @@ async def test_bottle_sensor(hass: HomeAssistant, mock_huckleberry_api):
                 "prefs": {
                     "lastBottle": {
                         "start": 1234567890,
-                        "amount": 120.0,
-                        "units": "ml",
+                        "bottleAmount": 120.0,
+                        "bottleUnits": "ml",
                         "bottleType": "Formula"
                     }
                 }
