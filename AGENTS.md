@@ -812,8 +812,8 @@ except Exception as err:
 
 ### Home Assistant Version
 
-**Minimum**: 2023.1+
-- Uses `async_forward_entry_setups()` (replaces deprecated `async_setup_platforms`)
+**Minimum**: 2025.1+
+- Required because `huckleberry-api` 0.2.0 depends on the Pydantic 2 era Home Assistant stack
 - Device registry integration
 - Service device selectors
 - Modern coordinator pattern
@@ -906,5 +906,5 @@ Follow [semver.org](https://semver.org/):
 **Integration Version**: 0.2.7
 **API Library Version**: 0.2.0
 **Status**: Stable, feature-complete for sleep, feeding, diaper, and growth tracking
-**Home Assistant Compatibility**: 2023.1+
+**Home Assistant Compatibility**: 2025.1+
 **Test Coverage**: Automated test suite covering config flow, entities, services, and device actions

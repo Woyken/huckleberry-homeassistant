@@ -421,7 +421,7 @@ data:
 ## Dependencies
 
 - `google-cloud-firestore>=2.11.0`: Official Firebase SDK
-- Home Assistant Core: 2023.1+ (uses async_forward_entry_setups)
+- Home Assistant Core: 2025.1+ (required for the Pydantic 2 based dependency stack)
 
 ## Future Enhancements
 

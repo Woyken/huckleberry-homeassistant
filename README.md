@@ -180,9 +180,9 @@ The integration provides device actions for use in device-based automations:
 
 ## Requirements
 
-- Home Assistant 2023.1 or newer
+- Home Assistant 2025.1 or newer
 - Huckleberry account with active subscription
-- `huckleberry-api>=0.1.18` (automatically installed)
+- `huckleberry-api>=0.2.0` (automatically installed)
 
 ## Support
 
