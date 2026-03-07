@@ -87,6 +87,8 @@ class HuckleberryChildrenSensor(CoordinatorEntity, SensorEntity):
                     "created_at": child.get("created_at"),
                     "night_start": child.get("night_start"),
                     "morning_cutoff": child.get("morning_cutoff"),
+                    "night_start_min": child.get("night_start_min"),
+                    "morning_cutoff_min": child.get("morning_cutoff_min"),
                     "expected_naps": child.get("expected_naps"),
                     "categories": child.get("categories"),
                 }
@@ -134,7 +136,8 @@ class HuckleberryChildProfileSensor(HuckleberryBaseEntity, SensorEntity):
         # Add all available child attributes
         optional_fields = [
             "birthday", "picture", "gender", "color", "created_at",
-            "night_start", "morning_cutoff", "expected_naps", "categories"
+            "night_start", "morning_cutoff", "night_start_min", "morning_cutoff_min",
+            "expected_naps", "categories"
         ]
         for field in optional_fields:
             if self._child.get(field) is not None:
