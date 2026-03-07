@@ -183,8 +183,8 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
 
                 if self._is_bottle_interval(interval_data):
                     # Bottle feeding is an instant event (same start/end)
-                    amount = interval_data.get("amount", interval_data.get("bottleAmount", 0))
-                    units = interval_data.get("units", interval_data.get("bottleUnits", "ml"))
+                    amount = interval_data.get("bottleAmount") or interval_data.get("amount") or 0
+                    units = interval_data.get("bottleUnits") or interval_data.get("units") or "ml"
                     bottle_type = interval_data.get("bottleType", "Unknown")
 
                     summary = f"🍼 Bottle ({amount} {units})"

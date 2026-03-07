@@ -113,12 +113,24 @@ async def _async_get_children(api: HuckleberryAPI) -> list[ChildData]:
         return []
 
     child_docs = await asyncio.gather(
-        *(api.get_child(child_ref.cid) for child_ref in user.childList)
+        *(api.get_child(child_ref.cid) for child_ref in user.childList),
+        return_exceptions=True,
     )
-    return [
-        _normalize_child_data(child_ref, child_doc)
-        for child_ref, child_doc in zip(user.childList, child_docs, strict=True)
-    ]
+
+    normalized_children: list[ChildData] = []
+    for child_ref, child_doc in zip(user.childList, child_docs, strict=True):
+        if isinstance(child_doc, Exception):
+            _LOGGER.warning(
+                "Failed to fetch child document for %s: %s. Falling back to user profile data.",
+                child_ref.cid,
+                child_doc,
+            )
+            normalized_children.append(_normalize_child_data(child_ref, None))
+            continue
+
+        normalized_children.append(_normalize_child_data(child_ref, child_doc))
+
+    return normalized_children
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

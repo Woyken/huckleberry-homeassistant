@@ -160,7 +160,23 @@ def mock_huckleberry_api_multiple_children():
             categories=None,
         ),
     }
-    mock.get_child = AsyncMock(side_effect=lambda child_uid: child_docs[child_uid])
+    mock.get_child = AsyncMock(
+        side_effect=lambda child_uid: child_docs.get(
+            child_uid,
+            SimpleNamespace(
+                childsName=child_uid,
+                birthdate=None,
+                gender=None,
+                picture=None,
+                color=None,
+                createdAt=None,
+                nightStart=None,
+                morningCutoff=None,
+                naps=None,
+                categories=None,
+            ),
+        )
+    )
     mock.start_sleep = AsyncMock()
     mock.pause_sleep = AsyncMock()
     mock.resume_sleep = AsyncMock()

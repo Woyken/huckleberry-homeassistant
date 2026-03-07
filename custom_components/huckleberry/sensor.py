@@ -327,11 +327,13 @@ class HuckleberryBottleSensor(HuckleberryBaseEntity, SensorEntity):
             attrs["time"] = datetime.fromtimestamp(timestamp).isoformat()
 
         # Add amount and units
-        amount = last_bottle.get("amount", last_bottle.get("bottleAmount"))
+        amount = last_bottle.get("bottleAmount")
+        if amount is None:
+            amount = last_bottle.get("amount")
         if amount is not None:
             attrs["amount"] = amount
             
-        units = last_bottle.get("units", last_bottle.get("bottleUnits", "ml"))
+        units = last_bottle.get("bottleUnits") or last_bottle.get("units") or "ml"
         attrs["units"] = units
         
         # Display amount with units
@@ -747,4 +749,3 @@ class HuckleberryPreviousFeedSensor(HuckleberryBaseEntity, SensorEntity):
             attrs["last_side"] = last_side
 
         return attrs
-
