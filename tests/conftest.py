@@ -2,43 +2,9 @@
 
 from __future__ import annotations
 
-import sys
-import socket
 from unittest.mock import MagicMock, patch
 
 import pytest
-
-
-@pytest.hookimpl(hookwrapper=True, tryfirst=True)
-def pytest_fixture_setup(fixturedef, request):
-    """Allow Windows' Proactor loop creation under pytest-socket.
-
-    On Windows, asyncio's Proactor event loop creates an internal socket pair
-    during initialization. Home Assistant's test tooling blocks socket creation
-    via pytest-socket, which causes event loop creation to crash.
-
-    We enable sockets only while the pytest-asyncio `event_loop` fixture is being
-    created, then restore the prior socket restrictions immediately after.
-    """
-
-    if sys.platform != "win32" or fixturedef.argname != "event_loop":
-        yield
-        return
-
-    try:
-        from pytest_socket import enable_socket
-    except ImportError:  # pragma: no cover
-        yield
-        return
-
-    prev_socket = socket.socket
-    prev_connect = socket.socket.connect
-    enable_socket()
-    try:
-        yield
-    finally:
-        socket.socket = prev_socket
-        socket.socket.connect = prev_connect
 
 
 @pytest.fixture(autouse=True)
