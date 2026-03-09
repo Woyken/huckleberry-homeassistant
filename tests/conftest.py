@@ -2,9 +2,56 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
+from huckleberry_api.firebase_types import (
+    FirebaseChildDocument,
+    FirebaseUserChildRef,
+    FirebaseUserDocument,
+)
+
+
+def _make_user_document(*child_refs: FirebaseUserChildRef) -> FirebaseUserDocument:
+    """Build a minimal FirebaseUserDocument."""
+    return FirebaseUserDocument(
+        email="test@example.com",
+        childList=list(child_refs),
+    )
+
+
+def _make_child_ref(cid: str, nickname: str | None = None) -> FirebaseUserChildRef:
+    """Build a minimal FirebaseUserChildRef."""
+    return FirebaseUserChildRef(cid=cid, nickname=nickname)
+
+
+def _make_child_document(
+    name: str,
+    birthdate: str | None = None,
+    gender: str | None = None,
+) -> FirebaseChildDocument:
+    """Build a minimal FirebaseChildDocument."""
+    return FirebaseChildDocument(
+        childsName=name,
+        birthdate=birthdate,
+        gender=gender,
+    )
+
+
+CHILD_REFS_SINGLE = [_make_child_ref("child_1")]
+CHILD_DOCS_SINGLE = {"child_1": _make_child_document("Test Child", "2023-01-01", "M")}
+
+CHILD_REFS_MULTI = [
+    _make_child_ref("child_1"),
+    _make_child_ref("child_2"),
+    _make_child_ref("child_3"),
+]
+CHILD_DOCS_MULTI = {
+    "child_1": _make_child_document("First Child", "2023-01-01", "M"),
+    "child_2": _make_child_document("Second Child", "2023-06-15", "F"),
+    "child_3": _make_child_document("Third Child", "2024-03-20", "M"),
+}
 
 
 @pytest.fixture(autouse=True)
@@ -13,68 +60,61 @@ def auto_enable_custom_integrations(enable_custom_integrations):
     yield
 
 
+def _build_mock_api(
+    child_refs: list[FirebaseUserChildRef],
+    child_docs: dict[str, FirebaseChildDocument],
+) -> MagicMock:
+    """Build a mock HuckleberryAPI backed by async mocks."""
+    mock = MagicMock()
+    mock.authenticate = AsyncMock()
+    mock.ensure_session = AsyncMock()
+    mock.get_user = AsyncMock(return_value=_make_user_document(*child_refs))
+    mock.get_child = AsyncMock(side_effect=lambda cid: child_docs.get(cid))
+
+    mock.setup_sleep_listener = AsyncMock()
+    mock.setup_feed_listener = AsyncMock()
+    mock.setup_health_listener = AsyncMock()
+    mock.setup_diaper_listener = AsyncMock()
+    mock.stop_all_listeners = AsyncMock()
+
+    mock.start_sleep = AsyncMock()
+    mock.pause_sleep = AsyncMock()
+    mock.resume_sleep = AsyncMock()
+    mock.cancel_sleep = AsyncMock()
+    mock.complete_sleep = AsyncMock()
+
+    mock.start_nursing = AsyncMock()
+    mock.pause_nursing = AsyncMock()
+    mock.resume_nursing = AsyncMock()
+    mock.switch_nursing_side = AsyncMock()
+    mock.cancel_nursing = AsyncMock()
+    mock.complete_nursing = AsyncMock()
+
+    mock.log_diaper = AsyncMock()
+    mock.log_growth = AsyncMock()
+    mock.log_bottle = AsyncMock()
+
+    mock.list_sleep_intervals = AsyncMock(return_value=[])
+    mock.list_feed_intervals = AsyncMock(return_value=[])
+    mock.list_diaper_intervals = AsyncMock(return_value=[])
+    mock.list_health_entries = AsyncMock(return_value=[])
+
+    mock.user_uid = "test_user_uid"
+
+    return mock
+
+
 @pytest.fixture
 def mock_huckleberry_api():
     """Mock the Huckleberry API."""
-    mock = MagicMock()
-    mock.authenticate = MagicMock()
-    mock.get_children = MagicMock(
-        return_value=[
-            {
-                "uid": "child_1",
-                "name": "Test Child",
-                "birthday": "2023-01-01",
-                "gender": "boy",
-                "profilePictureUrl": None,
-            }
-        ]
-    )
-    mock.setup_realtime_listener = MagicMock()
-    mock.setup_feed_listener = MagicMock()
-    mock.setup_health_listener = MagicMock()
-    mock.setup_diaper_listener = MagicMock()
-    mock.stop_all_listeners = MagicMock()
-    mock.log_bottle_feeding = MagicMock()
-    return mock
+    return _build_mock_api(CHILD_REFS_SINGLE, CHILD_DOCS_SINGLE)
 
 
 @pytest.fixture
 def mock_huckleberry_api_multiple_children():
     """Mock the Huckleberry API with multiple children."""
-    mock = MagicMock()
-    mock.authenticate = MagicMock()
-    mock.get_children = MagicMock(
-        return_value=[
-            {
-                "uid": "child_1",
-                "name": "First Child",
-                "birthday": "2023-01-01",
-                "gender": "boy",
-                "profilePictureUrl": None,
-            },
-            {
-                "uid": "child_2",
-                "name": "Second Child",
-                "birthday": "2023-06-15",
-                "gender": "girl",
-                "profilePictureUrl": None,
-            },
-            {
-                "uid": "child_3",
-                "name": "Third Child",
-                "birthday": "2024-03-20",
-                "gender": "boy",
-                "profilePictureUrl": None,
-            },
-        ]
-    )
-    mock.setup_realtime_listener = MagicMock()
-    mock.setup_feed_listener = MagicMock()
-    mock.setup_health_listener = MagicMock()
-    mock.setup_diaper_listener = MagicMock()
-    mock.stop_all_listeners = MagicMock()
-    mock.log_bottle_feeding = MagicMock()
-    return mock
+    return _build_mock_api(CHILD_REFS_MULTI, CHILD_DOCS_MULTI)
+
 
 @pytest.fixture
 def mock_setup_entry():

@@ -1,5 +1,6 @@
 """Test Huckleberry config flow."""
-from unittest.mock import patch
+from unittest.mock import patch, AsyncMock
+import aiohttp
 import pytest
 from homeassistant import config_entries, data_entry_flow
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
@@ -16,7 +17,6 @@ async def test_flow_user_init(hass: HomeAssistant):
 
 async def test_flow_user_success(hass: HomeAssistant, mock_huckleberry_api):
     """Test successful flow."""
-    mock_huckleberry_api.user_uid = "test_user_uid"
     with patch(
         "custom_components.huckleberry.config_flow.HuckleberryAPI",
         return_value=mock_huckleberry_api,
@@ -44,10 +44,16 @@ async def test_flow_user_success(hass: HomeAssistant, mock_huckleberry_api):
 
 async def test_flow_user_invalid_auth(hass: HomeAssistant, mock_huckleberry_api):
     """Test flow with invalid authentication."""
-    import requests
-
-    mock_huckleberry_api.authenticate.side_effect = requests.exceptions.HTTPError(
-        response=type("Response", (), {"status_code": 400})()
+    mock_huckleberry_api.authenticate.side_effect = aiohttp.ClientResponseError(
+        request_info=aiohttp.RequestInfo(
+            url="https://example.com",
+            method="POST",
+            headers={},
+            real_url="https://example.com",
+        ),
+        history=(),
+        status=400,
+        message="Bad Request",
     )
 
     with patch(
@@ -68,8 +74,7 @@ async def test_flow_user_invalid_auth(hass: HomeAssistant, mock_huckleberry_api)
 
 async def test_flow_user_cannot_connect(hass: HomeAssistant, mock_huckleberry_api):
     """Test flow with connection error."""
-    import requests.exceptions
-    mock_huckleberry_api.authenticate.side_effect = requests.exceptions.ConnectionError("Connection refused")
+    mock_huckleberry_api.authenticate.side_effect = aiohttp.ClientConnectionError("Connection refused")
 
     with patch(
         "custom_components.huckleberry.config_flow.HuckleberryAPI",
@@ -110,7 +115,7 @@ async def test_flow_user_unknown_error(hass: HomeAssistant, mock_huckleberry_api
 
 async def test_flow_user_no_children(hass: HomeAssistant, mock_huckleberry_api):
     """Test flow with no children found."""
-    mock_huckleberry_api.get_children.return_value = []
+    mock_huckleberry_api.get_user = AsyncMock(return_value=None)
 
     with patch(
         "custom_components.huckleberry.config_flow.HuckleberryAPI",

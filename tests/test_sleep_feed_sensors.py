@@ -1,9 +1,19 @@
 """Test Huckleberry sleep and feeding sensors."""
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
+
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
-from custom_components.huckleberry.const import DOMAIN
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+from huckleberry_api.firebase_types import (
+    FirebaseFeedDocumentData,
+    FirebaseFeedTimerData,
+    FirebaseSleepDocumentData,
+    FirebaseSleepTimerData,
+)
+
+from custom_components.huckleberry.const import DOMAIN
+
 
 async def test_sleep_feed_sensors(hass: HomeAssistant, mock_huckleberry_api):
     """Test sleep and feeding sensors."""
@@ -16,17 +26,6 @@ async def test_sleep_feed_sensors(hass: HomeAssistant, mock_huckleberry_api):
     )
     entry.add_to_hass(hass)
 
-    # Mock coordinator data
-    mock_huckleberry_api.get_children.return_value = [
-        {
-            "uid": "child_1",
-            "name": "Test Child",
-            "birthDate": "2023-01-01",
-            "gender": "boy",
-            "profilePictureUrl": None
-        }
-    ]
-
     with patch(
         "custom_components.huckleberry.HuckleberryAPI",
         return_value=mock_huckleberry_api,
@@ -38,19 +37,13 @@ async def test_sleep_feed_sensors(hass: HomeAssistant, mock_huckleberry_api):
     coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
 
     # Simulate sleep data update (Active)
-    coordinator._realtime_data = {
-        "child_1": {
-            "sleep_status": {
-                "timer": {"active": True, "paused": False},
-                "prefs": {}
-            },
-            "feed_status": {
-                "timer": {"active": True, "paused": False, "lastSide": "left"},
-                "prefs": {}
-            }
-        }
-    }
-    coordinator.async_set_updated_data(coordinator._realtime_data)
+    coordinator._realtime_data["child_1"].sleep_status = FirebaseSleepDocumentData(
+        timer=FirebaseSleepTimerData(active=True, paused=False, uuid="t1"),
+    )
+    coordinator._realtime_data["child_1"].feed_status = FirebaseFeedDocumentData(
+        timer=FirebaseFeedTimerData(active=True, paused=False, lastSide="left", uuid="t2"),
+    )
+    coordinator.async_set_updated_data(dict(coordinator._realtime_data))
     await hass.async_block_till_done()
 
     # Check sleep sensor
@@ -65,9 +58,13 @@ async def test_sleep_feed_sensors(hass: HomeAssistant, mock_huckleberry_api):
     assert state.attributes.get("last_side") == "left"
 
     # Simulate Paused
-    coordinator._realtime_data["child_1"]["sleep_status"]["timer"]["paused"] = True
-    coordinator._realtime_data["child_1"]["feed_status"]["timer"]["paused"] = True
-    coordinator.async_set_updated_data(coordinator._realtime_data)
+    coordinator._realtime_data["child_1"].sleep_status = FirebaseSleepDocumentData(
+        timer=FirebaseSleepTimerData(active=True, paused=True, uuid="t1"),
+    )
+    coordinator._realtime_data["child_1"].feed_status = FirebaseFeedDocumentData(
+        timer=FirebaseFeedTimerData(active=True, paused=True, lastSide="left", uuid="t2"),
+    )
+    coordinator.async_set_updated_data(dict(coordinator._realtime_data))
     await hass.async_block_till_done()
 
     state = hass.states.get("sensor.test_child_sleep_status")
@@ -77,9 +74,13 @@ async def test_sleep_feed_sensors(hass: HomeAssistant, mock_huckleberry_api):
     assert state.state == "paused"
 
     # Simulate Inactive (None)
-    coordinator._realtime_data["child_1"]["sleep_status"]["timer"]["active"] = False
-    coordinator._realtime_data["child_1"]["feed_status"]["timer"]["active"] = False
-    coordinator.async_set_updated_data(coordinator._realtime_data)
+    coordinator._realtime_data["child_1"].sleep_status = FirebaseSleepDocumentData(
+        timer=FirebaseSleepTimerData(active=False, paused=False, uuid="t1"),
+    )
+    coordinator._realtime_data["child_1"].feed_status = FirebaseFeedDocumentData(
+        timer=FirebaseFeedTimerData(active=False, paused=False, uuid="t2"),
+    )
+    coordinator.async_set_updated_data(dict(coordinator._realtime_data))
     await hass.async_block_till_done()
 
     state = hass.states.get("sensor.test_child_sleep_status")

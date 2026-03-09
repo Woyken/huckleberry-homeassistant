@@ -1,9 +1,16 @@
 """Test Huckleberry switches."""
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD, STATE_ON, STATE_OFF
 from custom_components.huckleberry.const import DOMAIN
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+from huckleberry_api.firebase_types import (
+    FirebaseFeedDocumentData,
+    FirebaseFeedTimerData,
+    FirebaseSleepDocumentData,
+    FirebaseSleepTimerData,
+)
 
 async def test_switches(hass: HomeAssistant, mock_huckleberry_api):
     """Test switches."""
@@ -26,23 +33,22 @@ async def test_switches(hass: HomeAssistant, mock_huckleberry_api):
     # Get the coordinator
     coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
 
-    # Simulate sleep active
-    coordinator._realtime_data = {
-        "child_1": {
-            "sleep_status": {
-                "timer": {"active": True, "paused": False},
-            },
-            "feed_status": {
-                "timer": {"active": True, "paused": False, "activeSide": "left"},
-            }
-        }
-    }
-    coordinator.async_set_updated_data(coordinator._realtime_data)
+    # Simulate sleep and feed active via typed models
+    state = coordinator._realtime_data["child_1"]
+    state.sleep_status = FirebaseSleepDocumentData(
+        timer=FirebaseSleepTimerData(active=True, paused=False, uuid="test"),
+    )
+    state.feed_status = FirebaseFeedDocumentData(
+        timer=FirebaseFeedTimerData(
+            active=True, paused=False, uuid="test", activeSide="left",
+        ),
+    )
+    coordinator.async_set_updated_data(dict(coordinator._realtime_data))
     await hass.async_block_till_done()
 
     # Check sleep switch
-    state = hass.states.get("switch.test_child_sleep_tracking")
-    assert state.state == STATE_ON
+    switch_state = hass.states.get("switch.test_child_sleep_tracking")
+    assert switch_state.state == STATE_ON
 
     # Check feeding switches
     state_left = hass.states.get("switch.test_child_feeding_left")
@@ -66,4 +72,4 @@ async def test_switches(hass: HomeAssistant, mock_huckleberry_api):
     await hass.services.async_call(
         "switch", "turn_on", {"entity_id": "switch.test_child_feeding_right"}, blocking=True
     )
-    mock_huckleberry_api.start_feeding.assert_called_with("child_1", "right")
+    mock_huckleberry_api.start_nursing.assert_called_with("child_1", "right")

@@ -17,6 +17,13 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from huckleberry_api.firebase_types import (
+    FirebaseFeedDocumentData,
+    FirebaseFeedTimerData,
+    FirebaseSleepDocumentData,
+    FirebaseSleepTimerData,
+)
+
 from custom_components.huckleberry.const import DOMAIN
 
 
@@ -41,7 +48,7 @@ async def test_multiple_children_all_entities_created(
         await hass.async_block_till_done()
 
     assert entry.state.value == "loaded"
-    mock_huckleberry_api_multiple_children.get_children.assert_called()
+    mock_huckleberry_api_multiple_children.get_user.assert_called()
 
     # Check children count sensor
     children_sensor = hass.states.get("sensor.huckleberry_children")
@@ -136,33 +143,16 @@ async def test_multiple_children_sensors_update_independently(
     # Get the coordinator
     coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
 
-    # Simulate sleep active for first child only
-    coordinator._realtime_data = {
-        "child_1": {
-            "child": {"uid": "child_1", "name": "First Child"},
-            "sleep_status": {
-                "timer": {"active": True, "paused": False},
-            },
-            "feed_status": {},
-            "growth_data": {},
-        },
-        "child_2": {
-            "child": {"uid": "child_2", "name": "Second Child"},
-            "sleep_status": {},
-            "feed_status": {
-                "timer": {"active": True, "paused": False, "activeSide": "right"},
-            },
-            "growth_data": {},
-        },
-        "child_3": {
-            "child": {"uid": "child_3", "name": "Third Child"},
-            "sleep_status": {},
-            "feed_status": {},
-            "growth_data": {},
-        },
-    }
-    # Update coordinator.data to point to _realtime_data
-    coordinator.async_set_updated_data(coordinator._realtime_data)
+    # Simulate sleep active for first child only, feed for second
+    coordinator._realtime_data["child_1"].sleep_status = FirebaseSleepDocumentData(
+        timer=FirebaseSleepTimerData(active=True, paused=False, uuid="t1"),
+    )
+    coordinator._realtime_data["child_2"].feed_status = FirebaseFeedDocumentData(
+        timer=FirebaseFeedTimerData(
+            active=True, paused=False, uuid="t2", activeSide="right",
+        ),
+    )
+    coordinator.async_set_updated_data(dict(coordinator._realtime_data))
     await hass.async_block_till_done()
 
     # Verify first child's sleep is on, others are off
@@ -210,10 +200,10 @@ async def test_multiple_children_sensors_update_independently(
     assert third_feeding_status.state == "none"
 
     # Now update third child with paused sleep
-    coordinator._realtime_data["child_3"]["sleep_status"] = {
-        "timer": {"active": True, "paused": True},
-    }
-    coordinator.async_set_updated_data(coordinator._realtime_data)
+    coordinator._realtime_data["child_3"].sleep_status = FirebaseSleepDocumentData(
+        timer=FirebaseSleepTimerData(active=True, paused=True, uuid="t3"),
+    )
+    coordinator.async_set_updated_data(dict(coordinator._realtime_data))
     await hass.async_block_till_done()
 
     # Verify third child's sleep status is paused (switch shows off when paused)
