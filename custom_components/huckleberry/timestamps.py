@@ -32,10 +32,7 @@ def as_iso8601_datetime(value: int | float | None) -> str | None:
 
 
 def as_iso8601_duration(value: int | float | None) -> str | None:
-    """Convert a duration in seconds to an ISO 8601 duration string.
-
-    Durations are normalized only up to days. Hass's `as_timedelta` expects data in the format DD HH:MM:SS.uuuuuu.
-    """
+    """Convert a duration in seconds to an ISO 8601 duration string (e.g. ``P1DT2H3M4S``)."""
     if value is None:
         return None
 

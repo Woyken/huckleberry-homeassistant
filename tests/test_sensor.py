@@ -84,7 +84,7 @@ async def test_sensors(hass: HomeAssistant, mock_huckleberry_api):
 
     # Check growth sensor
     sensor_state = hass.states.get("sensor.test_child_growth")
-    expected_date = str(datetime.fromtimestamp(1234567890, tz=timezone.utc))
+    expected_date = datetime.fromtimestamp(1234567890, tz=timezone.utc).isoformat()
     assert sensor_state.state == expected_date
     assert sensor_state.attributes["weight"] == 10.5
     assert sensor_state.attributes["height"] == 75.0

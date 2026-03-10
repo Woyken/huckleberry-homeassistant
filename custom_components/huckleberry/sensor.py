@@ -17,7 +17,6 @@ from .timestamps import as_datetime, as_iso8601_datetime, as_iso8601_duration
 
 SLEEP_STATE_OPTIONS: Final[list[str]] = ["active", "paused", "none"]
 FEED_STATE_OPTIONS: Final[list[str]] = ["active", "paused", "none"]
-LAST_SIDE_OPTIONS: Final[list[str]] = ["Left", "Right", "Unknown"]
 
 
 async def async_setup_entry(
@@ -259,9 +258,6 @@ class HuckleberrySleepSensor(HuckleberryBaseEntity, SensorEntity):
                 attributes["current_start"] = as_iso8601_datetime(timer.timerStartTime)
             if timer.timerEndTime is not None and timer.paused:
                 attributes["current_end"] = as_iso8601_datetime(timer.timerEndTime)
-            # TODO add current FirebaseSleepDetails to attributes
-            # current_details.start.happy = true
-            # current_details.location.car = true
 
         last_sleep = prefs.lastSleep if prefs is not None else None
         if last_sleep is not None:
