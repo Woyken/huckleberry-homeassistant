@@ -14,6 +14,8 @@ from huckleberry_api.firebase_types import (
     FirebaseUserChildRef,
 )
 
+from .timestamps import as_iso8601_datetime
+
 
 @dataclass(frozen=True, slots=True)
 class HuckleberryChildProfile:
@@ -54,7 +56,7 @@ class HuckleberryChildProfile:
         if self.color is not None:
             attributes["color"] = self.color
         if self.document.createdAt is not None:
-            attributes["created_at"] = self.document.createdAt
+            attributes["created_at"] = as_iso8601_datetime(self.document.createdAt)
         if self.document.nightStart is not None:
             attributes["night_start"] = self.document.nightStart
         if self.document.morningCutoff is not None:

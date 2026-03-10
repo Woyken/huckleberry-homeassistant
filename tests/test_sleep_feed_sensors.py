@@ -1,4 +1,5 @@
-"""Test Huckleberry sleep and feeding sensors."""
+"""Test Huckleberry sleep and nursing sensors."""
+from datetime import datetime, timezone
 from unittest.mock import patch
 
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
@@ -10,13 +11,14 @@ from huckleberry_api.firebase_types import (
     FirebaseFeedTimerData,
     FirebaseSleepDocumentData,
     FirebaseSleepTimerData,
+    FirebaseTimestamp,
 )
 
 from custom_components.huckleberry.const import DOMAIN
 
 
 async def test_sleep_feed_sensors(hass: HomeAssistant, mock_huckleberry_api):
-    """Test sleep and feeding sensors."""
+    """Test sleep and nursing sensors."""
     entry = MockConfigEntry(
         domain=DOMAIN,
         data={
@@ -38,28 +40,48 @@ async def test_sleep_feed_sensors(hass: HomeAssistant, mock_huckleberry_api):
 
     # Simulate sleep data update (Active)
     coordinator._realtime_data["child_1"].sleep_status = FirebaseSleepDocumentData(
-        timer=FirebaseSleepTimerData(active=True, paused=False, uuid="t1"),
+        timer=FirebaseSleepTimerData(
+            active=True,
+            paused=False,
+            timestamp=FirebaseTimestamp(seconds=1700000000),
+            timerStartTime=1700000000000,
+            uuid="t1",
+        ),
     )
     coordinator._realtime_data["child_1"].feed_status = FirebaseFeedDocumentData(
-        timer=FirebaseFeedTimerData(active=True, paused=False, lastSide="left", uuid="t2"),
+        timer=FirebaseFeedTimerData(
+            active=True,
+            paused=False,
+            feedStartTime=1700000100,
+            lastSide="left",
+            uuid="t2",
+        ),
     )
     coordinator.async_set_updated_data(dict(coordinator._realtime_data))
     await hass.async_block_till_done()
 
     # Check sleep sensor
-    state = hass.states.get("sensor.test_child_sleep_status")
+    state = hass.states.get("sensor.test_child_sleep")
     assert state is not None
-    assert state.state == "sleeping"
+    assert state.state == "active"
+    assert state.attributes.get("current_start") == datetime.fromtimestamp(1700000000, tz=timezone.utc).isoformat()
 
-    # Check feeding sensor
-    state = hass.states.get("sensor.test_child_feeding_status")
+    # Check nursing sensor.
+    state = hass.states.get("sensor.test_child_nursing")
     assert state is not None
-    assert state.state == "feeding"
-    assert state.attributes.get("last_side") == "left"
+    assert state.state == "active"
+    assert state.attributes.get("current_last_side") == "Left"
+    assert state.attributes.get("current_start") == datetime.fromtimestamp(1700000100, tz=timezone.utc).isoformat()
 
     # Simulate Paused
     coordinator._realtime_data["child_1"].sleep_status = FirebaseSleepDocumentData(
-        timer=FirebaseSleepTimerData(active=True, paused=True, uuid="t1"),
+        timer=FirebaseSleepTimerData(
+            active=True,
+            paused=True,
+            timerStartTime=1700000000000,
+            timerEndTime=1700000300000,
+            uuid="t1",
+        ),
     )
     coordinator._realtime_data["child_1"].feed_status = FirebaseFeedDocumentData(
         timer=FirebaseFeedTimerData(active=True, paused=True, lastSide="left", uuid="t2"),
@@ -67,10 +89,12 @@ async def test_sleep_feed_sensors(hass: HomeAssistant, mock_huckleberry_api):
     coordinator.async_set_updated_data(dict(coordinator._realtime_data))
     await hass.async_block_till_done()
 
-    state = hass.states.get("sensor.test_child_sleep_status")
+    state = hass.states.get("sensor.test_child_sleep")
     assert state.state == "paused"
+    assert state.attributes.get("current_start") == datetime.fromtimestamp(1700000000, tz=timezone.utc).isoformat()
+    assert state.attributes.get("current_end") == datetime.fromtimestamp(1700000300, tz=timezone.utc).isoformat()
 
-    state = hass.states.get("sensor.test_child_feeding_status")
+    state = hass.states.get("sensor.test_child_nursing")
     assert state.state == "paused"
 
     # Simulate Inactive (None)
@@ -83,8 +107,8 @@ async def test_sleep_feed_sensors(hass: HomeAssistant, mock_huckleberry_api):
     coordinator.async_set_updated_data(dict(coordinator._realtime_data))
     await hass.async_block_till_done()
 
-    state = hass.states.get("sensor.test_child_sleep_status")
+    state = hass.states.get("sensor.test_child_sleep")
     assert state.state == "none"
 
-    state = hass.states.get("sensor.test_child_feeding_status")
+    state = hass.states.get("sensor.test_child_nursing")
     assert state.state == "none"

@@ -1,4 +1,4 @@
-"""Test Huckleberry history and previous event sensors."""
+"""Test Huckleberry history attributes on current sensors."""
 from unittest.mock import patch
 
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
@@ -23,7 +23,7 @@ from custom_components.huckleberry.const import DOMAIN
 
 
 async def test_history_sensors(hass: HomeAssistant, mock_huckleberry_api):
-    """Test history sensors (Last Side, Previous Sleep/Feed)."""
+    """Test historical attributes on the sleep and nursing sensors."""
     entry = MockConfigEntry(
         domain=DOMAIN,
         data={
@@ -43,8 +43,7 @@ async def test_history_sensors(hass: HomeAssistant, mock_huckleberry_api):
     # Get the coordinator
     coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
 
-    # 1. Test Last Feeding Side Sensor
-    # Scenario A: Active Feeding (Left)
+    # Scenario A: Active nursing on the left side.
     coordinator._realtime_data["child_1"].feed_status = FirebaseFeedDocumentData(
         timer=FirebaseFeedTimerData(
             active=True, paused=False, activeSide="left", lastSide="none", uuid="t1",
@@ -56,10 +55,12 @@ async def test_history_sensors(hass: HomeAssistant, mock_huckleberry_api):
     coordinator.async_set_updated_data(dict(coordinator._realtime_data))
     await hass.async_block_till_done()
 
-    state = hass.states.get("sensor.test_child_last_feeding_side")
-    assert state.state == "Left"
+    state = hass.states.get("sensor.test_child_nursing")
+    assert state is not None
+    assert state.state == "active"
+    assert state.attributes["current_active_side"] == "Left"
 
-    # Scenario B: Paused Feeding (Right was active)
+    # Scenario B: Paused nursing where the right side was last active.
     coordinator._realtime_data["child_1"].feed_status = FirebaseFeedDocumentData(
         timer=FirebaseFeedTimerData(
             active=True, paused=True, lastSide="right", uuid="t1",
@@ -68,10 +69,11 @@ async def test_history_sensors(hass: HomeAssistant, mock_huckleberry_api):
     coordinator.async_set_updated_data(dict(coordinator._realtime_data))
     await hass.async_block_till_done()
 
-    state = hass.states.get("sensor.test_child_last_feeding_side")
-    assert state.state == "Right"
+    state = hass.states.get("sensor.test_child_nursing")
+    assert state is not None
+    assert state.state == "paused"
 
-    # Scenario C: Stopped Feeding (History)
+    # Scenario C: Inactive nursing with historical data.
     coordinator._realtime_data["child_1"].feed_status = FirebaseFeedDocumentData(
         timer=FirebaseFeedTimerData(active=False, paused=False, uuid="t1"),
         prefs=FirebaseFeedPrefs(
@@ -87,18 +89,16 @@ async def test_history_sensors(hass: HomeAssistant, mock_huckleberry_api):
     coordinator.async_set_updated_data(dict(coordinator._realtime_data))
     await hass.async_block_till_done()
 
-    state = hass.states.get("sensor.test_child_last_feeding_side")
-    assert state.state == "Left"
+    state = hass.states.get("sensor.test_child_nursing")
+    assert state is not None
+    assert state.state == "none"
+    assert state.attributes["previous_start"] == datetime.fromtimestamp(1700000000, tz=timezone.utc).isoformat()
+    assert state.attributes["previous_duration"] == "PT10M"
+    assert state.attributes["previous_left_duration"] == "PT5M"
+    assert state.attributes["previous_right_duration"] == "PT5M"
+    assert state.attributes["previous_last_side"] == "Left"
 
-    # 2. Test Previous Feed Sensor
-    state = hass.states.get("sensor.test_child_previous_feed_start")
-    assert state.state == datetime.fromtimestamp(1700000000, tz=timezone.utc).isoformat()
-    assert state.attributes["duration_seconds"] == 600
-    assert state.attributes["left_duration_seconds"] == 300
-    assert state.attributes["right_duration_seconds"] == 300
-    assert state.attributes["last_side"] == "left"
-
-    # 3. Test Previous Sleep Sensors
+    # Sleep history is exposed on the current sleep sensor.
     coordinator._realtime_data["child_1"].sleep_status = FirebaseSleepDocumentData(
         timer=FirebaseSleepTimerData(active=False, paused=False, uuid="t2"),
         prefs=FirebaseSleepPrefs(
@@ -111,14 +111,8 @@ async def test_history_sensors(hass: HomeAssistant, mock_huckleberry_api):
     coordinator.async_set_updated_data(dict(coordinator._realtime_data))
     await hass.async_block_till_done()
 
-    # Start Sensor
-    state = hass.states.get("sensor.test_child_previous_sleep_start")
-    assert state.state == datetime.fromtimestamp(1700001000, tz=timezone.utc).isoformat()
-    assert state.attributes["duration_seconds"] == 3600
-    assert state.attributes["duration"] == "1h 0m"
-
-    # End Sensor
-    state = hass.states.get("sensor.test_child_previous_sleep_end")
-    # End = Start + Duration = 1700001000 + 3600 = 1700004600
-    assert state.state == datetime.fromtimestamp(1700004600, tz=timezone.utc).isoformat()
-    assert state.attributes["duration_seconds"] == 3600
+    state = hass.states.get("sensor.test_child_sleep")
+    assert state is not None
+    assert state.state == "none"
+    assert state.attributes["previous_start"] == datetime.fromtimestamp(1700001000, tz=timezone.utc).isoformat()
+    assert state.attributes["previous_duration"] == "PT1H"

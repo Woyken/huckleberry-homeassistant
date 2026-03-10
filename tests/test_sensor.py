@@ -1,11 +1,14 @@
 """Test Huckleberry sensors."""
+from datetime import datetime, timezone
 from unittest.mock import patch
+
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
-from custom_components.huckleberry.const import DOMAIN
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.huckleberry.const import DOMAIN
 from huckleberry_api.firebase_types import (
+    FirebaseChildDocument,
     FirebaseDiaperDocumentData,
     FirebaseDiaperPrefs,
     FirebaseFeedDocumentData,
@@ -81,19 +84,17 @@ async def test_sensors(hass: HomeAssistant, mock_huckleberry_api):
 
     # Check growth sensor
     sensor_state = hass.states.get("sensor.test_child_growth")
-    from datetime import datetime
-    expected_date = datetime.fromtimestamp(1234567890).strftime("%Y-%m-%d %H:%M")
+    expected_date = str(datetime.fromtimestamp(1234567890, tz=timezone.utc))
     assert sensor_state.state == expected_date
     assert sensor_state.attributes["weight"] == 10.5
     assert sensor_state.attributes["height"] == 75.0
 
     # Check diaper sensor
-    sensor_state = hass.states.get("sensor.test_child_last_diaper")
+    sensor_state = hass.states.get("sensor.test_child_diaper")
     assert sensor_state is not None
-    # The sensor returns formatted date, let's just check it's not "No changes logged"
-    assert sensor_state.state != "No changes logged"
-    assert sensor_state.attributes["mode"] == "pee"
-    assert sensor_state.attributes["timestamp"] == 1234567890
+    assert sensor_state.state == expected_date
+    assert sensor_state.attributes["type"] == "Pee"
+    assert sensor_state.attributes["time"] == datetime.fromtimestamp(1234567890, tz=timezone.utc).isoformat()
 
 async def test_bottle_sensor(hass: HomeAssistant, mock_huckleberry_api):
     """Test bottle sensor."""
@@ -134,12 +135,40 @@ async def test_bottle_sensor(hass: HomeAssistant, mock_huckleberry_api):
     await hass.async_block_till_done()
 
     # Check bottle sensor
-    sensor_state = hass.states.get("sensor.test_child_last_bottle")
+    sensor_state = hass.states.get("sensor.test_child_bottle")
     assert sensor_state is not None
-    # TIMESTAMP sensor returns datetime object, check it's not None
-    assert sensor_state.state is not None
+    assert sensor_state.state == datetime.fromtimestamp(1234567890, tz=timezone.utc).isoformat()
     assert sensor_state.attributes["amount"] == 120.0
     assert sensor_state.attributes["units"] == "ml"
-    assert sensor_state.attributes["bottle_type"] == "Formula"
-    assert sensor_state.attributes["amount_display"] == "120.0 ml"
-    assert sensor_state.attributes["timestamp"] == 1234567890
+    assert sensor_state.attributes["type"] == "Formula"
+    assert sensor_state.attributes["time"] == datetime.fromtimestamp(1234567890, tz=timezone.utc).isoformat()
+
+
+async def test_entities_skip_blank_configuration_url(hass: HomeAssistant, mock_huckleberry_api):
+    """Test entities are created when the child picture URL is blank."""
+    mock_huckleberry_api.get_child.return_value = FirebaseChildDocument(
+        childsName="Test Child",
+        birthdate="2023-01-01",
+        gender="M",
+        picture="",
+    )
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_EMAIL: "test@example.com",
+            CONF_PASSWORD: "test_password",
+        },
+    )
+    entry.add_to_hass(hass)
+
+    with patch(
+        "custom_components.huckleberry.HuckleberryAPI",
+        return_value=mock_huckleberry_api,
+    ):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+    assert hass.states.get("switch.test_child_sleep_tracking") is not None
+    assert hass.states.get("sensor.test_child_profile") is not None
+    assert hass.states.get("calendar.test_child_events") is not None

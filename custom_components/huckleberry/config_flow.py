@@ -8,8 +8,8 @@ import aiohttp
 import voluptuous as vol
 
 from homeassistant import config_entries
+from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
-from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from huckleberry_api import HuckleberryAPI
@@ -34,7 +34,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> ConfigFlowResult:
         """Handle the initial step."""
         errors: dict[str, str] = {}
         description_placeholders: dict[str, str] = {}
@@ -68,13 +68,13 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 else:
                     errors["base"] = "cannot_connect"
                 description_placeholders["error_details"] = f"\n\n**Error:** {err.status} {err.message}"
-            except aiohttp.ClientConnectionError as err:
-                _LOGGER.exception("Connection error during authentication")
-                errors["base"] = "cannot_connect"
-                description_placeholders["error_details"] = f"\n\n**Error:** {err}"
             except aiohttp.ServerTimeoutError as err:
                 _LOGGER.exception("Timeout during authentication")
                 errors["base"] = "timeout"
+                description_placeholders["error_details"] = f"\n\n**Error:** {err}"
+            except aiohttp.ClientConnectionError as err:
+                _LOGGER.exception("Connection error during authentication")
+                errors["base"] = "cannot_connect"
                 description_placeholders["error_details"] = f"\n\n**Error:** {err}"
             except Exception as err:
                 _LOGGER.exception("Unexpected exception during config flow")

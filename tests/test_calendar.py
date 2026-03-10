@@ -7,7 +7,6 @@ from huckleberry_api.firebase_types import (
     FirebaseBottleFeedIntervalData,
     FirebaseBreastFeedIntervalData,
     FirebaseChildDocument,
-    FirebaseSleepIntervalData,
     FirebaseUserChildRef,
 )
 

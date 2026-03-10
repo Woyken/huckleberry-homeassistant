@@ -3,7 +3,6 @@ import os
 import logging
 import pytest_socket
 from homeassistant.core import HomeAssistant
-from homeassistant.setup import async_setup_component
 from custom_components.huckleberry.const import DOMAIN
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 

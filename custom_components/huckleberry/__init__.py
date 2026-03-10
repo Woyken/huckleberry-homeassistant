@@ -13,6 +13,7 @@ from homeassistant.const import CONF_DEVICE_ID, Platform
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
@@ -90,6 +91,42 @@ async def _async_load_child_profiles(
         )
 
     return profiles
+
+
+async def _async_prune_orphaned_child_registry_entries(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    children: list[HuckleberryChildProfile],
+) -> None:
+    """Remove stale child entities and devices no longer present upstream."""
+    current_child_uids = {child.uid for child in children}
+    device_registry = dr.async_get(hass)
+    entity_registry = er.async_get(hass)
+
+    for device in dr.async_entries_for_config_entry(device_registry, entry.entry_id):
+        child_identifiers = {
+            identifier_value
+            for identifier_domain, identifier_value in device.identifiers
+            if identifier_domain == DOMAIN
+        }
+        if not child_identifiers or not child_identifiers.isdisjoint(current_child_uids):
+            continue
+
+        _LOGGER.info(
+            "Removing orphaned Huckleberry child device %s (%s)",
+            device.name_by_user or device.name or device.id,
+            ", ".join(sorted(child_identifiers)),
+        )
+
+        for entity_entry in er.async_entries_for_device(
+            entity_registry,
+            device.id,
+            include_disabled_entities=True,
+        ):
+            if entity_entry.config_entry_id == entry.entry_id:
+                entity_registry.async_remove(entity_entry.entity_id)
+
+        device_registry.async_remove_device(device.id)
 
 
 def _get_child_uid_from_call(
@@ -174,6 +211,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     except Exception as err:
         _LOGGER.error("Failed to initialize Huckleberry API: %s", err)
         return False
+
+    await _async_prune_orphaned_child_registry_entries(hass, entry, children)
 
     if not children:
         _LOGGER.error("No children found in Huckleberry account")

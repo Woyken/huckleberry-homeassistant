@@ -1,7 +1,6 @@
 """Test Huckleberry config flow."""
 from unittest.mock import patch, AsyncMock
 import aiohttp
-import pytest
 from homeassistant import config_entries, data_entry_flow
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.core import HomeAssistant

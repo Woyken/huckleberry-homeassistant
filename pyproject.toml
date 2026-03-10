@@ -12,11 +12,26 @@ dependencies = [
 dev = [
     "pytest>=8.0.2",
     "pytest-homeassistant-custom-component>=0.13.109",
+    "ruff>=0.15.0",
+    "ty>=0.0.21",
     "tzdata>=2025.2",
 ]
+
+[tool.ruff]
+target-version = "py314"
+src = ["custom_components", "tests"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
 norecursedirs = [".git"]
 addopts = "--allow-hosts=127.0.0.1,::1"
+
+[tool.ty.src]
+include = ["custom_components/huckleberry"]
+
+[tool.ty.environment]
+python-version = "3.14"
+
+[tool.ty.terminal]
+output-format = "concise"
