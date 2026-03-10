@@ -6,6 +6,6 @@
   "documentation": "https://github.com/Woyken/huckleberry-homeassistant",
   "iot_class": "cloud_push",
   "issue_tracker": "https://github.com/Woyken/huckleberry-homeassistant/issues",
-  "requirements": ["huckleberry-api==0.1.19"],
+  "requirements": ["huckleberry-api==0.2.2"],
   "version": "0.3.7"
 }

@@ -1,6 +1,5 @@
 """Test Huckleberry device actions."""
 from unittest.mock import patch
-import pytest
 from homeassistant.const import CONF_DEVICE_ID, CONF_DOMAIN, CONF_TYPE
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr

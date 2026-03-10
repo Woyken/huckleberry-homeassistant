@@ -178,6 +178,13 @@ The integration provides device actions for use in device-based automations:
 - **Notifications Setup**: See `NOTIFICATION_SETUP.md`
 - **Testing Guide**: See `TESTING.md`
 
+## Development
+
+- `uv sync --dev`
+- `uv run ruff check .`
+- `uv run ty check`
+- `uv run pytest`
+
 ## Requirements
 
 - Home Assistant 2023.1 or newer

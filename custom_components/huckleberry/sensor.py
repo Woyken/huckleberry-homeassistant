@@ -1,19 +1,23 @@
 """Sensor platform for Huckleberry."""
 from __future__ import annotations
 
-import logging
-from typing import Any
+from typing import Final, cast
 
-from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from . import HuckleberryDataUpdateCoordinator, HuckleberryEntryData
 from .const import DOMAIN
 from .entity import HuckleberryBaseEntity
+from .models import HuckleberryChildProfile, children_sensor_attributes
+from .timestamps import as_datetime, as_iso8601_datetime, as_iso8601_duration
 
-_LOGGER = logging.getLogger(__name__)
+SLEEP_STATE_OPTIONS: Final[list[str]] = ["active", "paused", "none"]
+FEED_STATE_OPTIONS: Final[list[str]] = ["active", "paused", "none"]
+LAST_SIDE_OPTIONS: Final[list[str]] = ["Left", "Right", "Unknown"]
 
 
 async def async_setup_entry(
@@ -22,32 +26,18 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Huckleberry sensors."""
-    data = hass.data[DOMAIN][entry.entry_id]
-    coordinator = data["coordinator"]
-    children = data["children"]
+    entry_data = cast(HuckleberryEntryData, hass.data[DOMAIN][entry.entry_id])
+    coordinator = entry_data["coordinator"]
+    children = entry_data["children"]
 
     entities: list[SensorEntity] = [HuckleberryChildrenSensor(coordinator, children)]
-
-    # Add individual child profile sensor for each child
     for child in children:
         entities.append(HuckleberryChildProfileSensor(coordinator, child))
-        # Add growth sensor for each child
         entities.append(HuckleberryGrowthSensor(coordinator, child))
-        # Add diaper sensor for each child
         entities.append(HuckleberryDiaperSensor(coordinator, child))
-        # Add bottle sensor for each child
         entities.append(HuckleberryBottleSensor(coordinator, child))
-        # Add sleep sensor for each child
         entities.append(HuckleberrySleepSensor(coordinator, child))
-        # Add feeding sensor for each child
-        entities.append(HuckleberryFeedingSensor(coordinator, child))
-        # Add last feeding side sensor for each child
-        entities.append(HuckleberryLastFeedingSideSensor(coordinator, child))
-        # Add previous sleep sensors for each child
-        entities.append(HuckleberryPreviousSleepStartSensor(coordinator, child))
-        entities.append(HuckleberryPreviousSleepEndSensor(coordinator, child))
-        # Add previous feed sensor for each child
-        entities.append(HuckleberryPreviousFeedSensor(coordinator, child))
+        entities.append(HuckleberryNursingSensor(coordinator, child))
 
     async_add_entities(entities)
 
@@ -58,43 +48,25 @@ class HuckleberryChildrenSensor(CoordinatorEntity, SensorEntity):
     _attr_icon = "mdi:account-child"
     _attr_native_unit_of_measurement = "children"
 
-    def __init__(self, coordinator, children: list[dict[str, Any]]) -> None:
-        """Initialize the sensor."""
+    def __init__(
+        self,
+        coordinator: HuckleberryDataUpdateCoordinator,
+        children: list[HuckleberryChildProfile],
+    ) -> None:
         super().__init__(coordinator)
-
         self._children = children
-
         self._attr_name = "Huckleberry Children"
         self._attr_unique_id = "huckleberry_children"
 
     @property
-    def native_value(self) -> int:
+    def native_value(self):
         """Return the count of children."""
         return len(self._children)
 
     @property
-    def extra_state_attributes(self) -> dict[str, Any]:
+    def extra_state_attributes(self) -> dict[str, object]:
         """Return entity specific state attributes."""
-        return {
-            "children": [
-                {
-                    "uid": child["uid"],
-                    "name": child["name"],
-                    "birthday": child.get("birthday"),
-                    "picture": child.get("picture"),
-                    "gender": child.get("gender"),
-                    "color": child.get("color"),
-                    "created_at": child.get("created_at"),
-                    "night_start": child.get("night_start"),
-                    "morning_cutoff": child.get("morning_cutoff"),
-                    "expected_naps": child.get("expected_naps"),
-                    "categories": child.get("categories"),
-                }
-                for child in self._children
-            ],
-            "child_ids": [child["uid"] for child in self._children],
-            "child_names": [child["name"] for child in self._children],
-        }
+        return children_sensor_attributes(self._children)
 
     @property
     def available(self) -> bool:
@@ -107,8 +79,7 @@ class HuckleberryChildProfileSensor(HuckleberryBaseEntity, SensorEntity):
 
     _attr_icon = "mdi:account"
 
-    def __init__(self, coordinator, child: dict[str, Any]) -> None:
-        """Initialize the sensor."""
+    def __init__(self, coordinator: HuckleberryDataUpdateCoordinator, child: HuckleberryChildProfile) -> None:
         super().__init__(coordinator, child)
         self._attr_name = "Profile"
         self._attr_unique_id = f"{self.child_uid}_profile"
@@ -116,165 +87,95 @@ class HuckleberryChildProfileSensor(HuckleberryBaseEntity, SensorEntity):
     @property
     def entity_picture(self) -> str | None:
         """Return the entity picture to use in the frontend."""
-        return self._child.get("picture")
+        return self._child.picture
 
     @property
-    def native_value(self) -> str:
+    def native_value(self):
         """Return the child's name as the state."""
         return self.child_name
 
     @property
-    def extra_state_attributes(self) -> dict[str, Any]:
+    def extra_state_attributes(self) -> dict[str, object]:
         """Return child profile attributes."""
-        attrs = {
-            "uid": self.child_uid,
-            "name": self.child_name,
-        }
-
-        # Add all available child attributes
-        optional_fields = [
-            "birthday", "picture", "gender", "color", "created_at",
-            "night_start", "morning_cutoff", "expected_naps", "categories"
-        ]
-        for field in optional_fields:
-            if self._child.get(field) is not None:
-                attrs[field] = self._child[field]
-
-        return attrs
+        return self._child.as_attributes()
 
 
 class HuckleberryGrowthSensor(HuckleberryBaseEntity, SensorEntity):
     """Sensor showing child growth measurements."""
 
     _attr_icon = "mdi:human-male-height"
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
 
-    def __init__(self, coordinator, child: dict[str, Any]) -> None:
-        """Initialize the sensor."""
+    def __init__(self, coordinator: HuckleberryDataUpdateCoordinator, child: HuckleberryChildProfile) -> None:
         super().__init__(coordinator, child)
         self._attr_name = "Growth"
         self._attr_unique_id = f"{self.child_uid}_growth"
 
     @property
-    def native_value(self) -> str | None:
+    def native_value(self):
         """Return the most recent measurement timestamp."""
-        child_data = self.coordinator.data.get(self.child_uid, {})
-        growth_data = child_data.get("growth_data", {})
+        state = self.coordinator.get_state(self.child_uid)
+        growth_data = state.growth_data if state is not None else None
 
-        if not growth_data:
-            return "No data"
-
-        timestamp = growth_data.get("timestamp")
-        if timestamp:
-            from datetime import datetime
-            return datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M")
-
-        return "Unknown"
+        return as_datetime(growth_data.start if growth_data is not None else None)
 
     @property
-    def extra_state_attributes(self) -> dict[str, Any]:
+    def extra_state_attributes(self) -> dict[str, object]:
         """Return growth measurement attributes."""
-        child_data = self.coordinator.data.get(self.child_uid, {})
-        growth_data = child_data.get("growth_data", {})
-
-        if not growth_data:
+        state = self.coordinator.get_state(self.child_uid)
+        growth_data = state.growth_data if state is not None else None
+        if growth_data is None:
             return {}
 
-        attrs = {}
+        attributes: dict[str, object] = {}
+        if growth_data.weight is not None:
+            attributes["weight"] = growth_data.weight
+            attributes["weight_unit"] = growth_data.weightUnits
+        if growth_data.height is not None:
+            attributes["height"] = growth_data.height
+            attributes["height_unit"] = growth_data.heightUnits
+        if growth_data.head is not None:
+            attributes["head_circumference"] = growth_data.head
+            attributes["head_unit"] = growth_data.headUnits
 
-        # Add measurements if available
-        weight = growth_data.get("weight")
-        height = growth_data.get("height")
-        head = growth_data.get("head")
-
-        if weight is not None:
-            weight_unit = growth_data.get("weight_units", "kg")
-            attrs["weight"] = weight
-            attrs["weight_unit"] = weight_unit
-            attrs["weight_display"] = f"{weight} {weight_unit}"
-
-        if height is not None:
-            height_unit = growth_data.get("height_units", "cm")
-            attrs["height"] = height
-            attrs["height_unit"] = height_unit
-            attrs["height_display"] = f"{height} {height_unit}"
-
-        if head is not None:
-            head_unit = growth_data.get("head_units", "hcm")
-            attrs["head_circumference"] = head
-            attrs["head_unit"] = head_unit
-            attrs["head_display"] = f"{head} {head_unit}"
-
-        timestamp = growth_data.get("timestamp")
-        if timestamp:
-            from datetime import datetime
-            attrs["last_measured"] = datetime.fromtimestamp(timestamp).isoformat()
-
-        return attrs
+        return attributes
 
 
 class HuckleberryDiaperSensor(HuckleberryBaseEntity, SensorEntity):
     """Sensor showing last diaper change information."""
 
     _attr_icon = "mdi:baby"
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
 
-    def __init__(self, coordinator, child: dict[str, Any]) -> None:
-        """Initialize the sensor."""
+    def __init__(self, coordinator: HuckleberryDataUpdateCoordinator, child: HuckleberryChildProfile) -> None:
         super().__init__(coordinator, child)
-        self._attr_name = "Last Diaper"
-        self._attr_unique_id = f"{self.child_uid}_last_diaper"
+        self._attr_name = "Diaper"
+        self._attr_unique_id = f"{self.child_uid}_diaper"
 
     @property
-    def native_value(self) -> str | None:
+    def native_value(self):
         """Return the last diaper change timestamp."""
-        child_data = self.coordinator.data.get(self.child_uid, {})
-        diaper_data = child_data.get("diaper_data", {})
+        diaper_status = self.coordinator.get_diaper_status(self.child_uid)
+        prefs = diaper_status.prefs if diaper_status is not None else None
+        last_diaper = prefs.lastDiaper if prefs is not None else None
 
-        prefs = diaper_data.get("prefs", {})
-        last_diaper = prefs.get("lastDiaper", {})
-
-        if not last_diaper:
-            return "No changes logged"
-
-        timestamp = last_diaper.get("start")
-        if timestamp:
-            from datetime import datetime
-            return datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M")
-
-        return "Unknown"
+        return as_datetime(last_diaper.start if last_diaper is not None else None)
 
     @property
-    def extra_state_attributes(self) -> dict[str, Any]:
+    def extra_state_attributes(self) -> dict[str, object]:
         """Return diaper change attributes."""
-        child_data = self.coordinator.data.get(self.child_uid, {})
-        diaper_data = child_data.get("diaper_data", {})
-
-        prefs = diaper_data.get("prefs", {})
-        last_diaper = prefs.get("lastDiaper", {})
-
-        if not last_diaper:
+        diaper_status = self.coordinator.get_diaper_status(self.child_uid)
+        prefs = diaper_status.prefs if diaper_status is not None else None
+        last_diaper = prefs.lastDiaper if prefs is not None else None
+        if last_diaper is None:
             return {}
 
-        attrs = {}
-
-        # Add timestamp
-        timestamp = last_diaper.get("start")
-        if timestamp:
-            from datetime import datetime
-            attrs["timestamp"] = timestamp
-            attrs["time"] = datetime.fromtimestamp(timestamp).isoformat()
-
-        # Add mode (pee, poo, both, dry)
-        mode = last_diaper.get("mode")
-        if mode:
-            attrs["mode"] = mode
-            attrs["type"] = mode.capitalize()
-
-        # Add offset (timezone)
-        offset = last_diaper.get("offset")
-        if offset is not None:
-            attrs["timezone_offset_minutes"] = offset
-
-        return attrs
+        attributes: dict[str, object] = {}
+        if last_diaper.start is not None:
+            attributes["time"] = as_iso8601_datetime(last_diaper.start)
+        if last_diaper.mode is not None:
+            attributes["type"] = last_diaper.mode.title()
+        return attributes
 
 
 class HuckleberryBottleSensor(HuckleberryBaseEntity, SensorEntity):
@@ -283,73 +184,40 @@ class HuckleberryBottleSensor(HuckleberryBaseEntity, SensorEntity):
     _attr_icon = "mdi:baby-bottle"
     _attr_device_class = SensorDeviceClass.TIMESTAMP
 
-    def __init__(self, coordinator, child: dict[str, Any]) -> None:
-        """Initialize the sensor."""
+    def __init__(self, coordinator: HuckleberryDataUpdateCoordinator, child: HuckleberryChildProfile) -> None:
         super().__init__(coordinator, child)
-        self._attr_name = "Last Bottle"
-        self._attr_unique_id = f"{self.child_uid}_last_bottle"
+        self._attr_name = "Bottle"
+        self._attr_unique_id = f"{self.child_uid}_bottle"
+
+    def _last_bottle(self):
+        feed_status = self.coordinator.get_feed_status(self.child_uid)
+        prefs = feed_status.prefs if feed_status is not None else None
+        return prefs.lastBottle if prefs is not None else None
 
     @property
     def native_value(self):
         """Return the last bottle feeding timestamp."""
-        child_data = self.coordinator.data.get(self.child_uid, {})
-        feed_data = child_data.get("feed_status", {})
-
-        prefs = feed_data.get("prefs", {})
-        last_bottle = prefs.get("lastBottle", {})
-
-        start = last_bottle.get("start")
-        if start is not None:
-            from datetime import datetime, timezone
-            return datetime.fromtimestamp(start, tz=timezone.utc)
-
-        return None
+        last_bottle = self._last_bottle()
+        return as_datetime(last_bottle.start if last_bottle is not None else None)
 
     @property
-    def extra_state_attributes(self) -> dict[str, Any]:
+    def extra_state_attributes(self) -> dict[str, object]:
         """Return bottle feeding attributes."""
-        child_data = self.coordinator.data.get(self.child_uid, {})
-        feed_data = child_data.get("feed_status", {})
-
-        prefs = feed_data.get("prefs", {})
-        last_bottle = prefs.get("lastBottle", {})
-
-        if not last_bottle:
+        last_bottle = self._last_bottle()
+        if last_bottle is None:
             return {}
 
-        attrs = {}
+        attributes: dict[str, object] = {}
+        if last_bottle.start is not None:
+            attributes["time"] = as_iso8601_datetime(last_bottle.start)
+        if last_bottle.bottleAmount is not None:
+            attributes["amount"] = last_bottle.bottleAmount
+        if last_bottle.bottleUnits is not None:
+            attributes["units"] = last_bottle.bottleUnits
+        if last_bottle.bottleType is not None:
+            attributes["type"] = last_bottle.bottleType.title()
 
-        # Add timestamp
-        timestamp = last_bottle.get("start")
-        if timestamp:
-            from datetime import datetime
-            attrs["timestamp"] = timestamp
-            attrs["time"] = datetime.fromtimestamp(timestamp).isoformat()
-
-        # Add amount and units
-        amount = last_bottle.get("amount")
-        if amount is not None:
-            attrs["amount"] = amount
-            
-        units = last_bottle.get("units", "ml")
-        attrs["units"] = units
-        
-        # Display amount with units
-        if amount is not None:
-            attrs["amount_display"] = f"{amount} {units}"
-
-        # Add bottle type (Formula or Breastmilk)
-        bottle_type = last_bottle.get("bottleType")
-        if bottle_type:
-            attrs["bottle_type"] = bottle_type
-            attrs["type"] = bottle_type
-
-        # Add offset (timezone)
-        offset = last_bottle.get("offset")
-        if offset is not None:
-            attrs["timezone_offset_minutes"] = offset
-
-        return attrs
+        return attributes
 
 
 class HuckleberrySleepSensor(HuckleberryBaseEntity, SensorEntity):
@@ -357,395 +225,114 @@ class HuckleberrySleepSensor(HuckleberryBaseEntity, SensorEntity):
 
     _attr_icon = "mdi:sleep"
     _attr_device_class = SensorDeviceClass.ENUM
-    _attr_options = ["sleeping", "paused", "none"]
+    _attr_options = SLEEP_STATE_OPTIONS
 
-    def __init__(self, coordinator, child: dict[str, Any]) -> None:
-        """Initialize the sensor."""
+    def __init__(self, coordinator: HuckleberryDataUpdateCoordinator, child: HuckleberryChildProfile) -> None:
         super().__init__(coordinator, child)
-        self._attr_name = "Sleep status"
-        self._attr_unique_id = f"{self.child_uid}_sleep_status"
+        self._attr_name = "Sleep"
+        self._attr_unique_id = f"{self.child_uid}_sleep"
 
     @property
-    def native_value(self) -> str:
+    def native_value(self):
         """Return the state of the sensor."""
-        if self.child_uid not in self.coordinator.data:
+        sleep_status = self.coordinator.get_sleep_status(self.child_uid)
+        timer = sleep_status.timer if sleep_status is not None else None
+        if timer is None:
+            return None
+        if not timer.active:
             return "none"
-
-        sleep_status = self.coordinator.data[self.child_uid].get("sleep_status", {})
-
-        # Check real-time timer data structure
-        if isinstance(sleep_status, dict) and "timer" in sleep_status:
-            timer = sleep_status.get("timer", {})
-            if timer.get("active"):
-                if timer.get("paused"):
-                    return "paused"
-                return "sleeping"
-
-        return "none"
+        return "paused" if timer.paused else "active"
 
     @property
-    def extra_state_attributes(self) -> dict[str, Any]:
+    def extra_state_attributes(self) -> dict[str, object]:
         """Return entity specific state attributes."""
-        if self.child_uid not in self.coordinator.data:
+        sleep_status = self.coordinator.get_sleep_status(self.child_uid)
+        if sleep_status is None:
             return {}
 
-        sleep_status = self.coordinator.data[self.child_uid].get("sleep_status", {})
+        timer = sleep_status.timer
+        prefs = sleep_status.prefs
+        attributes: dict[str, object] = {}
 
-        attrs = {}
+        if timer is not None:
+            if timer.timerStartTime is not None:
+                attributes["current_start"] = as_iso8601_datetime(timer.timerStartTime)
+            if timer.timerEndTime is not None and timer.paused:
+                attributes["current_end"] = as_iso8601_datetime(timer.timerEndTime)
+            # TODO add current FirebaseSleepDetails to attributes
+            # current_details.start.happy = true
+            # current_details.location.car = true
 
-        # Handle real-time data structure
-        if isinstance(sleep_status, dict) and "timer" in sleep_status:
-            timer = sleep_status.get("timer", {})
-            prefs = sleep_status.get("prefs", {})
+        last_sleep = prefs.lastSleep if prefs is not None else None
+        if last_sleep is not None:
+            if last_sleep.start is not None:
+                attributes["previous_start"] = as_iso8601_datetime(last_sleep.start)
+            if last_sleep.duration is not None:
+                attributes["previous_duration"] = as_iso8601_duration(last_sleep.duration)
 
-            # Track paused state
-            if timer.get("active"):
-                attrs["is_paused"] = timer.get("paused", False)
-
-                # timerStartTime is in milliseconds for sleep tracking
-                if "timerStartTime" in timer:
-                    attrs["timer_start_time_ms"] = timer.get("timerStartTime")
-                    # Convert to seconds for chronometer (Home Assistant expects Unix timestamp)
-                    attrs["timer_start_time"] = int(timer.get("timerStartTime") / 1000)
-
-            if timer.get("active") and not timer.get("paused"):
-                # Currently sleeping
-                if "timestamp" in timer:
-                    attrs["sleep_start"] = timer["timestamp"].get("seconds")
-
-            if timer.get("paused"):
-                # Sleep is currently paused
-                if "timerEndTime" in timer:
-                    attrs["timer_end_time_ms"] = timer.get("timerEndTime")
-                    attrs["timer_end_time"] = int(timer.get("timerEndTime") / 1000)
-
-            # Last sleep info
-            if "lastSleep" in prefs:
-                last_sleep = prefs["lastSleep"]
-                attrs["last_sleep_duration_seconds"] = last_sleep.get("duration")
-                attrs["last_sleep_start"] = last_sleep.get("start")
-        else:
-            # Fallback to legacy computed structure
-            attrs["last_updated"] = sleep_status.get("last_updated")
-
-            duration = sleep_status.get("sleep_duration")
-            start = sleep_status.get("sleep_start")
-            if start:
-                attrs["sleep_start"] = start
-            if duration is not None:
-                attrs["sleep_duration_seconds"] = duration
-                hours = int(duration // 3600)
-                minutes = int((duration % 3600) // 60)
-                attrs["sleep_duration"] = f"{hours}h {minutes}m"
-
-        return attrs
+        return attributes
 
 
-class HuckleberryFeedingSensor(HuckleberryBaseEntity, SensorEntity):
-    """Representation of a Huckleberry feeding sensor."""
+class HuckleberryNursingSensor(HuckleberryBaseEntity, SensorEntity):
+    """Representation of a Huckleberry nursing sensor."""
 
     _attr_icon = "mdi:baby-bottle"
     _attr_device_class = SensorDeviceClass.ENUM
-    _attr_options = ["feeding", "paused", "none"]
+    _attr_options = FEED_STATE_OPTIONS
 
-    def __init__(self, coordinator, child: dict[str, Any]) -> None:
-        """Initialize the sensor."""
+    def __init__(self, coordinator: HuckleberryDataUpdateCoordinator, child: HuckleberryChildProfile) -> None:
         super().__init__(coordinator, child)
-        self._attr_name = "Feeding status"
-        self._attr_unique_id = f"{self.child_uid}_feeding_status"
+        self._attr_name = "Nursing"
+        self._attr_unique_id = f"{self.child_uid}_nursing"
 
     @property
-    def native_value(self) -> str:
+    def native_value(self):
         """Return the state of the sensor."""
-        if self.child_uid not in self.coordinator.data:
+        feed_status = self.coordinator.get_feed_status(self.child_uid)
+        timer = feed_status.timer if feed_status is not None else None
+        if timer is None:
+            return None
+        if not timer.active:
             return "none"
-
-        feed_status = self.coordinator.data[self.child_uid].get("feed_status", {})
-
-        # Check real-time timer data structure
-        if isinstance(feed_status, dict) and "timer" in feed_status:
-            timer = feed_status.get("timer", {})
-            if timer.get("active"):
-                if timer.get("paused"):
-                    return "paused"
-                return "feeding"
-
-        return "none"
+        return "paused" if timer.paused else "active"
 
     @property
-    def extra_state_attributes(self) -> dict[str, Any]:
+    def extra_state_attributes(self) -> dict[str, object]:
         """Return entity specific state attributes."""
-        if self.child_uid not in self.coordinator.data:
+        feed_status = self.coordinator.get_feed_status(self.child_uid)
+        if feed_status is None:
             return {}
 
-        feed_status = self.coordinator.data[self.child_uid].get("feed_status", {})
-
-        attrs = {}
-
-        # Handle real-time data structure
-        if isinstance(feed_status, dict) and "timer" in feed_status:
-            timer = feed_status.get("timer", {})
-            prefs = feed_status.get("prefs", {})
-
-            # Track paused state
-            if timer.get("active"):
-                attrs["is_paused"] = timer.get("paused", False)
-
-            if timer.get("active"):
-                # Currently feeding (active or paused)
-                # Use feedStartTime (absolute start) not timestamp (last update)
-                if "feedStartTime" in timer:
-                    attrs["feeding_start"] = timer["feedStartTime"]
-                attrs["left_duration_seconds"] = timer.get("leftDuration", 0)
-                attrs["right_duration_seconds"] = timer.get("rightDuration", 0)
-                attrs["last_side"] = timer.get("lastSide", "unknown")
-
-            # Last feeding info
-            if "lastNursing" in prefs:
-                last_nursing = prefs["lastNursing"]
-                attrs["last_nursing_start"] = last_nursing.get("start")
-                attrs["last_nursing_duration_seconds"] = last_nursing.get("duration")
-                attrs["last_nursing_left_seconds"] = last_nursing.get("leftDuration", 0)
-                attrs["last_nursing_right_seconds"] = last_nursing.get("rightDuration", 0)
-
-        return attrs
-
-
-class HuckleberryLastFeedingSideSensor(HuckleberryBaseEntity, SensorEntity):
-    """Sensor showing the last feeding side."""
-
-    _attr_icon = "mdi:baby-bottle-outline"
-    _attr_device_class = SensorDeviceClass.ENUM
-    _attr_options = ["Left", "Right", "Unknown"]
-
-    def __init__(self, coordinator, child: dict[str, Any]) -> None:
-        """Initialize the sensor."""
-        super().__init__(coordinator, child)
-        self._attr_name = "Last Feeding Side"
-        self._attr_unique_id = f"{self.child_uid}_last_feeding_side"
-
-    @property
-    def native_value(self) -> str:
-        """Return the last feeding side."""
-        if self.child_uid not in self.coordinator.data:
-            return "Unknown"
-
-        feed_status = self.coordinator.data[self.child_uid].get("feed_status", {})
-        if not isinstance(feed_status, dict):
-            return "Unknown"
-
-        timer = feed_status.get("timer", {})
-        prefs = feed_status.get("prefs", {})
-
-        # If currently feeding (active)
-        if timer.get("active"):
-            # If activeSide is present (feeding), use it
-            active_side = timer.get("activeSide")
-            if active_side and active_side != "none":
-                return active_side.title()
-
-            # If paused, activeSide is removed, use lastSide from timer
-            # Note: pause_feeding sets timer.lastSide = current_side
-            last_side = timer.get("lastSide")
-            if last_side and last_side != "none":
-                return last_side.title()
-
-        # If not active, or fallback
-        # Check prefs.lastSide (history)
-        last_side_pref = prefs.get("lastSide", {})
-        if last_side_pref and "lastSide" in last_side_pref:
-            side = last_side_pref["lastSide"]
-            if side and side != "none":
-                return side.title()
-
-        # Fallback to timer.lastSide if prefs missing
-        last_side = timer.get("lastSide")
-        if last_side and last_side != "none":
-            return last_side.title()
-
-        return "Unknown"
-
-class HuckleberryPreviousSleepStartSensor(HuckleberryBaseEntity, SensorEntity):
-    """Sensor showing the start time of the previous sleep session."""
-
-    _attr_icon = "mdi:sleep"
-    _attr_device_class = SensorDeviceClass.TIMESTAMP
-
-    def __init__(self, coordinator, child: dict[str, Any]) -> None:
-        """Initialize the sensor."""
-        super().__init__(coordinator, child)
-        self._attr_name = "Previous Sleep Start"
-        self._attr_unique_id = f"{self.child_uid}_previous_sleep_start"
-
-    @property
-    def native_value(self):
-        """Return the start time of the last sleep."""
-        if self.child_uid not in self.coordinator.data:
-            return None
-
-        sleep_status = self.coordinator.data[self.child_uid].get("sleep_status", {})
-        if not isinstance(sleep_status, dict):
-            return None
-
-        prefs = sleep_status.get("prefs", {})
-        last_sleep = prefs.get("lastSleep", {})
-
-        start = last_sleep.get("start")
-
-        if start is not None:
-            from datetime import datetime, timezone
-            return datetime.fromtimestamp(start, tz=timezone.utc)
-
-        return None
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Return entity specific state attributes."""
-        if self.child_uid not in self.coordinator.data:
-            return {}
-
-        sleep_status = self.coordinator.data[self.child_uid].get("sleep_status", {})
-        if not isinstance(sleep_status, dict):
-            return {}
-
-        prefs = sleep_status.get("prefs", {})
-        last_sleep = prefs.get("lastSleep", {})
-
-        attrs = {}
-        duration = last_sleep.get("duration")
-        if duration is not None:
-            attrs["duration_seconds"] = duration
-            hours = int(duration // 3600)
-            minutes = int((duration % 3600) // 60)
-            attrs["duration"] = f"{hours}h {minutes}m"
-
-        return attrs
-
-class HuckleberryPreviousSleepEndSensor(HuckleberryBaseEntity, SensorEntity):
-    """Sensor showing the end time of the previous sleep session."""
-
-    _attr_icon = "mdi:sleep-off"
-    _attr_device_class = SensorDeviceClass.TIMESTAMP
-
-    def __init__(self, coordinator, child: dict[str, Any]) -> None:
-        """Initialize the sensor."""
-        super().__init__(coordinator, child)
-        self._attr_name = "Previous Sleep End"
-        self._attr_unique_id = f"{self.child_uid}_previous_sleep_end"
-
-    @property
-    def native_value(self):
-        """Return the end time of the last sleep."""
-        if self.child_uid not in self.coordinator.data:
-            return None
-
-        sleep_status = self.coordinator.data[self.child_uid].get("sleep_status", {})
-        if not isinstance(sleep_status, dict):
-            return None
-
-        prefs = sleep_status.get("prefs", {})
-        last_sleep = prefs.get("lastSleep", {})
-
-        start = last_sleep.get("start")
-        duration = last_sleep.get("duration")
-
-        if start is not None and duration is not None:
-            from datetime import datetime, timezone
-            # Timestamps are in seconds
-            end_timestamp = start + duration
-            return datetime.fromtimestamp(end_timestamp, tz=timezone.utc)
-
-        return None
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Return entity specific state attributes."""
-        if self.child_uid not in self.coordinator.data:
-            return {}
-
-        sleep_status = self.coordinator.data[self.child_uid].get("sleep_status", {})
-        if not isinstance(sleep_status, dict):
-            return {}
-
-        prefs = sleep_status.get("prefs", {})
-        last_sleep = prefs.get("lastSleep", {})
-
-        attrs = {}
-        duration = last_sleep.get("duration")
-        if duration is not None:
-            attrs["duration_seconds"] = duration
-            hours = int(duration // 3600)
-            minutes = int((duration % 3600) // 60)
-            attrs["duration"] = f"{hours}h {minutes}m"
-
-        return attrs
-
-
-class HuckleberryPreviousFeedSensor(HuckleberryBaseEntity, SensorEntity):
-    """Sensor showing the start time of the previous feeding session."""
-
-    _attr_icon = "mdi:baby-bottle-outline"
-    _attr_device_class = SensorDeviceClass.TIMESTAMP
-
-    def __init__(self, coordinator, child: dict[str, Any]) -> None:
-        """Initialize the sensor."""
-        super().__init__(coordinator, child)
-        self._attr_name = "Previous Feed Start"
-        self._attr_unique_id = f"{self.child_uid}_previous_feed_start"
-
-    @property
-    def native_value(self):
-        """Return the start time of the last feeding."""
-        if self.child_uid not in self.coordinator.data:
-            return None
-
-        feed_status = self.coordinator.data[self.child_uid].get("feed_status", {})
-        if not isinstance(feed_status, dict):
-            return None
-
-        prefs = feed_status.get("prefs", {})
-        last_nursing = prefs.get("lastNursing", {})
-
-        start = last_nursing.get("start")
-
-        if start is not None:
-            from datetime import datetime, timezone
-            return datetime.fromtimestamp(start, tz=timezone.utc)
-
-        return None
-
-    @property
-    def extra_state_attributes(self) -> dict[str, Any]:
-        """Return entity specific state attributes."""
-        if self.child_uid not in self.coordinator.data:
-            return {}
-
-        feed_status = self.coordinator.data[self.child_uid].get("feed_status", {})
-        if not isinstance(feed_status, dict):
-            return {}
-
-        prefs = feed_status.get("prefs", {})
-        last_nursing = prefs.get("lastNursing", {})
-        last_side_data = prefs.get("lastSide", {})
-
-        attrs = {}
-
-        duration = last_nursing.get("duration")
-        if duration is not None:
-            attrs["duration_seconds"] = duration
-
-        left_duration = last_nursing.get("leftDuration")
-        if left_duration is not None:
-            attrs["left_duration_seconds"] = left_duration
-
-        right_duration = last_nursing.get("rightDuration")
-        if right_duration is not None:
-            attrs["right_duration_seconds"] = right_duration
-
-        last_side = last_side_data.get("lastSide")
-        if last_side:
-            attrs["last_side"] = last_side
-
-        return attrs
+        timer = feed_status.timer
+        prefs = feed_status.prefs
+        attributes: dict[str, object] = {}
+
+        if timer is not None and timer.active:
+            if timer.feedStartTime is not None:
+                attributes["current_start"] = as_iso8601_datetime(timer.feedStartTime)
+            if timer.leftDuration is not None:
+                attributes["current_left_duration"] = as_iso8601_duration(timer.leftDuration)
+            if timer.rightDuration is not None:
+                attributes["current_right_duration"] = as_iso8601_duration(timer.rightDuration)
+            if timer.lastSide is not None and timer.lastSide != "none":
+                attributes["current_last_side"] = timer.lastSide.title()
+            if timer.activeSide is not None:
+                attributes["current_active_side"] = timer.activeSide.title()
+
+        last_nursing = prefs.lastNursing if prefs is not None else None
+        if last_nursing is not None:
+            if last_nursing.start is not None:
+                attributes["previous_start"] = as_iso8601_datetime(last_nursing.start)
+            if last_nursing.duration is not None:
+                attributes["previous_duration"] = as_iso8601_duration(last_nursing.duration)
+            if last_nursing.leftDuration is not None:
+                attributes["previous_left_duration"] = as_iso8601_duration(last_nursing.leftDuration)
+            if last_nursing.rightDuration is not None:
+                attributes["previous_right_duration"] = as_iso8601_duration(last_nursing.rightDuration)
+
+        if prefs is not None and prefs.lastSide is not None:
+            attributes["previous_last_side"] = prefs.lastSide.lastSide.title()
+
+        return attributes
 
 

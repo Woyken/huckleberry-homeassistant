@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timedelta
-from typing import Any
 
 from homeassistant.components.calendar import CalendarEntity, CalendarEvent
 from homeassistant.config_entries import ConfigEntry
@@ -11,9 +10,20 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
 
-from . import HuckleberryEntryData
+from huckleberry_api import HuckleberryAPI
+from huckleberry_api.firebase_types import (
+    FirebaseBottleFeedIntervalData,
+    FirebaseBreastFeedIntervalData,
+    FirebaseDiaperData,
+    FirebaseGrowthData,
+    FirebaseSleepIntervalData,
+    FirebaseSolidsFeedIntervalData,
+)
+
+from . import HuckleberryDataUpdateCoordinator, HuckleberryEntryData
 from .const import DOMAIN
 from .entity import HuckleberryBaseEntity
+from .models import HuckleberryChildProfile
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -42,11 +52,16 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
     _attr_has_entity_name = True
     _attr_name = "Events"
 
-    def __init__(self, coordinator, child, api) -> None:
+    def __init__(
+        self,
+        coordinator: HuckleberryDataUpdateCoordinator,
+        child: HuckleberryChildProfile,
+        api: HuckleberryAPI,
+    ) -> None:
         """Initialize the calendar."""
         super().__init__(coordinator, child)
         self._api = api
-        self._attr_unique_id = f"{child['uid']}_calendar"
+        self._attr_unique_id = f"{child.uid}_calendar"
         self._events: list[CalendarEvent] = []
 
     @property
@@ -65,173 +80,152 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
         """Get events between start and end date."""
         _LOGGER.debug(
             "Fetching calendar events for %s from %s to %s",
-            self._child["name"],
+            self.child_name,
             start_date,
             end_date,
         )
 
+        start_s = int(start_date.timestamp())
+        end_s = int(end_date.timestamp())
+
         events: list[CalendarEvent] = []
 
-        # Fetch sleep intervals
-        events.extend(
-            await self.hass.async_add_executor_job(
-                self._fetch_sleep_events, start_date, end_date
+        try:
+            sleep_intervals = await self._api.list_sleep_intervals(
+                self.child_uid, start_s, end_s
             )
-        )
-
-        # Fetch feeding intervals
-        feed_events, bottle_events = await self.hass.async_add_executor_job(
-            self._fetch_feed_and_bottle_events, start_date, end_date
-        )
-        events.extend(feed_events)
-        events.extend(bottle_events)
-
-        # Fetch diaper intervals
-        events.extend(
-            await self.hass.async_add_executor_job(
-                self._fetch_diaper_events, start_date, end_date
-            )
-        )
-
-        # Fetch health/growth entries
-        events.extend(
-            await self.hass.async_add_executor_job(
-                self._fetch_health_events, start_date, end_date
-            )
-        )
-
-        # Sort by start time
-        events.sort(key=lambda e: e.start)
-
-        self._events = events
-        _LOGGER.debug("Found %d events for %s", len(events), self._child["name"])
-
-        return events
-
-    def _fetch_sleep_events(
-        self, start_date: datetime, end_date: datetime
-    ) -> list[CalendarEvent]:
-        """Fetch sleep intervals using API."""
-        events = []
-        child_uid = self._child["uid"]
+            events.extend(self._build_sleep_events(sleep_intervals))
+        except Exception as err:
+            _LOGGER.error("Error fetching sleep events: %s", err)
 
         try:
-            # Convert to timestamps (seconds)
-            start_s = int(start_date.timestamp())
-            end_s = int(end_date.timestamp())
+            feed_intervals = await self._api.list_feed_intervals(
+                self.child_uid, start_s, end_s
+            )
+            feed_events, bottle_events = self._build_feed_events(feed_intervals)
+            events.extend(feed_events)
+            events.extend(bottle_events)
+        except Exception as err:
+            _LOGGER.error("Error fetching feed events: %s", err)
 
-            # Fetch intervals from API
-            intervals = self._api.get_sleep_intervals(child_uid, start_s, end_s)
+        try:
+            diaper_intervals = await self._api.list_diaper_intervals(
+                self.child_uid, start_s, end_s
+            )
+            events.extend(self._build_diaper_events(diaper_intervals))
+        except Exception as err:
+            _LOGGER.error("Error fetching diaper events: %s", err)
 
-            for interval in intervals:
-                start_time = datetime.fromtimestamp(
-                    interval["start"], tz=dt_util.DEFAULT_TIME_ZONE
+        try:
+            health_entries = await self._api.list_health_entries(
+                self.child_uid, start_s, end_s
+            )
+            events.extend(self._build_health_events(health_entries))
+        except Exception as err:
+            _LOGGER.error("Error fetching health events: %s", err)
+
+        events.sort(key=lambda e: e.start)
+        self._events = events
+        _LOGGER.debug("Found %d events for %s", len(events), self.child_name)
+        return events
+
+    @staticmethod
+    def _build_sleep_events(
+        intervals: list[FirebaseSleepIntervalData],
+    ) -> list[CalendarEvent]:
+        """Build calendar events from sleep intervals."""
+        events: list[CalendarEvent] = []
+        for interval in intervals:
+            start_time = datetime.fromtimestamp(
+                interval.start, tz=dt_util.DEFAULT_TIME_ZONE
+            )
+            duration_seconds = int(interval.duration)
+            duration_minutes = duration_seconds // 60
+            end_time = start_time + timedelta(minutes=duration_minutes)
+
+            if duration_minutes >= 60:
+                hours = duration_minutes // 60
+                mins = duration_minutes % 60
+                duration_str = f"{hours}h {mins}m" if mins > 0 else f"{hours}h"
+            else:
+                duration_str = f"{duration_minutes}m"
+
+            events.append(
+                CalendarEvent(
+                    start=start_time,
+                    end=end_time,
+                    summary=f"💤 Sleep ({duration_str})",
+                    description=f"Sleep duration: {duration_str}",
                 )
+            )
+        return events
 
-                duration_seconds = interval.get("duration", 0)
-                duration_minutes = int(duration_seconds / 60)
-                end_time = start_time + timedelta(minutes=duration_minutes)
+    @staticmethod
+    def _build_feed_events(
+        intervals: list[
+            FirebaseBreastFeedIntervalData
+            | FirebaseBottleFeedIntervalData
+            | FirebaseSolidsFeedIntervalData
+        ],
+    ) -> tuple[list[CalendarEvent], list[CalendarEvent]]:
+        """Build calendar events from feed intervals."""
+        feed_events: list[CalendarEvent] = []
+        bottle_events: list[CalendarEvent] = []
 
-                # Format duration as hours and minutes
-                if duration_minutes >= 60:
-                    hours = duration_minutes // 60
-                    mins = duration_minutes % 60
-                    duration_str = f"{hours}h {mins}m" if mins > 0 else f"{hours}h"
-                else:
-                    duration_str = f"{duration_minutes}m"
+        for interval in intervals:
+            start_time = datetime.fromtimestamp(
+                interval.start, tz=dt_util.DEFAULT_TIME_ZONE
+            )
 
-                summary = f"💤 Sleep ({duration_str})"
-                description = f"Sleep duration: {duration_str}"
+            if isinstance(interval, FirebaseBottleFeedIntervalData):
+                amount = interval.amount
+                units = interval.units
+                bottle_type = interval.bottleType
 
-                events.append(
+                summary = f"🍼 Bottle ({amount} {units})"
+                description = f"Bottle feeding: {amount} {units}"
+                if bottle_type:
+                    description += f"\nType: {bottle_type}"
+
+                bottle_events.append(
                     CalendarEvent(
                         start=start_time,
-                        end=end_time,
+                        end=start_time,
                         summary=summary,
                         description=description,
                     )
                 )
+                continue
 
-            _LOGGER.debug("Found %d sleep events", len(events))
-
-        except Exception as err:
-            _LOGGER.error("Error fetching sleep events: %s", err)
-
-        return events
-
-    def _fetch_feed_and_bottle_events(
-        self, start_date: datetime, end_date: datetime
-    ) -> tuple[list[CalendarEvent], list[CalendarEvent]]:
-        """Fetch feed and bottle intervals using a single API call."""
-        feed_events: list[CalendarEvent] = []
-        bottle_events: list[CalendarEvent] = []
-        child_uid = self._child["uid"]
-
-        try:
-            # Convert to timestamps (seconds)
-            start_s = int(start_date.timestamp())
-            end_s = int(end_date.timestamp())
-
-            intervals = self._api.get_feed_intervals(child_uid, start_s, end_s)
-
-            for interval in intervals:
-                start_time = datetime.fromtimestamp(
-                    interval["start"], tz=dt_util.DEFAULT_TIME_ZONE
-                )
-
-                if self._is_bottle_interval(interval):
-                    # Bottle feeding is an instant event (same start/end)
-                    amount = interval.get("amount", interval.get("bottleAmount", 0))
-                    units = interval.get("units", interval.get("bottleUnits", "ml"))
-                    bottle_type = interval.get("bottleType", "Unknown")
-
-                    summary = f"🍼 Bottle ({amount} {units})"
-                    description = f"Bottle feeding: {amount} {units}"
-                    if bottle_type:
-                        description += f"\nType: {bottle_type}"
-
-                    bottle_events.append(
-                        CalendarEvent(
-                            start=start_time,
-                            end=start_time,
-                            summary=summary,
-                            description=description,
-                        )
-                    )
-                    continue
-
-                # Feed interval durations are stored in seconds.
-                left_duration_seconds = float(interval.get("leftDuration", 0) or 0)
-                right_duration_seconds = float(interval.get("rightDuration", 0) or 0)
+            if isinstance(interval, FirebaseBreastFeedIntervalData):
+                left_duration_seconds = float(interval.leftDuration or 0)
+                right_duration_seconds = float(interval.rightDuration or 0)
 
                 total_duration_seconds = int(
                     round(left_duration_seconds + right_duration_seconds)
                 )
                 end_time = start_time + timedelta(seconds=total_duration_seconds)
 
-                left_duration = int(round(left_duration_seconds / 60))
-                right_duration = int(round(right_duration_seconds / 60))
+                left_minutes = int(round(left_duration_seconds / 60))
+                right_minutes = int(round(right_duration_seconds / 60))
 
-                # Build summary based on sides used
-                sides = []
-                if left_duration > 0:
-                    sides.append(f"L:{left_duration}m")
-                if right_duration > 0:
-                    sides.append(f"R:{right_duration}m")
+                sides: list[str] = []
+                if left_minutes > 0:
+                    sides.append(f"L:{left_minutes}m")
+                if right_minutes > 0:
+                    sides.append(f"R:{right_minutes}m")
 
                 sides_str = (
                     " ".join(sides)
                     if sides
-                    else self._format_duration(total_duration_seconds)
+                    else _format_duration(total_duration_seconds)
                 )
                 summary = f"🍼 Feed ({sides_str})"
-                description = (
-                    f"Feeding - Total: {self._format_duration(total_duration_seconds)}"
-                )
+                description = f"Feeding - Total: {_format_duration(total_duration_seconds)}"
                 if left_duration_seconds > 0:
-                    description += f"\nLeft: {self._format_duration(left_duration_seconds)}"
+                    description += f"\nLeft: {_format_duration(left_duration_seconds)}"
                 if right_duration_seconds > 0:
-                    description += f"\nRight: {self._format_duration(right_duration_seconds)}"
+                    description += f"\nRight: {_format_duration(right_duration_seconds)}"
 
                 feed_events.append(
                     CalendarEvent(
@@ -241,142 +235,104 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
                         description=description,
                     )
                 )
+                continue
 
-            _LOGGER.debug("Found %d feed events", len(feed_events))
-            _LOGGER.debug("Found %d bottle events", len(bottle_events))
+            # Solids
+            summary = "🥄 Solids"
+            description = "Solid food feeding"
+            if interval.notes:
+                description += f"\n{interval.notes}"
 
-        except Exception as err:
-            _LOGGER.error("Error fetching feed and bottle events: %s", err)
+            feed_events.append(
+                CalendarEvent(
+                    start=start_time,
+                    end=start_time,
+                    summary=summary,
+                    description=description,
+                )
+            )
 
         return feed_events, bottle_events
 
     @staticmethod
-    def _is_bottle_interval(interval: dict[str, Any]) -> bool:
-        """Return True if interval represents a bottle feeding event."""
-        return (
-            interval.get("mode") == "bottle"
-            or interval.get("type") == "bottle"
-            or interval.get("bottleType") is not None
-            or "amount" in interval
-            or "bottleAmount" in interval
-        )
+    def _build_diaper_events(
+        intervals: list[FirebaseDiaperData],
+    ) -> list[CalendarEvent]:
+        """Build calendar events from diaper intervals."""
+        events: list[CalendarEvent] = []
+        for interval in intervals:
+            event_time = datetime.fromtimestamp(
+                interval.start, tz=dt_util.DEFAULT_TIME_ZONE
+            )
+            mode = interval.mode
+            mode_emoji = {
+                "pee": "💧",
+                "poo": "💩",
+                "both": "💧💩",
+                "dry": "✅",
+            }.get(mode, "🩲")
+
+            summary = f"{mode_emoji} Diaper ({mode.capitalize()})"
+            description = f"Diaper change: {mode}"
+
+            if interval.color is not None:
+                description += f"\nColor: {interval.color}"
+            if interval.consistency is not None:
+                description += f"\nConsistency: {interval.consistency}"
+
+            events.append(
+                CalendarEvent(
+                    start=event_time,
+                    end=event_time,
+                    summary=summary,
+                    description=description,
+                )
+            )
+        return events
 
     @staticmethod
-    def _format_duration(duration_seconds: float | int) -> str:
-        """Format duration in seconds as readable min/sec text."""
-        total_seconds = int(round(float(duration_seconds)))
-        minutes, seconds = divmod(total_seconds, 60)
+    def _build_health_events(entries: list) -> list[CalendarEvent]:
+        """Build calendar events from health entries."""
+        events: list[CalendarEvent] = []
+        for entry in entries:
+            event_time = datetime.fromtimestamp(
+                entry.start, tz=dt_util.DEFAULT_TIME_ZONE
+            )
 
-        if minutes > 0 and seconds > 0:
-            return f"{minutes} min {seconds} sec"
-        if minutes > 0:
-            return f"{minutes} min"
-        return f"{seconds} sec"
-
-    def _fetch_diaper_events(
-        self, start_date: datetime, end_date: datetime
-    ) -> list[CalendarEvent]:
-        """Fetch diaper intervals using API."""
-        events = []
-        child_uid = self._child["uid"]
-
-        try:
-            # Convert to timestamps (seconds)
-            start_s = int(start_date.timestamp())
-            end_s = int(end_date.timestamp())
-
-            # Fetch intervals from API
-            intervals = self._api.get_diaper_intervals(child_uid, start_s, end_s)
-
-            for interval in intervals:
-                event_time = datetime.fromtimestamp(
-                    interval["start"], tz=dt_util.DEFAULT_TIME_ZONE
-                )
-
-                # Diaper change is an instant event (same start/end)
-                mode = interval.get("mode", "unknown")
-                mode_emoji = {
-                    "pee": "💧",
-                    "poo": "💩",
-                    "both": "💧💩",
-                    "dry": "✅",
-                }.get(mode, "🩲")
-
-                summary = f"{mode_emoji} Diaper ({mode.capitalize()})"
-                description = f"Diaper change: {mode}"
-
-                # Add details if available
-                if "pooColor" in interval:
-                    description += f"\nColor: {interval['pooColor']}"
-                if "pooConsistency" in interval:
-                    description += f"\nConsistency: {interval['pooConsistency']}"
-                if "amount" in interval:
-                    description += f"\nAmount: {interval['amount']}"
-
-                events.append(
-                    CalendarEvent(
-                        start=event_time,
-                        end=event_time,
-                        summary=summary,
-                        description=description,
-                    )
-                )
-
-            _LOGGER.debug("Found %d diaper events", len(events))
-
-        except Exception as err:
-            _LOGGER.error("Error fetching diaper events: %s", err)
-
-        return events
-
-    def _fetch_health_events(
-        self, start_date: datetime, end_date: datetime
-    ) -> list[CalendarEvent]:
-        """Fetch health/growth entries using API."""
-        events = []
-        child_uid = self._child["uid"]
-
-        try:
-            # Convert to timestamps (seconds)
-            start_s = int(start_date.timestamp())
-            end_s = int(end_date.timestamp())
-
-            # Fetch entries from API
-            entries = self._api.get_health_entries(child_uid, start_s, end_s)
-
-            for entry in entries:
-                event_time = datetime.fromtimestamp(
-                    entry["start"], tz=dt_util.DEFAULT_TIME_ZONE
-                )
-
-                # Growth entry is an instant event
+            if isinstance(entry, FirebaseGrowthData):
                 summary = "📏 Growth Measurement"
                 description = "Growth tracking:"
-
-                # Build description from available measurements
-                measurements = []
-                if "weight" in entry:
-                    measurements.append(f"Weight: {entry['weight']}")
-                if "height" in entry:
-                    measurements.append(f"Height: {entry['height']}")
-                if "head" in entry:
-                    measurements.append(f"Head: {entry['head']}")
-
+                measurements: list[str] = []
+                if entry.weight is not None:
+                    measurements.append(f"Weight: {entry.weight}")
+                if entry.height is not None:
+                    measurements.append(f"Height: {entry.height}")
+                if entry.head is not None:
+                    measurements.append(f"Head: {entry.head}")
                 if measurements:
                     description += "\n" + "\n".join(measurements)
+            else:
+                summary = f"🩺 Health ({entry.mode.capitalize()})"
+                description = f"Health entry: {entry.mode}"
 
-                events.append(
-                    CalendarEvent(
-                        start=event_time,
-                        end=event_time,
-                        summary=summary,
-                        description=description,
-                    )
+            events.append(
+                CalendarEvent(
+                    start=event_time,
+                    end=event_time,
+                    summary=summary,
+                    description=description,
                 )
-
-            _LOGGER.debug("Found %d health events", len(events))
-
-        except Exception as err:
-            _LOGGER.error("Error fetching health events: %s", err)
-
+            )
         return events
+
+
+def _format_duration(duration_seconds: float | int) -> str:
+    """Format duration in seconds as readable min/sec text."""
+    total_seconds = int(round(float(duration_seconds)))
+    minutes, seconds = divmod(total_seconds, 60)
+
+    if minutes > 0 and seconds > 0:
+        return f"{minutes} min {seconds} sec"
+    if minutes > 0:
+        return f"{minutes} min"
+    return f"{seconds} sec"

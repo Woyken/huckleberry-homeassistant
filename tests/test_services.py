@@ -1,6 +1,7 @@
 """Test Huckleberry services."""
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
+from homeassistant.helpers import device_registry as dr
 from custom_components.huckleberry.const import DOMAIN
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -24,7 +25,7 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
         await hass.async_block_till_done()
 
     # Create a device to target
-    device_registry = hass.helpers.device_registry.async_get(hass)
+    device_registry = dr.async_get(hass)
     device = device_registry.async_get_or_create(
         config_entry_id=entry.entry_id,
         identifiers={(DOMAIN, "test_child_uid")},
@@ -65,43 +66,43 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
     await hass.services.async_call(
         DOMAIN, "start_feeding", {"device_id": device.id, "side": "left"}, blocking=True
     )
-    mock_huckleberry_api.start_feeding.assert_called_with("test_child_uid", "left")
+    mock_huckleberry_api.start_nursing.assert_called_with("test_child_uid", "left")
 
     # Test start_feeding (right)
     await hass.services.async_call(
         DOMAIN, "start_feeding", {"device_id": device.id, "side": "right"}, blocking=True
     )
-    mock_huckleberry_api.start_feeding.assert_called_with("test_child_uid", "right")
+    mock_huckleberry_api.start_nursing.assert_called_with("test_child_uid", "right")
 
     # Test pause_feeding
     await hass.services.async_call(
         DOMAIN, "pause_feeding", {"device_id": device.id}, blocking=True
     )
-    mock_huckleberry_api.pause_feeding.assert_called_with("test_child_uid")
+    mock_huckleberry_api.pause_nursing.assert_called_with("test_child_uid")
 
     # Test resume_feeding
     await hass.services.async_call(
         DOMAIN, "resume_feeding", {"device_id": device.id}, blocking=True
     )
-    mock_huckleberry_api.resume_feeding.assert_called_with("test_child_uid", None)
+    mock_huckleberry_api.resume_nursing.assert_called_with("test_child_uid", None)
 
     # Test switch_feeding_side
     await hass.services.async_call(
         DOMAIN, "switch_feeding_side", {"device_id": device.id}, blocking=True
     )
-    mock_huckleberry_api.switch_feeding_side.assert_called_with("test_child_uid")
+    mock_huckleberry_api.switch_nursing_side.assert_called_with("test_child_uid")
 
     # Test cancel_feeding
     await hass.services.async_call(
         DOMAIN, "cancel_feeding", {"device_id": device.id}, blocking=True
     )
-    mock_huckleberry_api.cancel_feeding.assert_called_with("test_child_uid")
+    mock_huckleberry_api.cancel_nursing.assert_called_with("test_child_uid")
 
     # Test complete_feeding
     await hass.services.async_call(
         DOMAIN, "complete_feeding", {"device_id": device.id}, blocking=True
     )
-    mock_huckleberry_api.complete_feeding.assert_called_with("test_child_uid")
+    mock_huckleberry_api.complete_nursing.assert_called_with("test_child_uid")
 
     # Test log_diaper_pee
     await hass.services.async_call(
@@ -147,7 +148,7 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
     await hass.services.async_call(
         DOMAIN, "log_bottle", {"device_id": device.id, "amount": 4.0, "bottle_type": "Formula", "units": "oz"}, blocking=True
     )
-    mock_huckleberry_api.log_bottle_feeding.assert_called_with(
+    mock_huckleberry_api.log_bottle.assert_called_with(
         "test_child_uid", 4.0, "Formula", "oz"
     )
 
@@ -155,7 +156,7 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
     await hass.services.async_call(
         DOMAIN, "log_bottle", {"device_id": device.id, "amount": 120.0, "bottle_type": "Breast Milk", "units": "ml"}, blocking=True
     )
-    mock_huckleberry_api.log_bottle_feeding.assert_called_with(
+    mock_huckleberry_api.log_bottle.assert_called_with(
         "test_child_uid", 120.0, "Breast Milk", "ml"
     )
 
