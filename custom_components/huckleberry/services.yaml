@@ -5,7 +5,7 @@ start_sleep:
     device_id:
       name: Child device
       description: Select child device
-      required: true
+      required: false
       selector:
         device:
           integration: huckleberry
@@ -24,7 +24,7 @@ pause_sleep:
     device_id:
       name: Child device
       description: Select child device
-      required: true
+      required: false
       selector:
         device:
           integration: huckleberry
@@ -43,7 +43,7 @@ resume_sleep:
     device_id:
       name: Child device
       description: Select child device
-      required: true
+      required: false
       selector:
         device:
           integration: huckleberry
@@ -62,7 +62,7 @@ cancel_sleep:
     device_id:
       name: Child device
       description: Select child device
-      required: true
+      required: false
       selector:
         device:
           integration: huckleberry
@@ -81,7 +81,7 @@ complete_sleep:
     device_id:
       name: Child device
       description: Select child device
-      required: true
+      required: false
       selector:
         device:
           integration: huckleberry
@@ -94,14 +94,14 @@ complete_sleep:
       selector:
         text:
 
-start_feeding:
-  name: Start Feeding
-  description: Start breast feeding session on specified side.
+start_nursing:
+  name: Start Nursing
+  description: Start a nursing (breastfeeding) session on the specified side.
   fields:
     device_id:
       name: Child device
       description: Select child device
-      required: true
+      required: false
       selector:
         device:
           integration: huckleberry
@@ -114,9 +114,9 @@ start_feeding:
       selector:
         text:
     side:
-      description: Which breast to start with (left or right)
+      description: Which side to start on (left or right)
       example: left
-      name: Feeding side
+      name: Side
       default: left
       required: false
       selector:
@@ -125,14 +125,14 @@ start_feeding:
             - left
             - right
 
-pause_feeding:
-  name: Pause Feeding
-  description: Pause the active feeding session.
+pause_nursing:
+  name: Pause Nursing
+  description: Pause the active nursing session.
   fields:
     device_id:
       name: Child device
       description: Select child device
-      required: true
+      required: false
       selector:
         device:
           integration: huckleberry
@@ -145,14 +145,44 @@ pause_feeding:
       selector:
         text:
 
-resume_feeding:
-  name: Resume Feeding
-  description: Resume a paused feeding session.
+resume_nursing:
+  name: Resume Nursing
+  description: Resume a paused nursing session.
   fields:
     device_id:
       name: Child device
       description: Select child device
-      required: true
+      required: false
+      selector:
+        device:
+          integration: huckleberry
+    child_uid:
+      name: Child UID
+      description: Child UID (optional, overrides device selection)
+      example: VZiSnxmU3KawWzsSLTqyuPTlsuX2
+      advanced: true
+      required: false
+      selector:
+        text:
+    side:
+      description: Side to resume on (optional, resumes on last active side if omitted)
+      example: left
+      name: Side
+      required: false
+      selector:
+        select:
+          options:
+            - left
+            - right
+
+switch_nursing_side:
+  name: Switch Nursing Side
+  description: Switch between left and right side during a nursing session.
+  fields:
+    device_id:
+      name: Child device
+      description: Select child device
+      required: false
       selector:
         device:
           integration: huckleberry
@@ -165,14 +195,14 @@ resume_feeding:
       selector:
         text:
 
-switch_feeding_side:
-  name: Switch Feeding Side
-  description: Switch between left and right breast during feeding.
+cancel_nursing:
+  name: Cancel Nursing
+  description: Cancel current nursing session (no history saved).
   fields:
     device_id:
       name: Child device
       description: Select child device
-      required: true
+      required: false
       selector:
         device:
           integration: huckleberry
@@ -185,34 +215,14 @@ switch_feeding_side:
       selector:
         text:
 
-cancel_feeding:
-  name: Cancel Feeding
-  description: Cancel current feeding (no history saved).
+complete_nursing:
+  name: Complete Nursing
+  description: Complete current nursing session and save to history.
   fields:
     device_id:
       name: Child device
       description: Select child device
-      required: true
-      selector:
-        device:
-          integration: huckleberry
-    child_uid:
-      name: Child UID
-      description: Child UID (optional, overrides device selection)
-      example: VZiSnxmU3KawWzsSLTqyuPTlsuX2
-      advanced: true
       required: false
-      selector:
-        text:
-
-complete_feeding:
-  name: Complete Feeding
-  description: Complete current feeding and save to history.
-  fields:
-    device_id:
-      name: Child device
-      description: Select child device
-      required: true
       selector:
         device:
           integration: huckleberry
@@ -232,7 +242,7 @@ log_diaper_pee:
     device_id:
       name: Child device
       description: Select child device
-      required: true
+      required: false
       selector:
         device:
           integration: huckleberry
@@ -275,7 +285,7 @@ log_diaper_poo:
     device_id:
       name: Child device
       description: Select child device
-      required: true
+      required: false
       selector:
         device:
           integration: huckleberry
@@ -345,7 +355,7 @@ log_diaper_both:
     device_id:
       name: Child device
       description: Select child device
-      required: true
+      required: false
       selector:
         device:
           integration: huckleberry
@@ -425,7 +435,7 @@ log_diaper_dry:
     device_id:
       name: Child device
       description: Select child device
-      required: true
+      required: false
       selector:
         device:
           integration: huckleberry
@@ -458,7 +468,7 @@ log_growth:
     device_id:
       name: Child device
       description: Select child device
-      required: true
+      required: false
       selector:
         device:
           integration: huckleberry
@@ -521,7 +531,7 @@ log_bottle:
     device_id:
       name: Child device
       description: Select child device
-      required: true
+      required: false
       selector:
         device:
           integration: huckleberry

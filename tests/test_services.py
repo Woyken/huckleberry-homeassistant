@@ -62,45 +62,45 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
     )
     mock_huckleberry_api.complete_sleep.assert_called_with("test_child_uid")
 
-    # Test start_feeding (left)
+    # Test start_nursing (left)
     await hass.services.async_call(
-        DOMAIN, "start_feeding", {"device_id": device.id, "side": "left"}, blocking=True
+        DOMAIN, "start_nursing", {"device_id": device.id, "side": "left"}, blocking=True
     )
     mock_huckleberry_api.start_nursing.assert_called_with("test_child_uid", "left")
 
-    # Test start_feeding (right)
+    # Test start_nursing (right)
     await hass.services.async_call(
-        DOMAIN, "start_feeding", {"device_id": device.id, "side": "right"}, blocking=True
+        DOMAIN, "start_nursing", {"device_id": device.id, "side": "right"}, blocking=True
     )
     mock_huckleberry_api.start_nursing.assert_called_with("test_child_uid", "right")
 
-    # Test pause_feeding
+    # Test pause_nursing
     await hass.services.async_call(
-        DOMAIN, "pause_feeding", {"device_id": device.id}, blocking=True
+        DOMAIN, "pause_nursing", {"device_id": device.id}, blocking=True
     )
     mock_huckleberry_api.pause_nursing.assert_called_with("test_child_uid")
 
-    # Test resume_feeding
+    # Test resume_nursing
     await hass.services.async_call(
-        DOMAIN, "resume_feeding", {"device_id": device.id}, blocking=True
+        DOMAIN, "resume_nursing", {"device_id": device.id}, blocking=True
     )
     mock_huckleberry_api.resume_nursing.assert_called_with("test_child_uid", None)
 
-    # Test switch_feeding_side
+    # Test switch_nursing_side
     await hass.services.async_call(
-        DOMAIN, "switch_feeding_side", {"device_id": device.id}, blocking=True
+        DOMAIN, "switch_nursing_side", {"device_id": device.id}, blocking=True
     )
     mock_huckleberry_api.switch_nursing_side.assert_called_with("test_child_uid")
 
-    # Test cancel_feeding
+    # Test cancel_nursing
     await hass.services.async_call(
-        DOMAIN, "cancel_feeding", {"device_id": device.id}, blocking=True
+        DOMAIN, "cancel_nursing", {"device_id": device.id}, blocking=True
     )
     mock_huckleberry_api.cancel_nursing.assert_called_with("test_child_uid")
 
-    # Test complete_feeding
+    # Test complete_nursing
     await hass.services.async_call(
-        DOMAIN, "complete_feeding", {"device_id": device.id}, blocking=True
+        DOMAIN, "complete_nursing", {"device_id": device.id}, blocking=True
     )
     mock_huckleberry_api.complete_nursing.assert_called_with("test_child_uid")
 

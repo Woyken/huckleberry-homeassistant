@@ -69,6 +69,7 @@ class HuckleberrySleepSwitch(HuckleberryBaseEntity, SwitchEntity):
         _LOGGER.info("Stopping sleep tracking for %s", self.child_name)
         await self._api.complete_sleep(self.child_uid)
 
+
 class HuckleberryNursingSwitch(HuckleberryBaseEntity, SwitchEntity):
     """Switch to start or stop nursing tracking for a specific side."""
 

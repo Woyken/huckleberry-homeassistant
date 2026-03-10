@@ -14,8 +14,8 @@ async def test_get_actions(hass: HomeAssistant):
 
     expected_actions = {
         "start_sleep", "pause_sleep", "resume_sleep", "cancel_sleep", "complete_sleep",
-        "start_feeding_left", "start_feeding_right", "pause_feeding", "resume_feeding",
-        "switch_feeding_side", "cancel_feeding", "complete_feeding",
+        "start_nursing_left", "start_nursing_right", "pause_nursing", "resume_nursing",
+        "switch_nursing_side", "cancel_nursing", "complete_nursing",
         "log_diaper_pee", "log_diaper_poo", "log_diaper_both", "log_diaper_dry",
         "log_growth", "log_bottle"
     }
@@ -46,13 +46,13 @@ async def test_call_action(hass: HomeAssistant):
         ("resume_sleep", "resume_sleep", {"child_uid": "test_child_uid"}),
         ("cancel_sleep", "cancel_sleep", {"child_uid": "test_child_uid"}),
         ("complete_sleep", "complete_sleep", {"child_uid": "test_child_uid"}),
-        ("start_feeding_left", "start_feeding", {"child_uid": "test_child_uid", "side": "left"}),
-        ("start_feeding_right", "start_feeding", {"child_uid": "test_child_uid", "side": "right"}),
-        ("pause_feeding", "pause_feeding", {"child_uid": "test_child_uid"}),
-        ("resume_feeding", "resume_feeding", {"child_uid": "test_child_uid"}),
-        ("switch_feeding_side", "switch_feeding_side", {"child_uid": "test_child_uid"}),
-        ("cancel_feeding", "cancel_feeding", {"child_uid": "test_child_uid"}),
-        ("complete_feeding", "complete_feeding", {"child_uid": "test_child_uid"}),
+        ("start_nursing_left", "start_nursing", {"child_uid": "test_child_uid", "side": "left"}),
+        ("start_nursing_right", "start_nursing", {"child_uid": "test_child_uid", "side": "right"}),
+        ("pause_nursing", "pause_nursing", {"child_uid": "test_child_uid"}),
+        ("resume_nursing", "resume_nursing", {"child_uid": "test_child_uid"}),
+        ("switch_nursing_side", "switch_nursing_side", {"child_uid": "test_child_uid"}),
+        ("cancel_nursing", "cancel_nursing", {"child_uid": "test_child_uid"}),
+        ("complete_nursing", "complete_nursing", {"child_uid": "test_child_uid"}),
         ("log_diaper_pee", "log_diaper_pee", {"child_uid": "test_child_uid"}),
         ("log_diaper_poo", "log_diaper_poo", {"child_uid": "test_child_uid"}),
         ("log_diaper_both", "log_diaper_both", {"child_uid": "test_child_uid"}),

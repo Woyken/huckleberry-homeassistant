@@ -45,13 +45,12 @@ This integration provides:
 - Real-time entity updates
 
 **Platforms:**
-- `switch`: Sleep tracking + left/right feeding switches per child
-- `sensor`: Sleep/feeding status + Children count + child profile + growth sensors
+- `switch`: Sleep tracking + left/right nursing switches per child
+- `sensor`: Sleep/nursing status + Children count + child profile + growth sensors
 - `device_action`: 18 device-specific automation actions
 
 **External Dependencies:**
-- `huckleberry-api>=0.1.19` - Firebase operations
-- `google-cloud-firestore>=2.11.0` - Required by huckleberry-api
+- `huckleberry-api>=0.2.2` - Firebase operations
 
 ### Integration Structure
 
@@ -189,30 +188,30 @@ All services support device selector for easy automation creation.
 - Completes sleep and saves to history
 - Parameters: `device_id` (optional), `child_uid` (optional)
 
-### Feeding Services
+### Nursing Services
 
-**`huckleberry.start_feeding`**:
-- Starts feeding on specified side
-- Parameters: `device_id` (optional), `child_uid` (optional), `side` (left/right, required)
+**`huckleberry.start_nursing`**:
+- Starts nursing (breastfeeding) on specified side
+- Parameters: `device_id` (optional), `child_uid` (optional), `side` (left/right, defaults to left)
 
-**`huckleberry.pause_feeding`**:
-- Pauses active feeding
+**`huckleberry.pause_nursing`**:
+- Pauses active nursing session
 - Parameters: `device_id` (optional), `child_uid` (optional)
 
-**`huckleberry.resume_feeding`**:
-- Resumes paused feeding
+**`huckleberry.resume_nursing`**:
+- Resumes paused nursing session
+- Parameters: `device_id` (optional), `child_uid` (optional), `side` (optional, resumes on last side if omitted)
+
+**`huckleberry.switch_nursing_side`**:
+- Switches to opposite nursing side
 - Parameters: `device_id` (optional), `child_uid` (optional)
 
-**`huckleberry.switch_feeding_side`**:
-- Switches to opposite feeding side (auto-resumes)
+**`huckleberry.cancel_nursing`**:
+- Cancels nursing without saving to history
 - Parameters: `device_id` (optional), `child_uid` (optional)
 
-**`huckleberry.cancel_feeding`**:
-- Cancels feeding without saving to history
-- Parameters: `device_id` (optional), `child_uid` (optional)
-
-**`huckleberry.complete_feeding`**:
-- Completes feeding and saves to history
+**`huckleberry.complete_nursing`**:
+- Completes nursing and saves to history
 - Parameters: `device_id` (optional), `child_uid` (optional)
 
 ### Diaper Services
@@ -253,14 +252,14 @@ Device actions appear in automation UI when selecting a device trigger/condition
 4. `cancel_sleep` - Cancel sleep tracking
 5. `complete_sleep` - Complete sleep tracking
 
-### Feeding Actions (6)
-7. `start_feeding_left` - Start feeding on left side
-8. `start_feeding_right` - Start feeding on right side
-9. `pause_feeding` - Pause feeding
-10. `resume_feeding` - Resume feeding
-11. `switch_feeding_side` - Switch to opposite side
-12. `cancel_feeding` - Cancel feeding
-13. `complete_feeding` - Complete feeding
+### Nursing Actions (6)
+7. `start_nursing_left` - Start nursing on left side
+8. `start_nursing_right` - Start nursing on right side
+9. `pause_nursing` - Pause nursing
+10. `resume_nursing` - Resume nursing
+11. `switch_nursing_side` - Switch to opposite side
+12. `cancel_nursing` - Cancel nursing
+13. `complete_nursing` - Complete nursing
 
 ### Diaper Actions (4)
 14. `log_diaper_pee` - Log pee diaper

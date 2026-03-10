@@ -257,22 +257,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def handle_complete_sleep(call: ServiceCall) -> None:
         await _call_api("complete_sleep", call)
 
-    async def handle_start_feeding(call: ServiceCall) -> None:
+    async def handle_start_nursing(call: ServiceCall) -> None:
         await _call_api("start_nursing", call, _string_value(call.data.get("side")) or "left")
 
-    async def handle_pause_feeding(call: ServiceCall) -> None:
+    async def handle_pause_nursing(call: ServiceCall) -> None:
         await _call_api("pause_nursing", call)
 
-    async def handle_resume_feeding(call: ServiceCall) -> None:
+    async def handle_resume_nursing(call: ServiceCall) -> None:
         await _call_api("resume_nursing", call, _string_value(call.data.get("side")))
 
-    async def handle_switch_feeding_side(call: ServiceCall) -> None:
+    async def handle_switch_nursing_side(call: ServiceCall) -> None:
         await _call_api("switch_nursing_side", call)
 
-    async def handle_cancel_feeding(call: ServiceCall) -> None:
+    async def handle_cancel_nursing(call: ServiceCall) -> None:
         await _call_api("cancel_nursing", call)
 
-    async def handle_complete_feeding(call: ServiceCall) -> None:
+    async def handle_complete_nursing(call: ServiceCall) -> None:
         await _call_api("complete_nursing", call)
 
     async def handle_log_diaper_pee(call: ServiceCall) -> None:
@@ -353,13 +353,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.services.async_register(DOMAIN, "cancel_sleep", handle_cancel_sleep, schema=SERVICE_CHILD_SCHEMA)
     hass.services.async_register(DOMAIN, "complete_sleep", handle_complete_sleep, schema=SERVICE_CHILD_SCHEMA)
 
-    feeding_schema = _build_service_method_schema(include_side=True)
-    hass.services.async_register(DOMAIN, "start_feeding", handle_start_feeding, schema=feeding_schema)
-    hass.services.async_register(DOMAIN, "pause_feeding", handle_pause_feeding, schema=SERVICE_CHILD_SCHEMA)
-    hass.services.async_register(DOMAIN, "resume_feeding", handle_resume_feeding, schema=feeding_schema)
-    hass.services.async_register(DOMAIN, "switch_feeding_side", handle_switch_feeding_side, schema=SERVICE_CHILD_SCHEMA)
-    hass.services.async_register(DOMAIN, "cancel_feeding", handle_cancel_feeding, schema=SERVICE_CHILD_SCHEMA)
-    hass.services.async_register(DOMAIN, "complete_feeding", handle_complete_feeding, schema=SERVICE_CHILD_SCHEMA)
+    nursing_schema = _build_service_method_schema(include_side=True)
+    hass.services.async_register(DOMAIN, "start_nursing", handle_start_nursing, schema=nursing_schema)
+    hass.services.async_register(DOMAIN, "pause_nursing", handle_pause_nursing, schema=SERVICE_CHILD_SCHEMA)
+    hass.services.async_register(DOMAIN, "resume_nursing", handle_resume_nursing, schema=nursing_schema)
+    hass.services.async_register(DOMAIN, "switch_nursing_side", handle_switch_nursing_side, schema=SERVICE_CHILD_SCHEMA)
+    hass.services.async_register(DOMAIN, "cancel_nursing", handle_cancel_nursing, schema=SERVICE_CHILD_SCHEMA)
+    hass.services.async_register(DOMAIN, "complete_nursing", handle_complete_nursing, schema=SERVICE_CHILD_SCHEMA)
 
     diaper_schema = _build_service_method_schema(include_diaper_fields=True)
     hass.services.async_register(DOMAIN, "log_diaper_pee", handle_log_diaper_pee, schema=diaper_schema)
