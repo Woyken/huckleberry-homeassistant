@@ -47,7 +47,6 @@ This integration provides:
 **Platforms:**
 - `switch`: Sleep timer + left/right nursing switches per child
 - `sensor`: Sleep/nursing status + Children count + child profile + growth sensors
-- `device_action`: 18 device-specific automation actions
 
 **External Dependencies:**
 - `huckleberry-api>=0.2.2` - Firebase operations
@@ -64,7 +63,6 @@ custom_components/huckleberry/
 ├── const.py                 # Constants (DOMAIN, PLATFORMS)
 ├── switch.py                # Switch platform entrypoint; assembles feature switches
 ├── sensor.py                # Sensor platform entrypoint; assembles feature sensors
-├── device_action.py         # 17 device actions for automations
 ├── features/                # Feature-oriented entity modules grouped by Huckleberry domain
 │   ├── child.py             # Children and child profile sensors
 │   ├── sleep.py             # Sleep sensor and sleep switch
@@ -249,37 +247,6 @@ All services support device selector for easy automation creation.
 - Logs growth measurements
 - Parameters: `device_id` (optional), `child_uid` (optional), `weight` (optional), `weight_units` (kg/lbs), `height` (optional), `height_units` (cm/in), `head` (optional), `head_units` (hcm/hin)
 - At least one measurement (weight, height, or head) is required
-
-## Device Actions
-
-Device actions appear in automation UI when selecting a device trigger/condition/action.
-
-### Sleep Actions (5)
-1. `start_sleep` - Start sleep tracking
-2. `pause_sleep` - Pause sleep tracking
-3. `resume_sleep` - Resume sleep tracking
-4. `cancel_sleep` - Cancel sleep tracking
-5. `complete_sleep` - Complete sleep tracking
-
-### Nursing Actions (6)
-7. `start_nursing_left` - Start nursing on left side
-8. `start_nursing_right` - Start nursing on right side
-9. `pause_nursing` - Pause nursing
-10. `resume_nursing` - Resume nursing
-11. `switch_nursing_side` - Switch to opposite side
-12. `cancel_nursing` - Cancel nursing
-13. `complete_nursing` - Complete nursing
-
-### Diaper Actions (4)
-14. `log_diaper_pee` - Log pee diaper
-15. `log_diaper_poo` - Log poo diaper
-16. `log_diaper_both` - Log pee and poo diaper
-17. `log_diaper_dry` - Log dry diaper check
-
-### Growth Action (1)
-18. `log_growth` - Log growth measurements
-
-**Total**: 18 device actions
 
 ## Critical Implementation Rules
 
@@ -756,8 +723,7 @@ Error in sleep listener callback: ...
 1. **Define in services.yaml**: With device selector
 2. **Create handler**: Async function in `__init__.py`
 3. **Register service**: In `async_setup_entry()`
-4. **Add device action**: Update `device_action.py`
-5. **Update documentation**: README.md, AGENTS.md
+4. **Update documentation**: README.md, AGENTS.md
 
 ### Adding New Listener
 
