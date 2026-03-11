@@ -52,8 +52,8 @@ This integration provides real-time baby tracking in Home Assistant by connectin
 
 - **Switches** (3):
   - `switch.{child_name}_sleep_timer` - Start/stop the sleep timer
-  - `switch.{child_name}_feeding_left` - Left side feeding
-  - `switch.{child_name}_feeding_right` - Right side feeding
+  - `switch.{child_name}_nursing_left` - Left side nursing
+  - `switch.{child_name}_nursing_right` - Right side nursing
 
 - **Calendar** (1):
   - `calendar.{child_name}_events` - All historical events (sleep, feeding, diaper, growth)
