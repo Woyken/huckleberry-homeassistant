@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import logging
 from datetime import timedelta
 from typing import Final, TypedDict, cast, get_args
@@ -451,6 +452,7 @@ class HuckleberryDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Huckleber
     async def async_shutdown(self) -> None:
         """Shutdown coordinator and stop active listeners."""
         await self.api.stop_all_listeners()
+        await _async_close_api_firestore_clients(self.api)
 
     def get_state(self, child_uid: str) -> HuckleberryChildState | None:
         """Return the tracked state for a child."""
@@ -475,3 +477,35 @@ class HuckleberryDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Huckleber
         """Return the current diaper document for a child."""
         state = self.get_state(child_uid)
         return state.diaper_status if state is not None else None
+
+async def _async_close_api_firestore_clients(api: HuckleberryAPI) -> None:
+    """Close Firestore transports held by the API client.
+
+    The upstream API stops listeners but leaves gRPC transports alive. In tests
+    and on config-entry unload, that can leave background polling threads behind.
+    """
+
+    async def _async_close_transport(client: object | None) -> None:
+        if client is None:
+            return
+
+        firestore_api = getattr(client, "_firestore_api", None)
+        transport = getattr(firestore_api, "transport", None)
+        close = getattr(transport, "close", None)
+        if not callable(close):
+            return
+
+        result = close()
+        if inspect.isawaitable(result):
+            await result
+
+    await _async_close_transport(getattr(api, "_firestore_client", None))
+    await _async_close_transport(getattr(api, "_listener_client", None))
+
+    if hasattr(api, "_firestore_client"):
+        api._firestore_client = None
+    if hasattr(api, "_firestore_client_loop"):
+        api._firestore_client_loop = None
+    if hasattr(api, "_listener_client"):
+        api._listener_client = None
+

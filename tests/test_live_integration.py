@@ -1,6 +1,9 @@
-import pytest
+from unittest.mock import patch
+
+import aiohttp
 import os
 import logging
+import pytest
 import pytest_socket
 from homeassistant.core import HomeAssistant
 from custom_components.huckleberry.const import DOMAIN
@@ -8,7 +11,6 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 _LOGGER = logging.getLogger(__name__)
 
-@pytest.mark.asyncio
 async def test_live_connection(hass: HomeAssistant, socket_enabled):
     """Test live connection to Huckleberry API."""
 
@@ -30,51 +32,53 @@ async def test_live_connection(hass: HomeAssistant, socket_enabled):
     )
     entry.add_to_hass(hass)
 
-    # Setup the integration
-    await hass.config_entries.async_setup(entry.entry_id)
+    async with aiohttp.ClientSession() as websession:
+        with patch("custom_components.huckleberry.async_get_clientsession", return_value=websession):
+            # Setup the integration with a session bound to the active test loop.
+            await hass.config_entries.async_setup(entry.entry_id)
+            await hass.async_block_till_done()
+
+        # Check if we have any sensors
+        sensors = hass.states.async_entity_ids("sensor")
+        _LOGGER.error(f"Available sensors: {sensors}")
+
+        # We expect at least the children count sensor
+        children_sensor = "sensor.huckleberry_children"
+        if children_sensor not in sensors:
+            pytest.fail("Children sensor not found")
+
+        state = hass.states.get(children_sensor)
+        assert state is not None
+        assert state.state != "unavailable"
+        assert int(state.state) > 0
+
+        # Check child profile sensor
+        # We don't know the child name in advance easily without parsing the children sensor,
+        # so find the first child-specific non-growth sensor.
+
+        child_profile_sensor = None
+        for sensor in sensors:
+            if sensor != "sensor.huckleberry_children" and not sensor.endswith("_growth") and not sensor.endswith("_last_diaper"):
+                child_profile_sensor = sensor
+                break
+
+        if child_profile_sensor:
+            state = hass.states.get(child_profile_sensor)
+            assert state is not None
+            assert state.state != "unavailable"
+            assert len(state.state) > 0
+
+        # Check growth sensor
+        growth_sensor = None
+        for sensor in sensors:
+            if sensor.endswith("_growth"):
+                growth_sensor = sensor
+                break
+
+        if growth_sensor:
+            state = hass.states.get(growth_sensor)
+            assert state is not None
+            assert state.state != "unavailable"
+
+    await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
-
-    # Check if we have any sensors
-    sensors = hass.states.async_entity_ids("sensor")
-    _LOGGER.error(f"Available sensors: {sensors}")
-
-    # We expect at least the children count sensor
-    children_sensor = "sensor.huckleberry_children"
-    if children_sensor not in sensors:
-        pytest.fail("Children sensor not found")
-
-    state = hass.states.get(children_sensor)
-    assert state is not None
-    assert state.state != "unavailable"
-    assert int(state.state) > 0
-
-    # Check child profile sensor
-    # We don't know the child name in advance easily without parsing the children sensor,
-    # but we saw 'sensor.testificate' in the logs.
-    # Let's dynamically find it.
-
-    child_profile_sensor = None
-    for sensor in sensors:
-        if sensor != "sensor.huckleberry_children" and not sensor.endswith("_growth") and not sensor.endswith("_last_diaper"):
-            child_profile_sensor = sensor
-            break
-
-    if child_profile_sensor:
-        state = hass.states.get(child_profile_sensor)
-        assert state is not None
-        assert state.state != "unavailable"
-        # The state should be the child's name
-        assert len(state.state) > 0
-
-    # Check growth sensor
-    growth_sensor = None
-    for sensor in sensors:
-        if sensor.endswith("_growth"):
-            growth_sensor = sensor
-            break
-
-    if growth_sensor:
-        state = hass.states.get(growth_sensor)
-        assert state is not None
-        # It might be "No data" or a timestamp, but shouldn't be unavailable
-        assert state.state != "unavailable"
