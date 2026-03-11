@@ -12,6 +12,7 @@ from aiohttp import ClientError
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_DEVICE_ID, Platform
 from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
@@ -132,10 +133,12 @@ async def _async_prune_orphaned_child_registry_entries(
 
 def _get_child_uid_from_call(
     hass: HomeAssistant,
-    children: list[HuckleberryChildProfile],
     call: ServiceCall,
-) -> str | None:
-    """Extract the child UID from service call data."""
+) -> str:
+    """Extract the child UID from service call data.
+
+    Raises ServiceValidationError when no target child can be resolved.
+    """
     child_uid = call.data.get("child_uid")
     if isinstance(child_uid, str):
         return child_uid
@@ -149,7 +152,9 @@ def _get_child_uid_from_call(
                 if identifier_domain == DOMAIN:
                     return identifier_value
 
-    return children[0].uid if children else None
+    raise ServiceValidationError(
+        "No target child specified. Provide either 'device_id' or 'child_uid'."
+    )
 
 
 def _string_value(value: object) -> str | None:
@@ -234,10 +239,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     async def _call_api(method_name: str, call: ServiceCall, *args: object) -> None:
         entry_data = cast(HuckleberryEntryData, hass.data[DOMAIN][entry.entry_id])
-        target_child = _get_child_uid_from_call(hass, entry_data["children"], call)
-        if target_child is None:
-            _LOGGER.error("No child_uid could be determined from service call")
-            return
+        target_child = _get_child_uid_from_call(hass, call)
 
         method = getattr(entry_data["api"], method_name)
         _LOGGER.info("Calling %s for child %s", method_name, target_child)
