@@ -51,7 +51,7 @@ This integration provides real-time baby tracking in Home Assistant by connectin
   - `sensor.{child_name}_last_bottle` - Last bottle feeding (time, amount, type)
 
 - **Switches** (3):
-  - `switch.{child_name}_sleep` - Start/stop sleep tracking
+  - `switch.{child_name}_sleep_timer` - Start/stop the sleep timer
   - `switch.{child_name}_feeding_left` - Left side feeding
   - `switch.{child_name}_feeding_right` - Right side feeding
 

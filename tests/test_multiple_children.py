@@ -60,7 +60,7 @@ async def test_multiple_children_all_entities_created(
     # Verify entities exist for all children
     child_names = ["first_child", "second_child", "third_child"]
     for child_name in child_names:
-        assert hass.states.get(f"switch.{child_name}_sleep_tracking") is not None
+        assert hass.states.get(f"switch.{child_name}_sleep_timer") is not None
         assert hass.states.get(f"switch.{child_name}_nursing_left") is not None
         assert hass.states.get(f"switch.{child_name}_nursing_right") is not None
         assert hass.states.get(f"sensor.{child_name}_profile") is not None
@@ -163,7 +163,7 @@ async def test_single_child_still_works(hass: HomeAssistant, mock_huckleberry_ap
     assert children_sensor.state == "1"
 
     # Verify child's entities exist
-    assert hass.states.get("switch.test_child_sleep_tracking") is not None
+    assert hass.states.get("switch.test_child_sleep_timer") is not None
     assert hass.states.get("sensor.test_child_profile") is not None
 
 
@@ -200,13 +200,13 @@ async def test_multiple_children_sensors_update_independently(
     await hass.async_block_till_done()
 
     # Verify first child's sleep is on, others are off
-    first_sleep = hass.states.get("switch.first_child_sleep_tracking")
+    first_sleep = hass.states.get("switch.first_child_sleep_timer")
     assert first_sleep is not None
     assert first_sleep.state == STATE_ON
-    second_sleep = hass.states.get("switch.second_child_sleep_tracking")
+    second_sleep = hass.states.get("switch.second_child_sleep_timer")
     assert second_sleep is not None
     assert second_sleep.state == STATE_OFF
-    third_sleep = hass.states.get("switch.third_child_sleep_tracking")
+    third_sleep = hass.states.get("switch.third_child_sleep_timer")
     assert third_sleep is not None
     assert third_sleep.state == STATE_OFF
 
@@ -251,7 +251,7 @@ async def test_multiple_children_sensors_update_independently(
     await hass.async_block_till_done()
 
     # Verify third child's sleep status is paused (switch shows off when paused)
-    third_sleep_updated = hass.states.get("switch.third_child_sleep_tracking")
+    third_sleep_updated = hass.states.get("switch.third_child_sleep_timer")
     assert third_sleep_updated is not None
     assert third_sleep_updated.state == STATE_OFF  # Switch is off when paused
     third_sleep_status_updated = hass.states.get("sensor.third_child_sleep")
@@ -259,7 +259,7 @@ async def test_multiple_children_sensors_update_independently(
     assert third_sleep_status_updated.state == "paused"
 
     # Verify other children's states haven't changed
-    first_sleep_still = hass.states.get("switch.first_child_sleep_tracking")
+    first_sleep_still = hass.states.get("switch.first_child_sleep_timer")
     assert first_sleep_still is not None
     assert first_sleep_still.state == STATE_ON
     second_feeding_still = hass.states.get("switch.second_child_nursing_right")

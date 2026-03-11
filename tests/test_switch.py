@@ -55,7 +55,7 @@ async def test_switches(hass: HomeAssistant, mock_huckleberry_api):
     await hass.async_block_till_done()
 
     # Check sleep switch
-    switch_state = hass.states.get("switch.test_child_sleep_tracking")
+    switch_state = hass.states.get("switch.test_child_sleep_timer")
     assert switch_state.state == STATE_ON
 
     # Check nursing switches.
@@ -66,13 +66,13 @@ async def test_switches(hass: HomeAssistant, mock_huckleberry_api):
 
     # Test turning off sleep
     await hass.services.async_call(
-        "switch", "turn_off", {"entity_id": "switch.test_child_sleep_tracking"}, blocking=True
+        "switch", "turn_off", {"entity_id": "switch.test_child_sleep_timer"}, blocking=True
     )
     mock_huckleberry_api.complete_sleep.assert_called_with("child_1")
 
     # Test turning on sleep
     await hass.services.async_call(
-        "switch", "turn_on", {"entity_id": "switch.test_child_sleep_tracking"}, blocking=True
+        "switch", "turn_on", {"entity_id": "switch.test_child_sleep_timer"}, blocking=True
     )
     mock_huckleberry_api.start_sleep.assert_called_with("child_1")
 

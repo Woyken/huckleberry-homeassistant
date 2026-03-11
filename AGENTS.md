@@ -45,7 +45,7 @@ This integration provides:
 - Real-time entity updates
 
 **Platforms:**
-- `switch`: Sleep tracking + left/right nursing switches per child
+- `switch`: Sleep timer + left/right nursing switches per child
 - `sensor`: Sleep/nursing status + Children count + child profile + growth sensors
 - `device_action`: 18 device-specific automation actions
 
@@ -54,15 +54,24 @@ This integration provides:
 
 ### Integration Structure
 
+Platform files should stay thin. Keep `sensor.py`, `switch.py`, and other Home Assistant platform modules focused on `async_setup_entry()` and entity assembly, while entity implementations live in feature modules grouped by Huckleberry domain.
+
 ```
 custom_components/huckleberry/
 ├── __init__.py              # Integration setup, coordinator, service registration
 ├── api.py                   # Legacy API (deprecated - will be removed)
 ├── config_flow.py           # Configuration UI flow
 ├── const.py                 # Constants (DOMAIN, PLATFORMS)
-├── switch.py                # Sleep + Left/Right feeding switches (3 per child)
-├── sensor.py                # Sleep/Feed status + Profile + Growth sensors (4 per child) + Children count
+├── switch.py                # Switch platform entrypoint; assembles feature switches
+├── sensor.py                # Sensor platform entrypoint; assembles feature sensors
 ├── device_action.py         # 17 device actions for automations
+├── features/                # Feature-oriented entity modules grouped by Huckleberry domain
+│   ├── child.py             # Children and child profile sensors
+│   ├── sleep.py             # Sleep sensor and sleep switch
+│   ├── nursing.py           # Nursing sensor and nursing switches
+│   ├── bottle.py            # Bottle sensor
+│   ├── diaper.py            # Diaper sensor
+│   └── growth.py            # Growth sensor
 ├── services.yaml            # Service definitions with device selectors
 ├── manifest.json            # Integration metadata, dependencies
 ├── strings.json             # UI strings for config flow
@@ -127,8 +136,8 @@ This groups entities under one device per child in HA UI.
 
 ### Switches (3 per child)
 
-**`switch.{child_name}_sleep`**:
-- State: `on` (sleep tracking active) / `off` (not tracking)
+**`switch.{child_name}_sleep_timer`**:
+- State: `on` (sleep timer active) / `off` (not running)
 - Actions: Turn on = start sleep, Turn off = complete sleep
 - Updates: Real-time via sleep listener
 

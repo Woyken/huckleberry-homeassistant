@@ -61,7 +61,7 @@ Each child gets a dedicated device with 7 entities. The device includes the chil
      - `last_sleep_duration_seconds`: Last completed sleep duration
      - `last_sleep_start`: When last sleep started
 
-3. **Sleep Switch**: `switch.{child_name}_sleep_tracking`
+3. **Sleep Switch**: `switch.{child_name}_sleep_timer`
    - Turn ON: Starts new sleep session
    - Turn OFF: Completes sleep and saves to history
    - Attributes:
@@ -273,7 +273,7 @@ Quick sleep toggle from dashboard:
 type: entities
 title: Baby Sleep
 entities:
-  - entity: switch.baby_sleep_tracking
+  - entity: switch.baby_sleep_timer
   - entity: binary_sensor.baby_sleep_status
     name: Current Status
 ```

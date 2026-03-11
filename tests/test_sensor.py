@@ -169,6 +169,6 @@ async def test_entities_skip_blank_configuration_url(hass: HomeAssistant, mock_h
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
 
-    assert hass.states.get("switch.test_child_sleep_tracking") is not None
+    assert hass.states.get("switch.test_child_sleep_timer") is not None
     assert hass.states.get("sensor.test_child_profile") is not None
     assert hass.states.get("calendar.test_child_events") is not None
