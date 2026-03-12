@@ -47,10 +47,10 @@ class HuckleberryNursingSensor(HuckleberryBaseEntity, SensorEntity):
     _attr_icon = "mdi:baby-bottle"
     _attr_device_class = SensorDeviceClass.ENUM
     _attr_options = FEED_STATE_OPTIONS
+    _attr_translation_key = "nursing"
 
     def __init__(self, coordinator: HuckleberryDataUpdateCoordinator, child: HuckleberryChildProfile) -> None:
         super().__init__(coordinator, child)
-        self._attr_name = "Nursing"
         self._attr_unique_id = f"{self.child_uid}_nursing"
 
     @property
@@ -107,6 +107,8 @@ class HuckleberryNursingSensor(HuckleberryBaseEntity, SensorEntity):
 class HuckleberryNursingSwitch(HuckleberryBaseEntity, SwitchEntity):
     """Switch to start or stop nursing tracking for a specific side."""
 
+    _attr_translation_key = "nursing_side"
+
     def __init__(
         self,
         coordinator: HuckleberryDataUpdateCoordinator,
@@ -117,9 +119,9 @@ class HuckleberryNursingSwitch(HuckleberryBaseEntity, SwitchEntity):
         super().__init__(coordinator, child)
         self._api = api
         self._side: FeedSide = side
-        self._attr_name = f"Nursing {side}"
         self._attr_unique_id = f"{self.child_uid}_nursing_{side}"
         self._attr_icon = "mdi:baby-bottle" if side == "left" else "mdi:baby-bottle-outline"
+        self._attr_translation_placeholders = {"side": side.title()}
 
     @property
     def is_on(self) -> bool:

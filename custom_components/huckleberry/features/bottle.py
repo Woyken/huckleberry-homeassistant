@@ -22,10 +22,10 @@ class HuckleberryBottleSensor(HuckleberryBaseEntity, SensorEntity):
 
     _attr_icon = "mdi:baby-bottle"
     _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _attr_translation_key = "bottle"
 
     def __init__(self, coordinator: HuckleberryDataUpdateCoordinator, child: HuckleberryChildProfile) -> None:
         super().__init__(coordinator, child)
-        self._attr_name = "Bottle"
         self._attr_unique_id = f"{self.child_uid}_bottle"
 
     def _last_bottle(self):

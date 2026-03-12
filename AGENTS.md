@@ -740,6 +740,7 @@ Error in sleep listener callback: ...
 - Use `async def async_*` naming for async methods
 - Type hints required for all methods
 - Docstrings required for classes and public methods
+- User-facing service metadata and entity names should be localized via `strings.json` / `translations/en.json`; prefer `translation_key` over hard-coded English names when Home Assistant supports it
 
 **Entity Naming**:
 - Unique ID: `{DOMAIN}_{child_uid}_{entity_type}`

@@ -50,7 +50,7 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
     """Calendar entity for Huckleberry events."""
 
     _attr_has_entity_name = True
-    _attr_name = "Events"
+    _attr_translation_key = "events"
 
     def __init__(
         self,

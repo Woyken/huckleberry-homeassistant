@@ -22,10 +22,10 @@ class HuckleberryGrowthSensor(HuckleberryBaseEntity, SensorEntity):
 
     _attr_icon = "mdi:human-male-height"
     _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _attr_translation_key = "growth"
 
     def __init__(self, coordinator: HuckleberryDataUpdateCoordinator, child: HuckleberryChildProfile) -> None:
         super().__init__(coordinator, child)
-        self._attr_name = "Growth"
         self._attr_unique_id = f"{self.child_uid}_growth"
 
     @property

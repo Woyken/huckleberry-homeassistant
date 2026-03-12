@@ -42,10 +42,10 @@ class HuckleberrySleepSensor(HuckleberryBaseEntity, SensorEntity):
     _attr_icon = "mdi:sleep"
     _attr_device_class = SensorDeviceClass.ENUM
     _attr_options = SLEEP_STATE_OPTIONS
+    _attr_translation_key = "sleep"
 
     def __init__(self, coordinator: HuckleberryDataUpdateCoordinator, child: HuckleberryChildProfile) -> None:
         super().__init__(coordinator, child)
-        self._attr_name = "Sleep"
         self._attr_unique_id = f"{self.child_uid}_sleep"
 
     @property
@@ -89,6 +89,8 @@ class HuckleberrySleepSensor(HuckleberryBaseEntity, SensorEntity):
 class HuckleberrySleepSwitch(HuckleberryBaseEntity, SwitchEntity):
     """Switch to start or stop the sleep timer."""
 
+    _attr_translation_key = "sleep_timer"
+
     def __init__(
         self,
         coordinator: HuckleberryDataUpdateCoordinator,
@@ -97,7 +99,6 @@ class HuckleberrySleepSwitch(HuckleberryBaseEntity, SwitchEntity):
     ) -> None:
         super().__init__(coordinator, child)
         self._api = api
-        self._attr_name = "Sleep timer"
         self._attr_unique_id = f"{self.child_uid}_sleep_timer"
         self._attr_icon = "mdi:sleep"
 

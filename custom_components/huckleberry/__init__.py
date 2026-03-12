@@ -148,8 +148,8 @@ def _get_child_uid_from_call(
                     return identifier_value
 
     raise ServiceValidationError(
-        "Could not resolve device_id to a Huckleberry child. "
-        "Select the child's device from the device selector."
+        translation_domain=DOMAIN,
+        translation_key="invalid_child_device",
     )
 
 

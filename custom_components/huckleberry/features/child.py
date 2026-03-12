@@ -23,8 +23,9 @@ def build_child_sensors(
 class HuckleberryChildrenSensor(CoordinatorEntity, SensorEntity):
     """Sensor showing children information."""
 
+    _attr_has_entity_name = True
     _attr_icon = "mdi:account-child"
-    _attr_native_unit_of_measurement = "children"
+    _attr_translation_key = "children"
 
     def __init__(
         self,
@@ -33,7 +34,6 @@ class HuckleberryChildrenSensor(CoordinatorEntity, SensorEntity):
     ) -> None:
         super().__init__(coordinator)
         self._children = children
-        self._attr_name = "Huckleberry Children"
         self._attr_unique_id = "huckleberry_children"
 
     @property
@@ -56,10 +56,10 @@ class HuckleberryChildProfileSensor(HuckleberryBaseEntity, SensorEntity):
     """Sensor showing individual child profile information."""
 
     _attr_icon = "mdi:account"
+    _attr_translation_key = "profile"
 
     def __init__(self, coordinator: HuckleberryDataUpdateCoordinator, child: HuckleberryChildProfile) -> None:
         super().__init__(coordinator, child)
-        self._attr_name = "Profile"
         self._attr_unique_id = f"{self.child_uid}_profile"
 
     @property

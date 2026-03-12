@@ -73,6 +73,7 @@ start_nursing:
       required: false
       selector:
         select:
+          translation_key: nursing_side
           options:
             - left
             - right
@@ -107,6 +108,7 @@ resume_nursing:
       required: false
       selector:
         select:
+          translation_key: nursing_side
           options:
             - left
             - right
@@ -164,6 +166,7 @@ log_diaper_pee:
       required: false
       selector:
         select:
+          translation_key: diaper_amount
           options:
             - little
             - medium
@@ -199,6 +202,7 @@ log_diaper_poo:
       required: false
       selector:
         select:
+          translation_key: diaper_amount
           options:
             - little
             - medium
@@ -209,6 +213,7 @@ log_diaper_poo:
       required: false
       selector:
         select:
+          translation_key: poo_color
           options:
             - yellow
             - brown
@@ -222,6 +227,7 @@ log_diaper_poo:
       required: false
       selector:
         select:
+          translation_key: poo_consistency
           options:
             - solid
             - loose
@@ -261,6 +267,7 @@ log_diaper_both:
       required: false
       selector:
         select:
+          translation_key: diaper_amount
           options:
             - little
             - medium
@@ -271,6 +278,7 @@ log_diaper_both:
       required: false
       selector:
         select:
+          translation_key: diaper_amount
           options:
             - little
             - medium
@@ -281,6 +289,7 @@ log_diaper_both:
       required: false
       selector:
         select:
+          translation_key: poo_color
           options:
             - yellow
             - brown
@@ -294,6 +303,7 @@ log_diaper_both:
       required: false
       selector:
         select:
+          translation_key: poo_consistency
           options:
             - solid
             - loose
@@ -392,6 +402,7 @@ log_growth:
       required: false
       selector:
         select:
+          translation_key: measurement_units
           options:
             - metric
             - imperial
@@ -424,6 +435,7 @@ log_bottle:
       required: true
       selector:
         select:
+          translation_key: bottle_type
           options:
             - Formula
             - Breast Milk
@@ -439,6 +451,7 @@ log_bottle:
       required: false
       selector:
         select:
+          translation_key: bottle_units
           options:
             - ml
             - oz
