@@ -4,7 +4,6 @@
   "codeowners": ["@Woyken"],
   "config_flow": true,
   "documentation": "https://github.com/Woyken/huckleberry-homeassistant",
-  "homeassistant": "2026.3.0",
   "iot_class": "cloud_push",
   "issue_tracker": "https://github.com/Woyken/huckleberry-homeassistant/issues",
   "requirements": ["huckleberry-api==0.2.2"],
