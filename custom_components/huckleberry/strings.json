@@ -1,4 +1,63 @@
 {
+  "selector": {
+    "nursing_side": {
+      "options": {
+        "left": "Left",
+        "right": "Right"
+      }
+    },
+    "diaper_amount": {
+      "options": {
+        "little": "Little",
+        "medium": "Medium",
+        "big": "Big"
+      }
+    },
+    "poo_color": {
+      "options": {
+        "yellow": "Yellow",
+        "brown": "Brown",
+        "black": "Black",
+        "green": "Green",
+        "red": "Red",
+        "gray": "Gray"
+      }
+    },
+    "poo_consistency": {
+      "options": {
+        "solid": "Solid",
+        "loose": "Loose",
+        "runny": "Runny",
+        "mucousy": "Mucousy",
+        "hard": "Hard",
+        "pebbles": "Pebbles",
+        "diarrhea": "Diarrhea"
+      }
+    },
+    "measurement_units": {
+      "options": {
+        "metric": "Metric",
+        "imperial": "Imperial"
+      }
+    },
+    "bottle_type": {
+      "options": {
+        "Formula": "Formula",
+        "Breast Milk": "Breast Milk",
+        "Tube Feeding": "Tube Feeding",
+        "Cow Milk": "Cow Milk",
+        "Goat Milk": "Goat Milk",
+        "Soy Milk": "Soy Milk",
+        "Other": "Other"
+      }
+    },
+    "bottle_units": {
+      "options": {
+        "ml": "mL",
+        "oz": "oz"
+      }
+    }
+  },
   "config": {
     "step": {
       "user": {
@@ -14,13 +73,471 @@
       "cannot_connect": "Failed to connect to Huckleberry. Check the error details above.",
       "invalid_auth": "Invalid email or password. Check the error details above.",
       "no_children": "No children found in your Huckleberry account.",
-      "account_disabled": "Your Huckleberry account has been disabled.",
-      "too_many_attempts": "Too many login attempts. Please wait a few minutes and try again.",
       "timeout": "Connection timed out. Check the error details above.",
       "unknown": "Unexpected error occurred. Check the error details above."
     },
     "abort": {
       "already_configured": "This Huckleberry account is already configured."
+    }
+  },
+  "services": {
+    "start_sleep": {
+      "name": "Start sleep",
+      "description": "Start a new sleep session.",
+      "fields": {
+        "device_id": {
+          "name": "Child device",
+          "description": "Select child device"
+        }
+      }
+    },
+    "pause_sleep": {
+      "name": "Pause sleep",
+      "description": "Pause the active sleep session without completing it.",
+      "fields": {
+        "device_id": {
+          "name": "Child device",
+          "description": "Select child device"
+        }
+      }
+    },
+    "resume_sleep": {
+      "name": "Resume sleep",
+      "description": "Resume a paused sleep session.",
+      "fields": {
+        "device_id": {
+          "name": "Child device",
+          "description": "Select child device"
+        }
+      }
+    },
+    "cancel_sleep": {
+      "name": "Cancel sleep",
+      "description": "Cancel the current sleep session (no interval saved).",
+      "fields": {
+        "device_id": {
+          "name": "Child device",
+          "description": "Select child device"
+        }
+      }
+    },
+    "complete_sleep": {
+      "name": "Complete sleep",
+      "description": "Complete current sleep and save interval to history.",
+      "fields": {
+        "device_id": {
+          "name": "Child device",
+          "description": "Select child device"
+        }
+      }
+    },
+    "start_nursing": {
+      "name": "Start nursing",
+      "description": "Start a nursing (breastfeeding) session on the specified side.",
+      "fields": {
+        "device_id": {
+          "name": "Child device",
+          "description": "Select child device"
+        },
+        "side": {
+          "name": "Side",
+          "description": "Which side to start on (left or right)"
+        }
+      }
+    },
+    "pause_nursing": {
+      "name": "Pause nursing",
+      "description": "Pause the active nursing session.",
+      "fields": {
+        "device_id": {
+          "name": "Child device",
+          "description": "Select child device"
+        }
+      }
+    },
+    "resume_nursing": {
+      "name": "Resume nursing",
+      "description": "Resume a paused nursing session.",
+      "fields": {
+        "device_id": {
+          "name": "Child device",
+          "description": "Select child device"
+        },
+        "side": {
+          "name": "Side",
+          "description": "Side to resume on (optional, resumes on last active side if omitted)"
+        }
+      }
+    },
+    "switch_nursing_side": {
+      "name": "Switch nursing side",
+      "description": "Switch between left and right side during a nursing session.",
+      "fields": {
+        "device_id": {
+          "name": "Child device",
+          "description": "Select child device"
+        }
+      }
+    },
+    "cancel_nursing": {
+      "name": "Cancel nursing",
+      "description": "Cancel current nursing session (no history saved).",
+      "fields": {
+        "device_id": {
+          "name": "Child device",
+          "description": "Select child device"
+        }
+      }
+    },
+    "complete_nursing": {
+      "name": "Complete nursing",
+      "description": "Complete current nursing session and save to history.",
+      "fields": {
+        "device_id": {
+          "name": "Child device",
+          "description": "Select child device"
+        }
+      }
+    },
+    "log_diaper_pee": {
+      "name": "Log diaper - pee",
+      "description": "Log a diaper change with pee only.",
+      "fields": {
+        "device_id": {
+          "name": "Child device",
+          "description": "Select child device"
+        },
+        "pee_amount": {
+          "name": "Pee amount",
+          "description": "Amount of pee (shows indicator in app)"
+        },
+        "diaper_rash": {
+          "name": "Diaper rash",
+          "description": "Baby has diaper rash"
+        },
+        "notes": {
+          "name": "Notes",
+          "description": "Optional notes about this diaper change"
+        }
+      }
+    },
+    "log_diaper_poo": {
+      "name": "Log diaper - poo",
+      "description": "Log a diaper change with poo only.",
+      "fields": {
+        "device_id": {
+          "name": "Child device",
+          "description": "Select child device"
+        },
+        "poo_amount": {
+          "name": "Poo amount",
+          "description": "Amount of poo (shows indicator in app)"
+        },
+        "color": {
+          "name": "Poo color",
+          "description": "Poo color"
+        },
+        "consistency": {
+          "name": "Poo consistency",
+          "description": "Poo consistency"
+        },
+        "diaper_rash": {
+          "name": "Diaper rash",
+          "description": "Baby has diaper rash"
+        },
+        "notes": {
+          "name": "Notes",
+          "description": "Optional notes about this diaper change"
+        }
+      }
+    },
+    "log_diaper_both": {
+      "name": "Log diaper - both",
+      "description": "Log a diaper change with both pee and poo.",
+      "fields": {
+        "device_id": {
+          "name": "Child device",
+          "description": "Select child device"
+        },
+        "pee_amount": {
+          "name": "Pee amount",
+          "description": "Amount of pee (shows indicator in app)"
+        },
+        "poo_amount": {
+          "name": "Poo amount",
+          "description": "Amount of poo (shows indicator in app)"
+        },
+        "color": {
+          "name": "Poo color",
+          "description": "Poo color"
+        },
+        "consistency": {
+          "name": "Poo consistency",
+          "description": "Poo consistency"
+        },
+        "diaper_rash": {
+          "name": "Diaper rash",
+          "description": "Baby has diaper rash"
+        },
+        "notes": {
+          "name": "Notes",
+          "description": "Optional notes about this diaper change"
+        }
+      }
+    },
+    "log_diaper_dry": {
+      "name": "Log diaper - dry check",
+      "description": "Log a dry diaper check.",
+      "fields": {
+        "device_id": {
+          "name": "Child device",
+          "description": "Select child device"
+        },
+        "diaper_rash": {
+          "name": "Diaper rash",
+          "description": "Baby has diaper rash"
+        },
+        "notes": {
+          "name": "Notes",
+          "description": "Optional notes about this diaper check"
+        }
+      }
+    },
+    "log_growth": {
+      "name": "Log growth measurements",
+      "description": "Log child's weight, height, and head circumference measurements.",
+      "fields": {
+        "device_id": {
+          "name": "Child device",
+          "description": "Select child device"
+        },
+        "weight": {
+          "name": "Weight",
+          "description": "Weight measurement (kg for metric, lbs for imperial)"
+        },
+        "height": {
+          "name": "Height",
+          "description": "Height/length measurement (cm for metric, inches for imperial)"
+        },
+        "head": {
+          "name": "Head circumference",
+          "description": "Head circumference measurement (cm for metric, inches for imperial)"
+        },
+        "units": {
+          "name": "Measurement units",
+          "description": "Unit system for measurements"
+        }
+      }
+    },
+    "log_bottle": {
+      "name": "Log bottle feeding",
+      "description": "Log a bottle feeding with amount and type.",
+      "fields": {
+        "device_id": {
+          "name": "Child device",
+          "description": "Select child device"
+        },
+        "amount": {
+          "name": "Amount",
+          "description": "Amount of bottle feeding (in oz or ml)"
+        },
+        "bottle_type": {
+          "name": "Bottle type",
+          "description": "Type of bottle feeding"
+        },
+        "units": {
+          "name": "Units",
+          "description": "Measurement units for amount"
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "invalid_child_device": {
+      "message": "Could not resolve device_id to a Huckleberry child. Select the child's device from the device selector."
+    }
+  },
+  "entity": {
+    "calendar": {
+      "events": {
+        "name": "Events"
+      }
+    },
+    "sensor": {
+      "children": {
+        "name": "Huckleberry Children",
+        "unit_of_measurement": "children",
+        "state_attributes": {
+          "children": {
+            "name": "Children"
+          },
+          "child_ids": {
+            "name": "Child IDs"
+          },
+          "child_names": {
+            "name": "Child names"
+          }
+        }
+      },
+      "profile": {
+        "name": "Profile",
+        "state_attributes": {
+          "uid": {
+            "name": "UID"
+          },
+          "name": {
+            "name": "Name"
+          },
+          "birthday": {
+            "name": "Birthday"
+          },
+          "picture": {
+            "name": "Picture"
+          },
+          "gender": {
+            "name": "Gender"
+          },
+          "color": {
+            "name": "Color"
+          },
+          "created_at": {
+            "name": "Created at"
+          },
+          "night_start": {
+            "name": "Night start"
+          },
+          "morning_cutoff": {
+            "name": "Morning cutoff"
+          },
+          "expected_naps": {
+            "name": "Expected naps"
+          },
+          "categories": {
+            "name": "Categories"
+          }
+        }
+      },
+      "sleep": {
+        "name": "Sleep",
+        "state": {
+          "active": "Active",
+          "paused": "Paused",
+          "none": "None"
+        },
+        "state_attributes": {
+          "current_start": {
+            "name": "Current start"
+          },
+          "current_end": {
+            "name": "Current end"
+          },
+          "previous_start": {
+            "name": "Previous start"
+          },
+          "previous_duration": {
+            "name": "Previous duration"
+          }
+        }
+      },
+      "nursing": {
+        "name": "Nursing",
+        "state": {
+          "active": "Active",
+          "paused": "Paused",
+          "none": "None"
+        },
+        "state_attributes": {
+          "current_start": {
+            "name": "Current start"
+          },
+          "current_left_duration": {
+            "name": "Current left duration"
+          },
+          "current_right_duration": {
+            "name": "Current right duration"
+          },
+          "current_last_side": {
+            "name": "Current last side"
+          },
+          "current_active_side": {
+            "name": "Current active side"
+          },
+          "previous_start": {
+            "name": "Previous start"
+          },
+          "previous_duration": {
+            "name": "Previous duration"
+          },
+          "previous_left_duration": {
+            "name": "Previous left duration"
+          },
+          "previous_right_duration": {
+            "name": "Previous right duration"
+          },
+          "previous_last_side": {
+            "name": "Previous last side"
+          }
+        }
+      },
+      "bottle": {
+        "name": "Bottle",
+        "state_attributes": {
+          "time": {
+            "name": "Time"
+          },
+          "amount": {
+            "name": "Amount"
+          },
+          "units": {
+            "name": "Units"
+          },
+          "type": {
+            "name": "Type"
+          }
+        }
+      },
+      "diaper": {
+        "name": "Diaper",
+        "state_attributes": {
+          "time": {
+            "name": "Time"
+          },
+          "type": {
+            "name": "Type"
+          }
+        }
+      },
+      "growth": {
+        "name": "Growth",
+        "state_attributes": {
+          "weight": {
+            "name": "Weight"
+          },
+          "weight_unit": {
+            "name": "Weight unit"
+          },
+          "height": {
+            "name": "Height"
+          },
+          "height_unit": {
+            "name": "Height unit"
+          },
+          "head_circumference": {
+            "name": "Head circumference"
+          },
+          "head_unit": {
+            "name": "Head unit"
+          }
+        }
+      }
+    },
+    "switch": {
+      "sleep_timer": {
+        "name": "Sleep timer"
+      },
+      "nursing_side": {
+        "name": "Nursing {side}"
+      }
     }
   }
 }
