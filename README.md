@@ -10,13 +10,16 @@ This integration provides real-time baby tracking in Home Assistant by connectin
 
 ## Features
 
-- 💤 **Sleep Tracking**: Sensors, switches, and automation actions
-- 🍼 **Feeding Tracking**: Left/right side tracking with switches, bottle feeding with amount and type
+- 💤 **Sleep Tracking**: Sensors, switches, and automation services
+- 🤱 **Nursing Tracking**: Left/right side tracking with switches and services
+- 🍼 **Bottle Feeding**: Log bottle feeds with amount and type
 - 🧷 **Diaper Changes**: Log pee, poo, both, or dry checks
 - 📏 **Growth Measurements**: Track weight, height, head circumference
+- 📅 **Calendar**: Historical events per child in HA's calendar view
 - 🔄 **Real-time Sync**: Instant updates via Firebase listeners
-- 🤖 **Automations**: Device actions for advanced automations
 - 👶 **Multi-child Support**: Separate devices per child
+
+> **Upgrading from v0.3.x?** See the [Migration Guide](MIGRATION.md) for a full list of breaking changes (renamed services, entity IDs, and removed device actions).
 
 ## Installation
 
@@ -44,11 +47,12 @@ This integration provides real-time baby tracking in Home Assistant by connectin
 
 ### Per Child:
 - **Sensors**:
-  - `sensor.{child_name}_sleep_status` - Sleep status (sleeping, paused, none)
-  - `sensor.{child_name}_feeding_status` - Feeding status (feeding, paused, none)
+  - `sensor.{child_name}_sleep` - Sleep status (sleeping, paused, none)
+  - `sensor.{child_name}_nursing` - Nursing status (nursing, paused, none)
   - `sensor.{child_name}_profile` - Child profile information
   - `sensor.{child_name}_growth` - Latest growth measurements
-  - `sensor.{child_name}_last_bottle` - Last bottle feeding (time, amount, type)
+  - `sensor.{child_name}_bottle` - Last bottle feeding (time, amount, type)
+  - `sensor.{child_name}_diaper` - Last diaper change
 
 - **Switches** (3):
   - `switch.{child_name}_sleep_timer` - Start/stop the sleep timer
@@ -56,7 +60,7 @@ This integration provides real-time baby tracking in Home Assistant by connectin
   - `switch.{child_name}_nursing_right` - Right side nursing
 
 - **Calendar** (1):
-  - `calendar.{child_name}_events` - All historical events (sleep, feeding, diaper, growth)
+  - `calendar.{child_name}_events` - All historical events (sleep, nursing, diaper, growth)
 
 ### Global:
 - `sensor.huckleberry_children` - Number of children
@@ -72,13 +76,15 @@ All services support device selection for easy use in automations:
 - `huckleberry.cancel_sleep`
 - `huckleberry.complete_sleep`
 
-### Feeding Tracking
-- `huckleberry.start_feeding`
-- `huckleberry.pause_feeding`
-- `huckleberry.resume_feeding`
-- `huckleberry.switch_feeding_side`
-- `huckleberry.cancel_feeding`
-- `huckleberry.complete_feeding`
+### Nursing Tracking
+- `huckleberry.start_nursing`
+- `huckleberry.pause_nursing`
+- `huckleberry.resume_nursing`
+- `huckleberry.switch_nursing_side`
+- `huckleberry.cancel_nursing`
+- `huckleberry.complete_nursing`
+
+### Bottle Feeding
 - `huckleberry.log_bottle` - Log bottle feeding (formula or breastmilk) with amount in oz or ml
 
 ### Diaper Changes
@@ -120,7 +126,7 @@ automation:
   - alias: "Baby Sleep Started"
     trigger:
       - platform: state
-        entity_id: sensor.baby_name_sleep_status
+        entity_id: sensor.baby_name_sleep
         to: "sleeping"
     action:
       - service: notify.mobile_app
@@ -131,17 +137,17 @@ automation:
 ### Feeding Timer Alert
 ```yaml
 automation:
-  - alias: "Feeding Duration Alert"
+  - alias: "Nursing Duration Alert"
     trigger:
       - platform: state
-        entity_id: sensor.baby_name_feeding_status
-        to: "feeding"
+        entity_id: sensor.baby_name_nursing
+        to: "nursing"
         for:
           minutes: 20
     action:
       - service: notify.mobile_app
         data:
-          message: "Baby has been feeding for 20 minutes"
+          message: "Baby has been nursing for 20 minutes"
 ```
 
 ### Log Bottle Feeding
@@ -163,20 +169,11 @@ automation:
 
 ## Device Actions
 
-The integration provides device actions for use in device-based automations:
-- Sleep actions: start, pause, resume, cancel, complete
-- Feeding actions: start left/right, pause, resume, switch side, cancel, complete
-- Diaper actions: log pee, poo, both, dry
-- Growth actions: log growth
-- Bottle actions: log bottle feeding
+Device actions have been removed in v0.4.0. Use HA services instead — they support the same `device_id` selector in the automation editor. See [Services](#services) above and the [Migration Guide](MIGRATION.md).
 
 ## Documentation
 
-- **Installation Guide**: See `INSTALLATION.md`
-- **Quick Reference**: See `QUICK_REFERENCE.md`
-- **Growth Tracking**: See `GROWTH_TRACKING.md`
-- **Notifications Setup**: See `NOTIFICATION_SETUP.md`
-- **Testing Guide**: See `TESTING.md`
+- **Migration Guide**: See `MIGRATION.md` (upgrading from v0.3.x)
 
 ## Development
 
@@ -187,9 +184,9 @@ The integration provides device actions for use in device-based automations:
 
 ## Requirements
 
-- Home Assistant 2023.1 or newer
-- Huckleberry account with active subscription
-- `huckleberry-api>=0.1.18` (automatically installed)
+- Home Assistant 2026.3 or newer
+- Huckleberry account
+- `huckleberry-api>=0.2.2` (automatically installed)
 
 ## Support
 
