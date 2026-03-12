@@ -5,18 +5,10 @@ start_sleep:
     device_id:
       name: Child device
       description: Select child device
-      required: false
+      required: true
       selector:
         device:
           integration: huckleberry
-    child_uid:
-      name: Child UID
-      description: Child UID (optional, overrides device selection)
-      example: VZiSnxmU3KawWzsSLTqyuPTlsuX2
-      advanced: true
-      required: false
-      selector:
-        text:
 pause_sleep:
   name: Pause Sleep
   description: Pause the active sleep session without completing it.
@@ -24,18 +16,10 @@ pause_sleep:
     device_id:
       name: Child device
       description: Select child device
-      required: false
+      required: true
       selector:
         device:
           integration: huckleberry
-    child_uid:
-      name: Child UID
-      description: Child UID (optional, overrides device selection)
-      example: VZiSnxmU3KawWzsSLTqyuPTlsuX2
-      advanced: true
-      required: false
-      selector:
-        text:
 resume_sleep:
   name: Resume Sleep
   description: Resume a paused sleep session.
@@ -43,18 +27,10 @@ resume_sleep:
     device_id:
       name: Child device
       description: Select child device
-      required: false
+      required: true
       selector:
         device:
           integration: huckleberry
-    child_uid:
-      name: Child UID
-      description: Child UID (optional, overrides device selection)
-      example: VZiSnxmU3KawWzsSLTqyuPTlsuX2
-      advanced: true
-      required: false
-      selector:
-        text:
 cancel_sleep:
   name: Cancel Sleep
   description: Cancel the current sleep session (no interval saved).
@@ -62,18 +38,10 @@ cancel_sleep:
     device_id:
       name: Child device
       description: Select child device
-      required: false
+      required: true
       selector:
         device:
           integration: huckleberry
-    child_uid:
-      name: Child UID
-      description: Child UID (optional, overrides device selection)
-      example: VZiSnxmU3KawWzsSLTqyuPTlsuX2
-      advanced: true
-      required: false
-      selector:
-        text:
 complete_sleep:
   name: Complete Sleep
   description: Complete current sleep and save interval to history.
@@ -81,18 +49,10 @@ complete_sleep:
     device_id:
       name: Child device
       description: Select child device
-      required: false
+      required: true
       selector:
         device:
           integration: huckleberry
-    child_uid:
-      name: Child UID
-      description: Child UID (optional, overrides device selection)
-      example: VZiSnxmU3KawWzsSLTqyuPTlsuX2
-      advanced: true
-      required: false
-      selector:
-        text:
 
 start_nursing:
   name: Start Nursing
@@ -101,18 +61,10 @@ start_nursing:
     device_id:
       name: Child device
       description: Select child device
-      required: false
+      required: true
       selector:
         device:
           integration: huckleberry
-    child_uid:
-      name: Child UID
-      description: Child UID (optional, overrides device selection)
-      example: VZiSnxmU3KawWzsSLTqyuPTlsuX2
-      advanced: true
-      required: false
-      selector:
-        text:
     side:
       description: Which side to start on (left or right)
       example: left
@@ -132,18 +84,10 @@ pause_nursing:
     device_id:
       name: Child device
       description: Select child device
-      required: false
+      required: true
       selector:
         device:
           integration: huckleberry
-    child_uid:
-      name: Child UID
-      description: Child UID (optional, overrides device selection)
-      example: VZiSnxmU3KawWzsSLTqyuPTlsuX2
-      advanced: true
-      required: false
-      selector:
-        text:
 
 resume_nursing:
   name: Resume Nursing
@@ -152,18 +96,10 @@ resume_nursing:
     device_id:
       name: Child device
       description: Select child device
-      required: false
+      required: true
       selector:
         device:
           integration: huckleberry
-    child_uid:
-      name: Child UID
-      description: Child UID (optional, overrides device selection)
-      example: VZiSnxmU3KawWzsSLTqyuPTlsuX2
-      advanced: true
-      required: false
-      selector:
-        text:
     side:
       description: Side to resume on (optional, resumes on last active side if omitted)
       example: left
@@ -182,18 +118,10 @@ switch_nursing_side:
     device_id:
       name: Child device
       description: Select child device
-      required: false
+      required: true
       selector:
         device:
           integration: huckleberry
-    child_uid:
-      name: Child UID
-      description: Child UID (optional, overrides device selection)
-      example: VZiSnxmU3KawWzsSLTqyuPTlsuX2
-      advanced: true
-      required: false
-      selector:
-        text:
 
 cancel_nursing:
   name: Cancel Nursing
@@ -202,18 +130,10 @@ cancel_nursing:
     device_id:
       name: Child device
       description: Select child device
-      required: false
+      required: true
       selector:
         device:
           integration: huckleberry
-    child_uid:
-      name: Child UID
-      description: Child UID (optional, overrides device selection)
-      example: VZiSnxmU3KawWzsSLTqyuPTlsuX2
-      advanced: true
-      required: false
-      selector:
-        text:
 
 complete_nursing:
   name: Complete Nursing
@@ -222,18 +142,10 @@ complete_nursing:
     device_id:
       name: Child device
       description: Select child device
-      required: false
+      required: true
       selector:
         device:
           integration: huckleberry
-    child_uid:
-      name: Child UID
-      description: Child UID (optional, overrides device selection)
-      example: VZiSnxmU3KawWzsSLTqyuPTlsuX2
-      advanced: true
-      required: false
-      selector:
-        text:
 
 log_diaper_pee:
   name: Log Diaper - Pee
@@ -242,18 +154,10 @@ log_diaper_pee:
     device_id:
       name: Child device
       description: Select child device
-      required: false
+      required: true
       selector:
         device:
           integration: huckleberry
-    child_uid:
-      name: Child UID
-      description: Child UID (optional, overrides device selection)
-      example: VZiSnxmU3KawWzsSLTqyuPTlsuX2
-      advanced: true
-      required: false
-      selector:
-        text:
     pee_amount:
       name: Pee amount
       description: Amount of pee (shows indicator in app)
@@ -285,18 +189,10 @@ log_diaper_poo:
     device_id:
       name: Child device
       description: Select child device
-      required: false
+      required: true
       selector:
         device:
           integration: huckleberry
-    child_uid:
-      name: Child UID
-      description: Child UID (optional, overrides device selection)
-      example: VZiSnxmU3KawWzsSLTqyuPTlsuX2
-      advanced: true
-      required: false
-      selector:
-        text:
     poo_amount:
       name: Poo amount
       description: Amount of poo (shows indicator in app)
@@ -355,18 +251,10 @@ log_diaper_both:
     device_id:
       name: Child device
       description: Select child device
-      required: false
+      required: true
       selector:
         device:
           integration: huckleberry
-    child_uid:
-      name: Child UID
-      description: Child UID (optional, overrides device selection)
-      example: VZiSnxmU3KawWzsSLTqyuPTlsuX2
-      advanced: true
-      required: false
-      selector:
-        text:
     pee_amount:
       name: Pee amount
       description: Amount of pee (shows indicator in app)
@@ -435,18 +323,10 @@ log_diaper_dry:
     device_id:
       name: Child device
       description: Select child device
-      required: false
+      required: true
       selector:
         device:
           integration: huckleberry
-    child_uid:
-      name: Child UID
-      description: Child UID (optional, overrides device selection)
-      example: VZiSnxmU3KawWzsSLTqyuPTlsuX2
-      advanced: true
-      required: false
-      selector:
-        text:
     diaper_rash:
       name: Diaper rash
       description: Baby has diaper rash
@@ -468,18 +348,10 @@ log_growth:
     device_id:
       name: Child device
       description: Select child device
-      required: false
+      required: true
       selector:
         device:
           integration: huckleberry
-    child_uid:
-      name: Child UID
-      description: Child UID (optional, overrides device selection)
-      example: VZiSnxmU3KawWzsSLTqyuPTlsuX2
-      advanced: true
-      required: false
-      selector:
-        text:
     weight:
       name: Weight
       description: Weight measurement (kg for metric, lbs for imperial)
@@ -531,18 +403,10 @@ log_bottle:
     device_id:
       name: Child device
       description: Select child device
-      required: false
+      required: true
       selector:
         device:
           integration: huckleberry
-    child_uid:
-      name: Child UID
-      description: Child UID (optional, overrides device selection)
-      example: VZiSnxmU3KawWzsSLTqyuPTlsuX2
-      advanced: true
-      required: false
-      selector:
-        text:
     amount:
       name: Amount
       description: Amount of bottle feeding (in oz or ml)

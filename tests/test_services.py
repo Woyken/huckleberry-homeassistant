@@ -160,38 +160,9 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
         "test_child_uid", 120.0, "Breast Milk", "ml"
     )
 
-async def test_service_explicit_child_uid(hass: HomeAssistant, mock_huckleberry_api):
-    """Test service call with explicit child_uid."""
-    entry = MockConfigEntry(
-        domain=DOMAIN,
-        data={
-            CONF_EMAIL: "test@example.com",
-            CONF_PASSWORD: "test_password",
-        },
-    )
-    entry.add_to_hass(hass)
-
-    with patch(
-        "custom_components.huckleberry.HuckleberryAPI",
-        return_value=mock_huckleberry_api,
-    ):
-        await hass.config_entries.async_setup(entry.entry_id)
-        await hass.async_block_till_done()
-
-    # Create a dummy device ID (not linked to child)
-    device_id = "dummy_device_id"
-
-    # Call service with explicit child_uid
-    await hass.services.async_call(
-        DOMAIN, "start_sleep", {"device_id": device_id, "child_uid": "explicit_child_uid"}, blocking=True
-    )
-    mock_huckleberry_api.start_sleep.assert_called_with("explicit_child_uid")
-
-
 async def test_service_no_target_raises(hass: HomeAssistant, mock_huckleberry_api):
-    """Test that calling a service without any target raises ServiceValidationError."""
+    """Test that calling a service without device_id raises an error."""
     import pytest
-    from homeassistant.exceptions import ServiceValidationError
 
     entry = MockConfigEntry(
         domain=DOMAIN,
@@ -209,8 +180,8 @@ async def test_service_no_target_raises(hass: HomeAssistant, mock_huckleberry_ap
         await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
 
-    # Calling without device_id or child_uid should raise ServiceValidationError
-    with pytest.raises(ServiceValidationError):
+    # Calling without device_id should raise (schema requires device_id)
+    with pytest.raises(Exception):
         await hass.services.async_call(
             DOMAIN, "start_sleep", {}, blocking=True
         )

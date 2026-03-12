@@ -74,12 +74,11 @@ action:
 
 See the [Services](#services) section of the README for the full list of available services.
 
-### 4. Service calls now require a target child
+### 4. Service calls now require `device_id`
 
-Previously, calling a service without `device_id` or `child_uid` would silently fall back to the first child. This fallback has been removed. Every service call must now include either:
+Previously, a service call accepted either `device_id` or `child_uid`, and silently fell back to the first child if neither was provided. Both fallbacks have been removed.
 
-- `device_id` — the HA device ID of the child's device (recommended; use the device selector in the automation editor), or
-- `child_uid` — the child's Huckleberry UID (advanced).
+Every service call must now include `device_id` — the HA device ID of the child's device. Use the device selector in the automation editor to pick the child device.
 
 ---
 

@@ -40,8 +40,7 @@ _LOGGER = logging.getLogger(__name__)
 PLATFORMS: Final[list[Platform]] = [Platform.SWITCH, Platform.SENSOR, Platform.CALENDAR]
 SERVICE_CHILD_SCHEMA: Final = vol.Schema(
     {
-        vol.Optional(CONF_DEVICE_ID): cv.string,
-        vol.Optional("child_uid"): cv.string,
+        vol.Required(CONF_DEVICE_ID): cv.string,
     }
 )
 FEED_SIDE_OPTIONS: Final[tuple[str, ...]] = tuple(
@@ -137,12 +136,8 @@ def _get_child_uid_from_call(
 ) -> str:
     """Extract the child UID from service call data.
 
-    Raises ServiceValidationError when no target child can be resolved.
+    Raises ServiceValidationError when the device_id cannot be resolved to a child.
     """
-    child_uid = call.data.get("child_uid")
-    if isinstance(child_uid, str):
-        return child_uid
-
     device_id = call.data.get(CONF_DEVICE_ID)
     if isinstance(device_id, str):
         device_registry = dr.async_get(hass)
@@ -153,7 +148,8 @@ def _get_child_uid_from_call(
                     return identifier_value
 
     raise ServiceValidationError(
-        "No target child specified. Provide either 'device_id' or 'child_uid'."
+        "Could not resolve device_id to a Huckleberry child. "
+        "Select the child's device from the device selector."
     )
 
 
@@ -171,8 +167,7 @@ def _build_service_method_schema(
 ) -> vol.Schema:
     """Create a service schema from the shared target fields."""
     schema: dict[object, object] = {
-        vol.Optional(CONF_DEVICE_ID): cv.string,
-        vol.Optional("child_uid"): cv.string,
+        vol.Required(CONF_DEVICE_ID): cv.string,
     }
 
     if include_side:
