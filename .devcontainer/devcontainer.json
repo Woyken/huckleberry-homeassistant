@@ -5,7 +5,7 @@
     "context": ".."
   },
   "remoteUser": "vscode",
-  "postStartCommand": "uv sync --all-extras --dev --frozen",
+  "postCreateCommand": "uv sync --all-extras --dev --frozen",
   "customizations": {
     "vscode": {
       "settings": {
@@ -18,7 +18,8 @@
       },
       "extensions": [
         "ms-python.python",
-        "ms-python.vscode-pylance"
+        "charliermarsh.ruff",
+        "astral-sh.ty"
       ]
     }
   }

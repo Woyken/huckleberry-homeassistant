@@ -1,6 +1,7 @@
 """Test Huckleberry services."""
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
+from homeassistant.helpers import device_registry as dr
 from custom_components.huckleberry.const import DOMAIN
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -24,7 +25,7 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
         await hass.async_block_till_done()
 
     # Create a device to target
-    device_registry = hass.helpers.device_registry.async_get(hass)
+    device_registry = dr.async_get(hass)
     device = device_registry.async_get_or_create(
         config_entry_id=entry.entry_id,
         identifiers={(DOMAIN, "test_child_uid")},
@@ -61,47 +62,47 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
     )
     mock_huckleberry_api.complete_sleep.assert_called_with("test_child_uid")
 
-    # Test start_feeding (left)
+    # Test start_nursing (left)
     await hass.services.async_call(
-        DOMAIN, "start_feeding", {"device_id": device.id, "side": "left"}, blocking=True
+        DOMAIN, "start_nursing", {"device_id": device.id, "side": "left"}, blocking=True
     )
-    mock_huckleberry_api.start_feeding.assert_called_with("test_child_uid", "left")
+    mock_huckleberry_api.start_nursing.assert_called_with("test_child_uid", "left")
 
-    # Test start_feeding (right)
+    # Test start_nursing (right)
     await hass.services.async_call(
-        DOMAIN, "start_feeding", {"device_id": device.id, "side": "right"}, blocking=True
+        DOMAIN, "start_nursing", {"device_id": device.id, "side": "right"}, blocking=True
     )
-    mock_huckleberry_api.start_feeding.assert_called_with("test_child_uid", "right")
+    mock_huckleberry_api.start_nursing.assert_called_with("test_child_uid", "right")
 
-    # Test pause_feeding
+    # Test pause_nursing
     await hass.services.async_call(
-        DOMAIN, "pause_feeding", {"device_id": device.id}, blocking=True
+        DOMAIN, "pause_nursing", {"device_id": device.id}, blocking=True
     )
-    mock_huckleberry_api.pause_feeding.assert_called_with("test_child_uid")
+    mock_huckleberry_api.pause_nursing.assert_called_with("test_child_uid")
 
-    # Test resume_feeding
+    # Test resume_nursing
     await hass.services.async_call(
-        DOMAIN, "resume_feeding", {"device_id": device.id}, blocking=True
+        DOMAIN, "resume_nursing", {"device_id": device.id}, blocking=True
     )
-    mock_huckleberry_api.resume_feeding.assert_called_with("test_child_uid", None)
+    mock_huckleberry_api.resume_nursing.assert_called_with("test_child_uid", None)
 
-    # Test switch_feeding_side
+    # Test switch_nursing_side
     await hass.services.async_call(
-        DOMAIN, "switch_feeding_side", {"device_id": device.id}, blocking=True
+        DOMAIN, "switch_nursing_side", {"device_id": device.id}, blocking=True
     )
-    mock_huckleberry_api.switch_feeding_side.assert_called_with("test_child_uid")
+    mock_huckleberry_api.switch_nursing_side.assert_called_with("test_child_uid")
 
-    # Test cancel_feeding
+    # Test cancel_nursing
     await hass.services.async_call(
-        DOMAIN, "cancel_feeding", {"device_id": device.id}, blocking=True
+        DOMAIN, "cancel_nursing", {"device_id": device.id}, blocking=True
     )
-    mock_huckleberry_api.cancel_feeding.assert_called_with("test_child_uid")
+    mock_huckleberry_api.cancel_nursing.assert_called_with("test_child_uid")
 
-    # Test complete_feeding
+    # Test complete_nursing
     await hass.services.async_call(
-        DOMAIN, "complete_feeding", {"device_id": device.id}, blocking=True
+        DOMAIN, "complete_nursing", {"device_id": device.id}, blocking=True
     )
-    mock_huckleberry_api.complete_feeding.assert_called_with("test_child_uid")
+    mock_huckleberry_api.complete_nursing.assert_called_with("test_child_uid")
 
     # Test log_diaper_pee
     await hass.services.async_call(
@@ -147,7 +148,7 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
     await hass.services.async_call(
         DOMAIN, "log_bottle", {"device_id": device.id, "amount": 4.0, "bottle_type": "Formula", "units": "oz"}, blocking=True
     )
-    mock_huckleberry_api.log_bottle_feeding.assert_called_with(
+    mock_huckleberry_api.log_bottle.assert_called_with(
         "test_child_uid", 4.0, "Formula", "oz"
     )
 
@@ -155,12 +156,14 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
     await hass.services.async_call(
         DOMAIN, "log_bottle", {"device_id": device.id, "amount": 120.0, "bottle_type": "Breast Milk", "units": "ml"}, blocking=True
     )
-    mock_huckleberry_api.log_bottle_feeding.assert_called_with(
+    mock_huckleberry_api.log_bottle.assert_called_with(
         "test_child_uid", 120.0, "Breast Milk", "ml"
     )
 
-async def test_service_explicit_child_uid(hass: HomeAssistant, mock_huckleberry_api):
-    """Test service call with explicit child_uid."""
+async def test_service_no_target_raises(hass: HomeAssistant, mock_huckleberry_api):
+    """Test that calling a service without device_id raises an error."""
+    import pytest
+
     entry = MockConfigEntry(
         domain=DOMAIN,
         data={
@@ -177,11 +180,8 @@ async def test_service_explicit_child_uid(hass: HomeAssistant, mock_huckleberry_
         await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
 
-    # Create a dummy device ID (not linked to child)
-    device_id = "dummy_device_id"
-
-    # Call service with explicit child_uid
-    await hass.services.async_call(
-        DOMAIN, "start_sleep", {"device_id": device_id, "child_uid": "explicit_child_uid"}, blocking=True
-    )
-    mock_huckleberry_api.start_sleep.assert_called_with("explicit_child_uid")
+    # Calling without device_id should raise (schema requires device_id)
+    with pytest.raises(Exception):
+        await hass.services.async_call(
+            DOMAIN, "start_sleep", {}, blocking=True
+        )

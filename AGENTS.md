@@ -45,15 +45,15 @@ This integration provides:
 - Real-time entity updates
 
 **Platforms:**
-- `switch`: Sleep tracking + left/right feeding switches per child
-- `sensor`: Sleep/feeding status + Children count + child profile + growth sensors
-- `device_action`: 18 device-specific automation actions
+- `switch`: Sleep timer + left/right nursing switches per child
+- `sensor`: Sleep/nursing status + Children count + child profile + growth sensors
 
 **External Dependencies:**
-- `huckleberry-api>=0.1.19` - Firebase operations
-- `google-cloud-firestore>=2.11.0` - Required by huckleberry-api
+- `huckleberry-api>=0.2.2` - Firebase operations
 
 ### Integration Structure
+
+Platform files should stay thin. Keep `sensor.py`, `switch.py`, and other Home Assistant platform modules focused on `async_setup_entry()` and entity assembly, while entity implementations live in feature modules grouped by Huckleberry domain.
 
 ```
 custom_components/huckleberry/
@@ -61,9 +61,15 @@ custom_components/huckleberry/
 ├── api.py                   # Legacy API (deprecated - will be removed)
 ├── config_flow.py           # Configuration UI flow
 ├── const.py                 # Constants (DOMAIN, PLATFORMS)
-├── switch.py                # Sleep + Left/Right feeding switches (3 per child)
-├── sensor.py                # Sleep/Feed status + Profile + Growth sensors (4 per child) + Children count
-├── device_action.py         # 17 device actions for automations
+├── switch.py                # Switch platform entrypoint; assembles feature switches
+├── sensor.py                # Sensor platform entrypoint; assembles feature sensors
+├── features/                # Feature-oriented entity modules grouped by Huckleberry domain
+│   ├── child.py             # Children and child profile sensors
+│   ├── sleep.py             # Sleep sensor and sleep switch
+│   ├── nursing.py           # Nursing sensor and nursing switches
+│   ├── bottle.py            # Bottle sensor
+│   ├── diaper.py            # Diaper sensor
+│   └── growth.py            # Growth sensor
 ├── services.yaml            # Service definitions with device selectors
 ├── manifest.json            # Integration metadata, dependencies
 ├── strings.json             # UI strings for config flow
@@ -128,8 +134,8 @@ This groups entities under one device per child in HA UI.
 
 ### Switches (3 per child)
 
-**`switch.{child_name}_sleep`**:
-- State: `on` (sleep tracking active) / `off` (not tracking)
+**`switch.{child_name}_sleep_timer`**:
+- State: `on` (sleep timer active) / `off` (not running)
 - Actions: Turn on = start sleep, Turn off = complete sleep
 - Updates: Real-time via sleep listener
 
@@ -189,30 +195,30 @@ All services support device selector for easy automation creation.
 - Completes sleep and saves to history
 - Parameters: `device_id` (optional), `child_uid` (optional)
 
-### Feeding Services
+### Nursing Services
 
-**`huckleberry.start_feeding`**:
-- Starts feeding on specified side
-- Parameters: `device_id` (optional), `child_uid` (optional), `side` (left/right, required)
+**`huckleberry.start_nursing`**:
+- Starts nursing (breastfeeding) on specified side
+- Parameters: `device_id` (optional), `child_uid` (optional), `side` (left/right, defaults to left)
 
-**`huckleberry.pause_feeding`**:
-- Pauses active feeding
+**`huckleberry.pause_nursing`**:
+- Pauses active nursing session
 - Parameters: `device_id` (optional), `child_uid` (optional)
 
-**`huckleberry.resume_feeding`**:
-- Resumes paused feeding
+**`huckleberry.resume_nursing`**:
+- Resumes paused nursing session
+- Parameters: `device_id` (optional), `child_uid` (optional), `side` (optional, resumes on last side if omitted)
+
+**`huckleberry.switch_nursing_side`**:
+- Switches to opposite nursing side
 - Parameters: `device_id` (optional), `child_uid` (optional)
 
-**`huckleberry.switch_feeding_side`**:
-- Switches to opposite feeding side (auto-resumes)
+**`huckleberry.cancel_nursing`**:
+- Cancels nursing without saving to history
 - Parameters: `device_id` (optional), `child_uid` (optional)
 
-**`huckleberry.cancel_feeding`**:
-- Cancels feeding without saving to history
-- Parameters: `device_id` (optional), `child_uid` (optional)
-
-**`huckleberry.complete_feeding`**:
-- Completes feeding and saves to history
+**`huckleberry.complete_nursing`**:
+- Completes nursing and saves to history
 - Parameters: `device_id` (optional), `child_uid` (optional)
 
 ### Diaper Services
@@ -241,37 +247,6 @@ All services support device selector for easy automation creation.
 - Logs growth measurements
 - Parameters: `device_id` (optional), `child_uid` (optional), `weight` (optional), `weight_units` (kg/lbs), `height` (optional), `height_units` (cm/in), `head` (optional), `head_units` (hcm/hin)
 - At least one measurement (weight, height, or head) is required
-
-## Device Actions
-
-Device actions appear in automation UI when selecting a device trigger/condition/action.
-
-### Sleep Actions (5)
-1. `start_sleep` - Start sleep tracking
-2. `pause_sleep` - Pause sleep tracking
-3. `resume_sleep` - Resume sleep tracking
-4. `cancel_sleep` - Cancel sleep tracking
-5. `complete_sleep` - Complete sleep tracking
-
-### Feeding Actions (6)
-7. `start_feeding_left` - Start feeding on left side
-8. `start_feeding_right` - Start feeding on right side
-9. `pause_feeding` - Pause feeding
-10. `resume_feeding` - Resume feeding
-11. `switch_feeding_side` - Switch to opposite side
-12. `cancel_feeding` - Cancel feeding
-13. `complete_feeding` - Complete feeding
-
-### Diaper Actions (4)
-14. `log_diaper_pee` - Log pee diaper
-15. `log_diaper_poo` - Log poo diaper
-16. `log_diaper_both` - Log pee and poo diaper
-17. `log_diaper_dry` - Log dry diaper check
-
-### Growth Action (1)
-18. `log_growth` - Log growth measurements
-
-**Total**: 18 device actions
 
 ## Critical Implementation Rules
 
@@ -748,8 +723,7 @@ Error in sleep listener callback: ...
 1. **Define in services.yaml**: With device selector
 2. **Create handler**: Async function in `__init__.py`
 3. **Register service**: In `async_setup_entry()`
-4. **Add device action**: Update `device_action.py`
-5. **Update documentation**: README.md, AGENTS.md
+4. **Update documentation**: README.md, AGENTS.md
 
 ### Adding New Listener
 
@@ -766,6 +740,7 @@ Error in sleep listener callback: ...
 - Use `async def async_*` naming for async methods
 - Type hints required for all methods
 - Docstrings required for classes and public methods
+- User-facing service metadata and entity names should be localized via `strings.json` / `translations/en.json`; prefer `translation_key` over hard-coded English names when Home Assistant supports it
 
 **Entity Naming**:
 - Unique ID: `{DOMAIN}_{child_uid}_{entity_type}`

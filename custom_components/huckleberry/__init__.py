@@ -1,48 +1,195 @@
-"""Huckleberry Baby Sleep Tracker integration for Home Assistant."""
+"""Huckleberry integration for Home Assistant."""
 from __future__ import annotations
 
+import asyncio
+import inspect
 import logging
 from datetime import timedelta
-from typing import TypedDict, NotRequired
+from typing import Final, TypedDict, cast, get_args
 
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant, ServiceCall
-from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 import voluptuous as vol
+from aiohttp import ClientError
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_DEVICE_ID, Platform
+from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from huckleberry_api import (
-    HuckleberryAPI,
-    ChildData,
-    SleepDocumentData,
-    FeedDocumentData,
-    GrowthData,
-    DiaperDocumentData,
+from huckleberry_api import HuckleberryAPI
+from huckleberry_api.firebase_types import (
+    BottleType,
+    FeedSide,
+    FirebaseDiaperDocumentData,
+    FirebaseFeedDocumentData,
+    FirebaseHealthDocumentData,
+    FirebaseSleepDocumentData,
+    FirebaseUserDocument,
+    PooColor,
+    PooConsistency,
 )
+
 from .const import DOMAIN
+from .models import HuckleberryChildProfile, HuckleberryChildState
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS: list[Platform] = [Platform.SWITCH, Platform.SENSOR, Platform.CALENDAR]
+PLATFORMS: Final[list[Platform]] = [Platform.SWITCH, Platform.SENSOR, Platform.CALENDAR]
+SERVICE_CHILD_SCHEMA: Final = vol.Schema(
+    {
+        vol.Required(CONF_DEVICE_ID): cv.string,
+    }
+)
+FEED_SIDE_OPTIONS: Final[tuple[str, ...]] = tuple(
+    side for side in get_args(FeedSide) if side != "none"
+)
+POO_COLOR_OPTIONS: Final[tuple[str, ...]] = tuple(get_args(PooColor))
+POO_CONSISTENCY_OPTIONS: Final[tuple[str, ...]] = tuple(get_args(PooConsistency))
+BOTTLE_TYPE_OPTIONS: Final[tuple[str, ...]] = tuple(get_args(BottleType))
 
 
-# Type definitions for integration data structures
 class HuckleberryEntryData(TypedDict):
-    """Data stored in hass.data[DOMAIN][entry.entry_id]."""
+    """Stored config-entry data."""
+
     api: HuckleberryAPI
     coordinator: "HuckleberryDataUpdateCoordinator"
-    children: list[ChildData]
+    children: list[HuckleberryChildProfile]
 
 
-class ChildRealtimeData(TypedDict):
-    """Real-time data structure for a single child."""
-    child: ChildData
-    sleep_status: NotRequired[SleepDocumentData]
-    feed_status: NotRequired[FeedDocumentData]
-    growth_data: NotRequired[GrowthData]
-    diaper_data: NotRequired[DiaperDocumentData]
+async def _async_load_children(api: HuckleberryAPI) -> list[HuckleberryChildProfile]:
+    """Load all children for the authenticated user."""
+    user = await api.get_user()
+    if user is None:
+        return []
+
+    return await _async_load_child_profiles(api, user)
+
+
+async def _async_load_child_profiles(
+    api: HuckleberryAPI,
+    user: FirebaseUserDocument,
+) -> list[HuckleberryChildProfile]:
+    """Resolve user child references to full child documents."""
+    child_documents = await asyncio.gather(
+        *(api.get_child(child_ref.cid) for child_ref in user.childList)
+    )
+
+    profiles: list[HuckleberryChildProfile] = []
+    for child_ref, child_document in zip(user.childList, child_documents, strict=True):
+        if child_document is None:
+            _LOGGER.warning("Child document not found for %s", child_ref.cid)
+            continue
+
+        profiles.append(
+            HuckleberryChildProfile(
+                uid=child_ref.cid,
+                reference=child_ref,
+                document=child_document,
+            )
+        )
+
+    return profiles
+
+
+async def _async_prune_orphaned_child_registry_entries(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    children: list[HuckleberryChildProfile],
+) -> None:
+    """Remove stale child entities and devices no longer present upstream."""
+    current_child_uids = {child.uid for child in children}
+    device_registry = dr.async_get(hass)
+    entity_registry = er.async_get(hass)
+
+    for device in dr.async_entries_for_config_entry(device_registry, entry.entry_id):
+        child_identifiers = {
+            identifier_value
+            for identifier_domain, identifier_value in device.identifiers
+            if identifier_domain == DOMAIN
+        }
+        if not child_identifiers or not child_identifiers.isdisjoint(current_child_uids):
+            continue
+
+        _LOGGER.info(
+            "Removing orphaned Huckleberry child device %s (%s)",
+            device.name_by_user or device.name or device.id,
+            ", ".join(sorted(child_identifiers)),
+        )
+
+        for entity_entry in er.async_entries_for_device(
+            entity_registry,
+            device.id,
+            include_disabled_entities=True,
+        ):
+            if entity_entry.config_entry_id == entry.entry_id:
+                entity_registry.async_remove(entity_entry.entity_id)
+
+        device_registry.async_remove_device(device.id)
+
+
+def _get_child_uid_from_call(
+    hass: HomeAssistant,
+    call: ServiceCall,
+) -> str:
+    """Extract the child UID from service call data.
+
+    Raises ServiceValidationError when the device_id cannot be resolved to a child.
+    """
+    device_id = call.data.get(CONF_DEVICE_ID)
+    if isinstance(device_id, str):
+        device_registry = dr.async_get(hass)
+        device = device_registry.async_get(device_id)
+        if device is not None:
+            for identifier_domain, identifier_value in device.identifiers:
+                if identifier_domain == DOMAIN:
+                    return identifier_value
+
+    raise ServiceValidationError(
+        translation_domain=DOMAIN,
+        translation_key="invalid_child_device",
+    )
+
+
+def _string_value(value: object) -> str | None:
+    """Return a string value when present."""
+    return value if isinstance(value, str) else None
+
+
+def _build_service_method_schema(
+    *,
+    include_side: bool = False,
+    include_growth: bool = False,
+    include_bottle: bool = False,
+    include_diaper_fields: bool = False,
+) -> vol.Schema:
+    """Create a service schema from the shared target fields."""
+    schema: dict[object, object] = {
+        vol.Required(CONF_DEVICE_ID): cv.string,
+    }
+
+    if include_side:
+        schema[vol.Optional("side")] = vol.In(FEED_SIDE_OPTIONS)
+    if include_growth:
+        schema[vol.Optional("weight")] = vol.Coerce(float)
+        schema[vol.Optional("height")] = vol.Coerce(float)
+        schema[vol.Optional("head")] = vol.Coerce(float)
+        schema[vol.Optional("units", default="metric")] = vol.In(("metric", "imperial"))
+    if include_bottle:
+        schema[vol.Required("amount")] = vol.Coerce(float)
+        schema[vol.Required("bottle_type")] = vol.In(BOTTLE_TYPE_OPTIONS)
+        schema[vol.Optional("units", default="ml")] = vol.In(("ml", "oz"))
+    if include_diaper_fields:
+        schema[vol.Optional("pee_amount")] = vol.In(("little", "medium", "big"))
+        schema[vol.Optional("poo_amount")] = vol.In(("little", "medium", "big"))
+        schema[vol.Optional("color")] = vol.In(POO_COLOR_OPTIONS)
+        schema[vol.Optional("consistency")] = vol.In(POO_CONSISTENCY_OPTIONS)
+        schema[vol.Optional("diaper_rash", default=False)] = cv.boolean
+        schema[vol.Optional("notes")] = cv.string
+
+    return vol.Schema(schema)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -53,30 +200,27 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         email=entry.data["email"],
         password=entry.data["password"],
         timezone=str(hass.config.time_zone),
+        websession=async_get_clientsession(hass),
     )
 
-    # Authenticate
     try:
-        await hass.async_add_executor_job(api.authenticate)
-    except Exception as err:
+        await api.authenticate()
+        children = await _async_load_children(api)
+    except ClientError as err:
         _LOGGER.error("Failed to authenticate with Huckleberry: %s", err)
         return False
-
-    # Get children
-    try:
-        children = await hass.async_add_executor_job(api.get_children)
-        if not children:
-            _LOGGER.error("No children found in Huckleberry account")
-            return False
     except Exception as err:
-        _LOGGER.error("Failed to get children from Huckleberry: %s", err)
+        _LOGGER.error("Failed to initialize Huckleberry API: %s", err)
         return False
 
-    # Create coordinator for data updates
+    await _async_prune_orphaned_child_registry_entries(hass, entry, children)
+
+    if not children:
+        _LOGGER.error("No children found in Huckleberry account")
+        return False
+
     coordinator = HuckleberryDataUpdateCoordinator(hass, api, children)
     await coordinator.async_config_entry_first_refresh()
-
-    # Set up real-time listeners for instant updates
     await coordinator.async_setup_listeners()
 
     entry_data: HuckleberryEntryData = {
@@ -88,294 +232,160 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
-    # Helper to get child_uid from service call (device target or explicit child_uid)
-    def _get_child_uid_from_call(call: ServiceCall) -> str | None:
-        """Extract child_uid from service call, either from device target or data field."""
-        # First check if child_uid explicitly provided
-        if child_uid := call.data.get("child_uid"):
-            return child_uid
+    async def _call_api(method_name: str, call: ServiceCall, *args: object) -> None:
+        entry_data = cast(HuckleberryEntryData, hass.data[DOMAIN][entry.entry_id])
+        target_child = _get_child_uid_from_call(hass, call)
 
-        # Check if device target provided
-        if "device_id" in call.data:
-            device_registry = dr.async_get(hass)
-            device = device_registry.async_get(call.data["device_id"])
-            if device:
-                for identifier in device.identifiers:
-                    if identifier[0] == DOMAIN:
-                        return identifier[1]
-
-        # Fallback to first child
-        return children[0]["uid"] if children else None
-
-    # Register services for advanced control
-    async def _call_api(method_name: str, call: ServiceCall) -> None:
-        api: HuckleberryAPI = hass.data[DOMAIN][entry.entry_id]["api"]
-        target_child = _get_child_uid_from_call(call)
-        if not target_child:
-            _LOGGER.error("No child_uid could be determined from service call")
-            return
+        method = getattr(entry_data["api"], method_name)
         _LOGGER.info("Calling %s for child %s", method_name, target_child)
-        method = getattr(api, method_name)
-        await hass.async_add_executor_job(method, target_child)
-        _LOGGER.info("Completed %s for child %s", method_name, target_child)
+        await method(target_child, *args)
 
-    async def handle_start_sleep(call):
+    async def handle_start_sleep(call: ServiceCall) -> None:
         await _call_api("start_sleep", call)
 
-    async def handle_pause_sleep(call):
+    async def handle_pause_sleep(call: ServiceCall) -> None:
         await _call_api("pause_sleep", call)
 
-    async def handle_resume_sleep(call):
+    async def handle_resume_sleep(call: ServiceCall) -> None:
         await _call_api("resume_sleep", call)
 
-    async def handle_cancel_sleep(call):
+    async def handle_cancel_sleep(call: ServiceCall) -> None:
         await _call_api("cancel_sleep", call)
 
-    async def handle_complete_sleep(call):
+    async def handle_complete_sleep(call: ServiceCall) -> None:
         await _call_api("complete_sleep", call)
 
-    # Feeding service handlers
-    async def handle_start_feeding(call):
-        api: HuckleberryAPI = hass.data[DOMAIN][entry.entry_id]["api"]
-        child_uid = _get_child_uid_from_call(call)
-        if not child_uid:
-            _LOGGER.error("No child_uid could be determined from service call")
-            return
-        side = call.data.get("side", "left")
-        _LOGGER.info("Starting feeding for child %s on %s side", child_uid, side)
-        await hass.async_add_executor_job(api.start_feeding, child_uid, side)
+    async def handle_start_nursing(call: ServiceCall) -> None:
+        await _call_api("start_nursing", call, _string_value(call.data.get("side")) or "left")
 
-    async def handle_pause_feeding(call):
-        await _call_api("pause_feeding", call)
+    async def handle_pause_nursing(call: ServiceCall) -> None:
+        await _call_api("pause_nursing", call)
 
-    async def handle_resume_feeding(call):
-        api: HuckleberryAPI = hass.data[DOMAIN][entry.entry_id]["api"]
-        child_uid = _get_child_uid_from_call(call)
-        if not child_uid:
-            _LOGGER.error("No child_uid could be determined from service call")
-            return
-        side = call.data.get("side")  # Optional side parameter
-        _LOGGER.info("Resuming feeding for child %s on %s", child_uid, side if side else "current side")
-        await hass.async_add_executor_job(api.resume_feeding, child_uid, side)
+    async def handle_resume_nursing(call: ServiceCall) -> None:
+        await _call_api("resume_nursing", call, _string_value(call.data.get("side")))
 
-    async def handle_switch_feeding_side(call):
-        await _call_api("switch_feeding_side", call)
+    async def handle_switch_nursing_side(call: ServiceCall) -> None:
+        await _call_api("switch_nursing_side", call)
 
-    async def handle_cancel_feeding(call):
-        await _call_api("cancel_feeding", call)
+    async def handle_cancel_nursing(call: ServiceCall) -> None:
+        await _call_api("cancel_nursing", call)
 
-    async def handle_complete_feeding(call):
-        await _call_api("complete_feeding", call)
+    async def handle_complete_nursing(call: ServiceCall) -> None:
+        await _call_api("complete_nursing", call)
 
-    # Diaper service handlers
-    async def handle_log_diaper_pee(call):
-        api: HuckleberryAPI = hass.data[DOMAIN][entry.entry_id]["api"]
-        child_uid = _get_child_uid_from_call(call)
-        if not child_uid:
-            _LOGGER.error("No child_uid could be determined from service call")
-            return
-        pee_amount = call.data.get("pee_amount")
-        diaper_rash = call.data.get("diaper_rash", False)
-        notes = call.data.get("notes")
-        _LOGGER.info("Logging pee diaper for child %s (amount=%s)", child_uid, pee_amount)
-        await hass.async_add_executor_job(
-            api.log_diaper, child_uid, "pee", pee_amount, None, None, None, diaper_rash, notes
+    async def handle_log_diaper_pee(call: ServiceCall) -> None:
+        await _call_api(
+            "log_diaper",
+            call,
+            "pee",
+            _string_value(call.data.get("pee_amount")),
+            None,
+            None,
+            None,
+            bool(call.data.get("diaper_rash", False)),
+            _string_value(call.data.get("notes")),
         )
 
-    async def handle_log_diaper_poo(call):
-        api: HuckleberryAPI = hass.data[DOMAIN][entry.entry_id]["api"]
-        child_uid = _get_child_uid_from_call(call)
-        if not child_uid:
-            _LOGGER.error("No child_uid could be determined from service call")
-            return
-        poo_amount = call.data.get("poo_amount")
-        color = call.data.get("color")
-        consistency = call.data.get("consistency")
-        diaper_rash = call.data.get("diaper_rash", False)
-        notes = call.data.get("notes")
-        _LOGGER.info("Logging poo diaper for child %s (amount=%s, color=%s, consistency=%s)",
-                     child_uid, poo_amount, color, consistency)
-        await hass.async_add_executor_job(
-            api.log_diaper, child_uid, "poo", None, poo_amount, color, consistency, diaper_rash, notes
+    async def handle_log_diaper_poo(call: ServiceCall) -> None:
+        await _call_api(
+            "log_diaper",
+            call,
+            "poo",
+            None,
+            _string_value(call.data.get("poo_amount")),
+            _string_value(call.data.get("color")),
+            _string_value(call.data.get("consistency")),
+            bool(call.data.get("diaper_rash", False)),
+            _string_value(call.data.get("notes")),
         )
 
-    async def handle_log_diaper_both(call):
-        api: HuckleberryAPI = hass.data[DOMAIN][entry.entry_id]["api"]
-        child_uid = _get_child_uid_from_call(call)
-        if not child_uid:
-            _LOGGER.error("No child_uid could be determined from service call")
-            return
-        pee_amount = call.data.get("pee_amount")
-        poo_amount = call.data.get("poo_amount")
-        color = call.data.get("color")
-        consistency = call.data.get("consistency")
-        diaper_rash = call.data.get("diaper_rash", False)
-        notes = call.data.get("notes")
-        _LOGGER.info("Logging both (pee+poo) diaper for child %s", child_uid)
-        await hass.async_add_executor_job(
-            api.log_diaper, child_uid, "both", pee_amount, poo_amount, color, consistency, diaper_rash, notes
+    async def handle_log_diaper_both(call: ServiceCall) -> None:
+        await _call_api(
+            "log_diaper",
+            call,
+            "both",
+            _string_value(call.data.get("pee_amount")),
+            _string_value(call.data.get("poo_amount")),
+            _string_value(call.data.get("color")),
+            _string_value(call.data.get("consistency")),
+            bool(call.data.get("diaper_rash", False)),
+            _string_value(call.data.get("notes")),
         )
 
-    async def handle_log_diaper_dry(call):
-        api: HuckleberryAPI = hass.data[DOMAIN][entry.entry_id]["api"]
-        child_uid = _get_child_uid_from_call(call)
-        if not child_uid:
-            _LOGGER.error("No child_uid could be determined from service call")
-            return
-        diaper_rash = call.data.get("diaper_rash", False)
-        notes = call.data.get("notes")
-        _LOGGER.info("Logging dry diaper check for child %s", child_uid)
-        await hass.async_add_executor_job(
-            api.log_diaper, child_uid, "dry", None, None, None, None, diaper_rash, notes
+    async def handle_log_diaper_dry(call: ServiceCall) -> None:
+        await _call_api(
+            "log_diaper",
+            call,
+            "dry",
+            None,
+            None,
+            None,
+            None,
+            bool(call.data.get("diaper_rash", False)),
+            _string_value(call.data.get("notes")),
         )
 
-    async def handle_log_growth(call):
-        api: HuckleberryAPI = hass.data[DOMAIN][entry.entry_id]["api"]
-        child_uid = _get_child_uid_from_call(call)
-        if not child_uid:
-            _LOGGER.error("No child_uid could be determined from service call")
-            return
-        weight = call.data.get("weight")
-        height = call.data.get("height")
-        head = call.data.get("head")
-        units = call.data.get("units", "metric")
-        _LOGGER.info("Logging growth for child %s (weight=%s, height=%s, head=%s, units=%s)",
-                     child_uid, weight, height, head, units)
-        await hass.async_add_executor_job(
-            api.log_growth, child_uid, weight, height, head, units
+    async def handle_log_growth(call: ServiceCall) -> None:
+        await _call_api(
+            "log_growth",
+            call,
+            cast(float | None, call.data.get("weight")),
+            cast(float | None, call.data.get("height")),
+            cast(float | None, call.data.get("head")),
+            _string_value(call.data.get("units")) or "metric",
         )
-        # Refresh coordinator to update growth sensor
-        coordinator: HuckleberryDataUpdateCoordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
         await coordinator.async_request_refresh()
 
-    async def handle_log_bottle(call):
-        api: HuckleberryAPI = hass.data[DOMAIN][entry.entry_id]["api"]
-        child_uid = _get_child_uid_from_call(call)
-        if not child_uid:
-            _LOGGER.error("No child_uid could be determined from service call")
-            return
-        amount = call.data.get("amount")
-        bottle_type = call.data.get("bottle_type")
-        units = call.data.get("units", "ml")
-        _LOGGER.info("Logging bottle feeding for child %s (amount=%s %s, type=%s)",
-                     child_uid, amount, units, bottle_type)
-        await hass.async_add_executor_job(
-            api.log_bottle_feeding, child_uid, amount, bottle_type, units
+    async def handle_log_bottle(call: ServiceCall) -> None:
+        await _call_api(
+            "log_bottle",
+            call,
+            cast(float, call.data["amount"]),
+            _string_value(call.data.get("bottle_type")) or "Formula",
+            _string_value(call.data.get("units")) or "ml",
         )
 
-    service_schema = vol.Schema({
-        vol.Required("device_id"): cv.string,
-        vol.Optional("child_uid"): cv.string,
-    })
+    hass.services.async_register(DOMAIN, "start_sleep", handle_start_sleep, schema=SERVICE_CHILD_SCHEMA)
+    hass.services.async_register(DOMAIN, "pause_sleep", handle_pause_sleep, schema=SERVICE_CHILD_SCHEMA)
+    hass.services.async_register(DOMAIN, "resume_sleep", handle_resume_sleep, schema=SERVICE_CHILD_SCHEMA)
+    hass.services.async_register(DOMAIN, "cancel_sleep", handle_cancel_sleep, schema=SERVICE_CHILD_SCHEMA)
+    hass.services.async_register(DOMAIN, "complete_sleep", handle_complete_sleep, schema=SERVICE_CHILD_SCHEMA)
 
-    feeding_start_schema = vol.Schema({
-        vol.Required("device_id"): cv.string,
-        vol.Optional("child_uid"): cv.string,
-        vol.Optional("side"): vol.In(["left", "right"]),
-    })
+    nursing_schema = _build_service_method_schema(include_side=True)
+    hass.services.async_register(DOMAIN, "start_nursing", handle_start_nursing, schema=nursing_schema)
+    hass.services.async_register(DOMAIN, "pause_nursing", handle_pause_nursing, schema=SERVICE_CHILD_SCHEMA)
+    hass.services.async_register(DOMAIN, "resume_nursing", handle_resume_nursing, schema=nursing_schema)
+    hass.services.async_register(DOMAIN, "switch_nursing_side", handle_switch_nursing_side, schema=SERVICE_CHILD_SCHEMA)
+    hass.services.async_register(DOMAIN, "cancel_nursing", handle_cancel_nursing, schema=SERVICE_CHILD_SCHEMA)
+    hass.services.async_register(DOMAIN, "complete_nursing", handle_complete_nursing, schema=SERVICE_CHILD_SCHEMA)
 
-    feeding_resume_schema = vol.Schema({
-        vol.Required("device_id"): cv.string,
-        vol.Optional("child_uid"): cv.string,
-        vol.Optional("side"): vol.In(["left", "right"]),
-    })
+    diaper_schema = _build_service_method_schema(include_diaper_fields=True)
+    hass.services.async_register(DOMAIN, "log_diaper_pee", handle_log_diaper_pee, schema=diaper_schema)
+    hass.services.async_register(DOMAIN, "log_diaper_poo", handle_log_diaper_poo, schema=diaper_schema)
+    hass.services.async_register(DOMAIN, "log_diaper_both", handle_log_diaper_both, schema=diaper_schema)
+    hass.services.async_register(DOMAIN, "log_diaper_dry", handle_log_diaper_dry, schema=diaper_schema)
 
-    feeding_service_schema = vol.Schema({
-        vol.Required("device_id"): cv.string,
-        vol.Optional("child_uid"): cv.string,
-    })
-
-    diaper_pee_schema = vol.Schema({
-        vol.Required("device_id"): cv.string,
-        vol.Optional("child_uid"): cv.string,
-        vol.Optional("pee_amount"): vol.In(["little", "medium", "big"]),
-        vol.Optional("diaper_rash"): cv.boolean,
-        vol.Optional("notes"): cv.string,
-    })
-
-    diaper_poo_schema = vol.Schema({
-        vol.Required("device_id"): cv.string,
-        vol.Optional("child_uid"): cv.string,
-        vol.Optional("poo_amount"): vol.In(["little", "medium", "big"]),
-        vol.Optional("color"): vol.In(["yellow", "brown", "black", "green", "red", "gray"]),
-        vol.Optional("consistency"): vol.In(["solid", "loose", "runny", "mucousy", "hard", "pebbles", "diarrhea"]),
-        vol.Optional("diaper_rash"): cv.boolean,
-        vol.Optional("notes"): cv.string,
-    })
-
-    diaper_both_schema = vol.Schema({
-        vol.Required("device_id"): cv.string,
-        vol.Optional("child_uid"): cv.string,
-        vol.Optional("pee_amount"): vol.In(["little", "medium", "big"]),
-        vol.Optional("poo_amount"): vol.In(["little", "medium", "big"]),
-        vol.Optional("color"): vol.In(["yellow", "brown", "black", "green", "red", "gray"]),
-        vol.Optional("consistency"): vol.In(["solid", "loose", "runny", "mucousy", "hard", "pebbles", "diarrhea"]),
-        vol.Optional("diaper_rash"): cv.boolean,
-        vol.Optional("notes"): cv.string,
-    })
-
-    diaper_dry_schema = vol.Schema({
-        vol.Required("device_id"): cv.string,
-        vol.Optional("child_uid"): cv.string,
-        vol.Optional("diaper_rash"): cv.boolean,
-        vol.Optional("notes"): cv.string,
-    })
-
-    growth_schema = vol.Schema({
-        vol.Required("device_id"): cv.string,
-        vol.Optional("child_uid"): cv.string,
-        vol.Optional("weight"): vol.Coerce(float),
-        vol.Optional("height"): vol.Coerce(float),
-        vol.Optional("head"): vol.Coerce(float),
-        vol.Optional("units"): vol.In(["metric", "imperial"]),
-    })
-
-    bottle_schema = vol.Schema({
-        vol.Required("device_id"): cv.string,
-        vol.Optional("child_uid"): cv.string,
-        vol.Required("amount"): vol.Coerce(float),
-        vol.Required("bottle_type"): vol.In([
-            "Formula",
-            "Breast Milk",
-            "Tube Feeding",
-            "Cow Milk",
-            "Goat Milk",
-            "Soy Milk",
-            "Other",
-        ]),
-        vol.Optional("units"): vol.In(["oz", "ml"]),
-    })
-
-    hass.services.async_register(DOMAIN, "start_sleep", handle_start_sleep, schema=service_schema)
-    hass.services.async_register(DOMAIN, "pause_sleep", handle_pause_sleep, schema=service_schema)
-    hass.services.async_register(DOMAIN, "resume_sleep", handle_resume_sleep, schema=service_schema)
-    hass.services.async_register(DOMAIN, "cancel_sleep", handle_cancel_sleep, schema=service_schema)
-    hass.services.async_register(DOMAIN, "complete_sleep", handle_complete_sleep, schema=service_schema)
-
-    hass.services.async_register(DOMAIN, "start_feeding", handle_start_feeding, schema=feeding_start_schema)
-    hass.services.async_register(DOMAIN, "pause_feeding", handle_pause_feeding, schema=feeding_service_schema)
-    hass.services.async_register(DOMAIN, "resume_feeding", handle_resume_feeding, schema=feeding_resume_schema)
-    hass.services.async_register(DOMAIN, "switch_feeding_side", handle_switch_feeding_side, schema=feeding_service_schema)
-    hass.services.async_register(DOMAIN, "cancel_feeding", handle_cancel_feeding, schema=feeding_service_schema)
-    hass.services.async_register(DOMAIN, "complete_feeding", handle_complete_feeding, schema=feeding_service_schema)
-
-    hass.services.async_register(DOMAIN, "log_diaper_pee", handle_log_diaper_pee, schema=diaper_pee_schema)
-    hass.services.async_register(DOMAIN, "log_diaper_poo", handle_log_diaper_poo, schema=diaper_poo_schema)
-    hass.services.async_register(DOMAIN, "log_diaper_both", handle_log_diaper_both, schema=diaper_both_schema)
-    hass.services.async_register(DOMAIN, "log_diaper_dry", handle_log_diaper_dry, schema=diaper_dry_schema)
-
-    hass.services.async_register(DOMAIN, "log_growth", handle_log_growth, schema=growth_schema)
-    hass.services.async_register(DOMAIN, "log_bottle", handle_log_bottle, schema=bottle_schema)
+    hass.services.async_register(
+        DOMAIN,
+        "log_growth",
+        handle_log_growth,
+        schema=_build_service_method_schema(include_growth=True),
+    )
+    hass.services.async_register(
+        DOMAIN,
+        "log_bottle",
+        handle_log_bottle,
+        schema=_build_service_method_schema(include_bottle=True),
+    )
 
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    # Stop real-time listeners before unloading
     if entry.entry_id in hass.data[DOMAIN]:
-        coordinator = hass.data[DOMAIN][entry.entry_id].get("coordinator")
-        if coordinator:
+        coordinator = cast(HuckleberryEntryData, hass.data[DOMAIN][entry.entry_id]).get("coordinator")
+        if isinstance(coordinator, HuckleberryDataUpdateCoordinator):
             await coordinator.async_shutdown()
 
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
@@ -384,161 +394,115 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return unload_ok
 
 
-class HuckleberryDataUpdateCoordinator(DataUpdateCoordinator[dict[str, ChildRealtimeData]]):
-    """Class to manage fetching Huckleberry data."""
+class HuckleberryDataUpdateCoordinator(DataUpdateCoordinator[dict[str, HuckleberryChildState]]):
+    """Coordinator that keeps session state alive and stores realtime documents."""
 
     def __init__(
         self,
         hass: HomeAssistant,
         api: HuckleberryAPI,
-        children: list[ChildData],
+        children: list[HuckleberryChildProfile],
     ) -> None:
-        """Initialize."""
         self.api = api
         self.children = children
-        self._realtime_data: dict[str, ChildRealtimeData] = {}
-
+        self._realtime_data: dict[str, HuckleberryChildState] = {
+            child.uid: HuckleberryChildState(profile=child) for child in children
+        }
         super().__init__(
             hass,
             _LOGGER,
             name=DOMAIN,
-            update_interval=timedelta(seconds=60),  # Fallback polling, listeners are primary
+            update_interval=timedelta(seconds=60),
         )
 
     async def async_setup_listeners(self) -> None:
-        """Set up real-time listeners for instant updates."""
-        _LOGGER.info("Setting up real-time Firestore listeners")
-
+        """Set up realtime listeners for all tracked child documents."""
         for child in self.children:
-            child_uid = child["uid"]
+            child_uid = child.uid
 
-            # Set up sleep listener
-            def make_sleep_callback(uid):
-                def callback(data):
-                    """Handle real-time sleep updates."""
-                    if uid not in self._realtime_data:
-                        self._realtime_data[uid] = {"child": child}
-                    self._realtime_data[uid]["sleep_status"] = data
-                    # Trigger coordinator update
-                    self.hass.loop.call_soon_threadsafe(
-                        self.async_set_updated_data, dict(self._realtime_data)
-                    )
-                return callback
+            def sleep_callback(data: FirebaseSleepDocumentData, uid: str = child_uid) -> None:
+                self._realtime_data[uid].sleep_status = data
+                self.hass.loop.call_soon_threadsafe(self.async_set_updated_data, dict(self._realtime_data))
 
-            await self.hass.async_add_executor_job(
-                self.api.setup_realtime_listener, child_uid, make_sleep_callback(child_uid)
-            )
+            def feed_callback(data: FirebaseFeedDocumentData, uid: str = child_uid) -> None:
+                self._realtime_data[uid].feed_status = data
+                self.hass.loop.call_soon_threadsafe(self.async_set_updated_data, dict(self._realtime_data))
 
-            # Set up feed listener (for feeding tracking)
-            def make_feed_callback(uid):
-                def callback(data):
-                    """Handle real-time feed updates."""
-                    if uid not in self._realtime_data:
-                        self._realtime_data[uid] = {"child": child}
-                    self._realtime_data[uid]["feed_status"] = data
-                    # Trigger coordinator update
-                    self.hass.loop.call_soon_threadsafe(
-                        self.async_set_updated_data, dict(self._realtime_data)
-                    )
-                return callback
+            def health_callback(data: FirebaseHealthDocumentData, uid: str = child_uid) -> None:
+                self._realtime_data[uid].health_status = data
+                self.hass.loop.call_soon_threadsafe(self.async_set_updated_data, dict(self._realtime_data))
 
-            await self.hass.async_add_executor_job(
-                self.api.setup_feed_listener, child_uid, make_feed_callback(child_uid)
-            )
+            def diaper_callback(data: FirebaseDiaperDocumentData, uid: str = child_uid) -> None:
+                self._realtime_data[uid].diaper_status = data
+                self.hass.loop.call_soon_threadsafe(self.async_set_updated_data, dict(self._realtime_data))
 
-            # Set up health listener (for growth tracking)
-            def make_health_callback(uid):
-                def callback(data):
-                    """Handle real-time health updates."""
-                    if uid not in self._realtime_data:
-                        self._realtime_data[uid] = {"child": child}
+            await self.api.setup_sleep_listener(child_uid, sleep_callback)
+            await self.api.setup_feed_listener(child_uid, feed_callback)
+            await self.api.setup_health_listener(child_uid, health_callback)
+            await self.api.setup_diaper_listener(child_uid, diaper_callback)
 
-                    # Extract growth data from prefs.lastGrowthEntry
-                    prefs = data.get("prefs", {})
-                    last_growth = prefs.get("lastGrowthEntry", {})
-
-                    _LOGGER.debug("Health data received for %s: has_prefs=%s, has_lastGrowthEntry=%s",
-                                  uid, bool(prefs), bool(last_growth))
-
-                    if last_growth:
-                        growth_data: GrowthData = {
-                            "weight": last_growth.get("weight"),
-                            "height": last_growth.get("height"),
-                            "head": last_growth.get("head"),
-                            "weight_units": last_growth.get("weightUnits", "kg"),
-                            "height_units": last_growth.get("heightUnits", "cm"),
-                            "head_units": last_growth.get("headUnits", "hcm"),
-                            "timestamp": last_growth.get("start"),
-                        }
-                        self._realtime_data[uid]["growth_data"] = growth_data
-                        _LOGGER.debug("Updated growth data: weight=%s, height=%s, head=%s, timestamp=%s",
-                                      growth_data.get("weight"), growth_data.get("height"),
-                                      growth_data.get("head"), growth_data.get("timestamp"))
-                    else:
-                        # Set empty growth data if none exists
-                        empty_growth: GrowthData = {
-                            "weight_units": "kg",
-                            "height_units": "cm",
-                            "head_units": "hcm",
-                        }
-                        self._realtime_data[uid]["growth_data"] = empty_growth
-                        _LOGGER.debug("No growth data found in health document")
-
-                    # Trigger coordinator update
-                    self.hass.loop.call_soon_threadsafe(
-                        self.async_set_updated_data, dict(self._realtime_data)
-                    )
-                return callback
-
-            await self.hass.async_add_executor_job(
-                self.api.setup_health_listener, child_uid, make_health_callback(child_uid)
-            )
-
-            # Set up diaper listener (for diaper tracking)
-            def make_diaper_callback(uid):
-                def callback(data):
-                    """Handle real-time diaper updates."""
-                    if uid not in self._realtime_data:
-                        self._realtime_data[uid] = {"child": child}
-                    self._realtime_data[uid]["diaper_data"] = data
-                    # Trigger coordinator update
-                    self.hass.loop.call_soon_threadsafe(
-                        self.async_set_updated_data, dict(self._realtime_data)
-                    )
-                return callback
-
-            await self.hass.async_add_executor_job(
-                self.api.setup_diaper_listener, child_uid, make_diaper_callback(child_uid)
-            )
-
-        _LOGGER.info("Real-time listeners active - updates will be instant!")
-
-    async def _async_update_data(self) -> dict[str, ChildRealtimeData]:
-        """Update data via library (fallback when listeners aren't active)."""
-        # Ensure session is valid (refresh token if needed) to keep listeners alive
-        try:
-            await self.hass.async_add_executor_job(self.api.maintain_session)
-        except Exception as err:
-            _LOGGER.error("Failed to maintain Huckleberry session: %s", err)
-
-        # If we have real-time data, return it (listeners populate sleep, feed, health, diaper)
-        if self._realtime_data:
-            return dict(self._realtime_data)
-
-        # Initial data structure - listeners will populate it
-        # Don't fetch growth data here - the health listener handles it
-        data: dict[str, ChildRealtimeData] = {}
-        for child in self.children:
-            child_uid = child["uid"]
-            data[child_uid] = {
-                "child": child,
-                "sleep_status": {},
-                # growth_data will be populated by health listener
-            }
-
-        return data
+    async def _async_update_data(self) -> dict[str, HuckleberryChildState]:
+        """Refresh auth/session state while listeners provide live data."""
+        await self.api.ensure_session()
+        return dict(self._realtime_data)
 
     async def async_shutdown(self) -> None:
-        """Shutdown coordinator and stop listeners."""
-        _LOGGER.info("Shutting down Huckleberry coordinator")
-        await self.hass.async_add_executor_job(self.api.stop_all_listeners)
+        """Shutdown coordinator and stop active listeners."""
+        await self.api.stop_all_listeners()
+        await _async_close_api_firestore_clients(self.api)
+
+    def get_state(self, child_uid: str) -> HuckleberryChildState | None:
+        """Return the tracked state for a child."""
+        return self.data.get(child_uid)
+
+    def get_sleep_status(self, child_uid: str) -> FirebaseSleepDocumentData | None:
+        """Return the current sleep document for a child."""
+        state = self.get_state(child_uid)
+        return state.sleep_status if state is not None else None
+
+    def get_feed_status(self, child_uid: str) -> FirebaseFeedDocumentData | None:
+        """Return the current feed document for a child."""
+        state = self.get_state(child_uid)
+        return state.feed_status if state is not None else None
+
+    def get_health_status(self, child_uid: str) -> FirebaseHealthDocumentData | None:
+        """Return the current health document for a child."""
+        state = self.get_state(child_uid)
+        return state.health_status if state is not None else None
+
+    def get_diaper_status(self, child_uid: str) -> FirebaseDiaperDocumentData | None:
+        """Return the current diaper document for a child."""
+        state = self.get_state(child_uid)
+        return state.diaper_status if state is not None else None
+
+async def _async_close_api_firestore_clients(api: HuckleberryAPI) -> None:
+    """Close Firestore transports held by the API client.
+
+    The upstream API stops listeners but leaves gRPC transports alive. In tests
+    and on config-entry unload, that can leave background polling threads behind.
+    """
+
+    async def _async_close_transport(client: object | None) -> None:
+        if client is None:
+            return
+
+        firestore_api = getattr(client, "_firestore_api", None)
+        transport = getattr(firestore_api, "transport", None)
+        close = getattr(transport, "close", None)
+        if not callable(close):
+            return
+
+        result = close()
+        if inspect.isawaitable(result):
+            await result
+
+    await _async_close_transport(getattr(api, "_firestore_client", None))
+    await _async_close_transport(getattr(api, "_listener_client", None))
+
+    if hasattr(api, "_firestore_client"):
+        api._firestore_client = None
+    if hasattr(api, "_firestore_client_loop"):
+        api._firestore_client_loop = None
+    if hasattr(api, "_listener_client"):
+        api._listener_client = None
+

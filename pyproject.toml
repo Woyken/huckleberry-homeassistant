@@ -1,22 +1,37 @@
 [project]
 name = "huckleberry-homeassistant"
-version = "0.3.7"
+version = "0.4.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.14"
 dependencies = [
-    "huckleberry-api==0.1.19",
+    "huckleberry-api==0.2.3",
 ]
 
 [dependency-groups]
 dev = [
     "pytest>=8.0.2",
     "pytest-homeassistant-custom-component>=0.13.109",
+    "ruff>=0.15.0",
+    "ty>=0.0.21",
     "tzdata>=2025.2",
 ]
+
+[tool.ruff]
+target-version = "py314"
+src = ["custom_components", "tests"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
 norecursedirs = [".git"]
 addopts = "--allow-hosts=127.0.0.1,::1"
+
+[tool.ty.src]
+include = ["custom_components/huckleberry"]
+
+[tool.ty.environment]
+python-version = "3.14"
+
+[tool.ty.terminal]
+output-format = "concise"

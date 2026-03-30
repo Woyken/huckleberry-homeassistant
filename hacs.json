@@ -2,6 +2,6 @@
   "name": "Huckleberry Baby Tracker",
   "content_in_root": false,
   "filename": "huckleberry.zip",
-  "homeassistant": "2023.6.2",
+  "homeassistant": "2026.3.0",
   "render_readme": true
 }
