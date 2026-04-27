@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/devcontainers/python:1-3.11-bookworm
+FROM mcr.microsoft.com/devcontainers/python:3.14
 
 ENV UV_LINK_MODE=copy \
     UV_COMPILE_BYTECODE=1
