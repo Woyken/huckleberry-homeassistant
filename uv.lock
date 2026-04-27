@@ -1257,7 +1257,7 @@ wheels = [
 
 [[package]]
 name = "huckleberry-api"
-version = "0.4.1"
+version = "0.4.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
@@ -1265,9 +1265,9 @@ dependencies = [
     { name = "pydantic" },
     { name = "tzdata" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/bb/f2/5d882751cb1e9cbae7eeaa3f642f14affe87d2468560a37d51d3ffba165f/huckleberry_api-0.4.1.tar.gz", hash = "sha256:6d2ab32b95bf8d7590ca5b1d5fb22b7c68e1b60e1f02f53a57d0e52f1309d0a3", size = 25559, upload-time = "2026-04-27T05:11:15.158Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7a/10/dd42b3987ef34e17ebe53d463775a59cfb45ffd0781de4b10186837ff2e4/huckleberry_api-0.4.2.tar.gz", hash = "sha256:fa951121dabd29bdc837b66ae4497e95b09c6aadda521eaedf06afb99a93ec9b", size = 25706, upload-time = "2026-04-27T11:52:32.057Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/40/89/068982dc6fed122ac49cedc20dd48155a3b87ed83b48c8448985a68e707a/huckleberry_api-0.4.1-py3-none-any.whl", hash = "sha256:6e3aac482062273a071571eead570342fe63ad918438cb00c9d4d1c93b37b301", size = 27031, upload-time = "2026-04-27T05:11:13.672Z" },
+    { url = "https://files.pythonhosted.org/packages/d0/dc/def70110176019dbe80ea435ffff1ea121d50aba370acfb54e0449ee1129/huckleberry_api-0.4.2-py3-none-any.whl", hash = "sha256:9609689f657a82818176841228b35a8c3eb1104f79eecbad1bfa28ce6dbfd748", size = 27151, upload-time = "2026-04-27T11:52:30.454Z" },
 ]
 
 [[package]]
@@ -1289,7 +1289,7 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "huckleberry-api", specifier = "==0.4.1" }]
+requires-dist = [{ name = "huckleberry-api", specifier = "==0.4.2" }]
 
 [package.metadata.requires-dev]
 dev = [
