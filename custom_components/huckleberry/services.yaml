@@ -437,13 +437,13 @@ log_bottle:
         select:
           translation_key: bottle_type
           options:
-            - Formula
-            - Breast Milk
-            - Tube Feeding
-            - Cow Milk
-            - Goat Milk
-            - Soy Milk
-            - Other
+            - formula
+            - breast_milk
+            - tube_feeding
+            - cow_milk
+            - goat_milk
+            - soy_milk
+            - other
     units:
       name: Units
       description: Measurement units for amount

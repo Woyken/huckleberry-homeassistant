@@ -48,7 +48,17 @@ FEED_SIDE_OPTIONS: Final[tuple[str, ...]] = tuple(
 )
 POO_COLOR_OPTIONS: Final[tuple[str, ...]] = tuple(get_args(PooColor))
 POO_CONSISTENCY_OPTIONS: Final[tuple[str, ...]] = tuple(get_args(PooConsistency))
-BOTTLE_TYPE_OPTIONS: Final[tuple[str, ...]] = tuple(get_args(BottleType))
+BOTTLE_TYPE_LABELS: Final[dict[str, BottleType]] = {
+    "formula": "Formula",
+    "breast_milk": "Breast Milk",
+    "tube_feeding": "Tube Feeding",
+    "cow_milk": "Cow Milk",
+    "goat_milk": "Goat Milk",
+    "soy_milk": "Soy Milk",
+    "other": "Other",
+}
+BOTTLE_TYPE_OPTIONS: Final[tuple[str, ...]] = tuple(BOTTLE_TYPE_LABELS)
+BOTTLE_TYPE_LEGACY_OPTIONS: Final[tuple[str, ...]] = tuple(get_args(BottleType))
 
 
 class HuckleberryEntryData(TypedDict):
@@ -158,6 +168,14 @@ def _string_value(value: object) -> str | None:
     return value if isinstance(value, str) else None
 
 
+def _api_bottle_type(value: str | None) -> BottleType:
+    """Normalize bottle type values to the API's expected literals."""
+    if value is None:
+        return "Formula"
+
+    return BOTTLE_TYPE_LABELS.get(value, cast(BottleType, value))
+
+
 def _build_service_method_schema(
     *,
     include_side: bool = False,
@@ -179,7 +197,9 @@ def _build_service_method_schema(
         schema[vol.Optional("units", default="metric")] = vol.In(("metric", "imperial"))
     if include_bottle:
         schema[vol.Required("amount")] = vol.Coerce(float)
-        schema[vol.Required("bottle_type")] = vol.In(BOTTLE_TYPE_OPTIONS)
+        schema[vol.Required("bottle_type")] = vol.In(
+            BOTTLE_TYPE_OPTIONS + BOTTLE_TYPE_LEGACY_OPTIONS
+        )
         schema[vol.Optional("units", default="ml")] = vol.In(("ml", "oz"))
     if include_diaper_fields:
         schema[vol.Optional("pee_amount")] = vol.In(("little", "medium", "big"))
@@ -341,7 +361,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             "log_bottle",
             call,
             cast(float, call.data["amount"]),
-            _string_value(call.data.get("bottle_type")) or "Formula",
+            _api_bottle_type(_string_value(call.data.get("bottle_type"))),
             _string_value(call.data.get("units")) or "ml",
         )
 

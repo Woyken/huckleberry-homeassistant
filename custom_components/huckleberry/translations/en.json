@@ -42,13 +42,13 @@
     },
     "bottle_type": {
       "options": {
-        "Formula": "Formula",
-        "Breast Milk": "Breast Milk",
-        "Tube Feeding": "Tube Feeding",
-        "Cow Milk": "Cow Milk",
-        "Goat Milk": "Goat Milk",
-        "Soy Milk": "Soy Milk",
-        "Other": "Other"
+        "formula": "Formula",
+        "breast_milk": "Breast Milk",
+        "tube_feeding": "Tube Feeding",
+        "cow_milk": "Cow Milk",
+        "goat_milk": "Goat Milk",
+        "soy_milk": "Soy Milk",
+        "other": "Other"
       }
     },
     "bottle_units": {
