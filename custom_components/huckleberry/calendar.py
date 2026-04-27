@@ -85,14 +85,11 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
             end_date,
         )
 
-        start_s = int(start_date.timestamp())
-        end_s = int(end_date.timestamp())
-
         events: list[CalendarEvent] = []
 
         try:
             sleep_intervals = await self._api.list_sleep_intervals(
-                self.child_uid, start_s, end_s
+                self.child_uid, start_date, end_date
             )
             events.extend(self._build_sleep_events(sleep_intervals))
         except Exception as err:
@@ -100,7 +97,7 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
 
         try:
             feed_intervals = await self._api.list_feed_intervals(
-                self.child_uid, start_s, end_s
+                self.child_uid, start_date, end_date
             )
             feed_events, bottle_events = self._build_feed_events(feed_intervals)
             events.extend(feed_events)
@@ -110,7 +107,7 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
 
         try:
             diaper_intervals = await self._api.list_diaper_intervals(
-                self.child_uid, start_s, end_s
+                self.child_uid, start_date, end_date
             )
             events.extend(self._build_diaper_events(diaper_intervals))
         except Exception as err:
@@ -118,7 +115,7 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
 
         try:
             health_entries = await self._api.list_health_entries(
-                self.child_uid, start_s, end_s
+                self.child_uid, start_date, end_date
             )
             events.extend(self._build_health_events(health_entries))
         except Exception as err:

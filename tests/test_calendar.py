@@ -56,7 +56,7 @@ def calendar(mock_api, mock_coordinator, child_profile):
 def test_calendar_attributes(calendar, child_profile):
     """Test calendar entity attributes."""
     assert calendar.unique_id == "test_child_uid_calendar"
-    assert calendar.name == "Events"
+    assert calendar._attr_translation_key == "events"
     assert calendar._child is child_profile
 
 
