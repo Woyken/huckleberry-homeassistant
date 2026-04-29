@@ -5,7 +5,7 @@ import asyncio
 import inspect
 import logging
 from datetime import timedelta
-from typing import Final, TypedDict, cast, get_args
+from typing import Final, Literal, TypedDict, cast, get_args
 
 import voluptuous as vol
 from aiohttp import ClientError
@@ -18,6 +18,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from homeassistant.util import dt as dt_util
 
 from huckleberry_api import HuckleberryAPI
 from huckleberry_api.firebase_types import (
@@ -59,6 +60,9 @@ BOTTLE_TYPE_LABELS: Final[dict[str, BottleType]] = {
 }
 BOTTLE_TYPE_OPTIONS: Final[tuple[str, ...]] = tuple(BOTTLE_TYPE_LABELS)
 BOTTLE_TYPE_LEGACY_OPTIONS: Final[tuple[str, ...]] = tuple(get_args(BottleType))
+DiaperAmount = Literal["little", "medium", "big"]
+GrowthUnits = Literal["metric", "imperial"]
+BottleUnits = Literal["ml", "oz"]
 
 
 class HuckleberryEntryData(TypedDict):
@@ -168,6 +172,48 @@ def _string_value(value: object) -> str | None:
     return value if isinstance(value, str) else None
 
 
+def _feed_side_value(value: object, *, default: FeedSide | None = None) -> FeedSide | None:
+    """Return a validated feed-side literal from service data."""
+    string_value = _string_value(value)
+    if string_value is None:
+        return default
+    return cast(FeedSide, string_value)
+
+
+def _diaper_amount_value(value: object) -> DiaperAmount | None:
+    """Return a validated diaper amount literal from service data."""
+    string_value = _string_value(value)
+    return cast(DiaperAmount | None, string_value)
+
+
+def _poo_color_value(value: object) -> PooColor | None:
+    """Return a validated poo color literal from service data."""
+    string_value = _string_value(value)
+    return cast(PooColor | None, string_value)
+
+
+def _poo_consistency_value(value: object) -> PooConsistency | None:
+    """Return a validated poo consistency literal from service data."""
+    string_value = _string_value(value)
+    return cast(PooConsistency | None, string_value)
+
+
+def _growth_units_value(value: object) -> GrowthUnits:
+    """Return a validated growth units literal from service data."""
+    string_value = _string_value(value)
+    if string_value is None:
+        return "metric"
+    return cast(GrowthUnits, string_value)
+
+
+def _bottle_units_value(value: object) -> BottleUnits:
+    """Return a validated bottle units literal from service data."""
+    string_value = _string_value(value)
+    if string_value is None:
+        return "ml"
+    return cast(BottleUnits, string_value)
+
+
 def _api_bottle_type(value: str | None) -> BottleType:
     """Normalize bottle type values to the API's expected literals."""
     if value is None:
@@ -252,117 +298,113 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
-    async def _call_api(method_name: str, call: ServiceCall, *args: object) -> None:
-        entry_data = cast(HuckleberryEntryData, hass.data[DOMAIN][entry.entry_id])
-        target_child = _get_child_uid_from_call(hass, call)
+    entry_data = cast(HuckleberryEntryData, hass.data[DOMAIN][entry.entry_id])
+    api_client = entry_data["api"]
 
-        method = getattr(entry_data["api"], method_name)
-        _LOGGER.info("Calling %s for child %s", method_name, target_child)
-        await method(target_child, *args)
+    def _target_child(call: ServiceCall) -> str:
+        return _get_child_uid_from_call(hass, call)
 
     async def handle_start_sleep(call: ServiceCall) -> None:
-        await _call_api("start_sleep", call)
+        await api_client.start_sleep(_target_child(call))
 
     async def handle_pause_sleep(call: ServiceCall) -> None:
-        await _call_api("pause_sleep", call)
+        await api_client.pause_sleep(_target_child(call))
 
     async def handle_resume_sleep(call: ServiceCall) -> None:
-        await _call_api("resume_sleep", call)
+        await api_client.resume_sleep(_target_child(call))
 
     async def handle_cancel_sleep(call: ServiceCall) -> None:
-        await _call_api("cancel_sleep", call)
+        await api_client.cancel_sleep(_target_child(call))
 
     async def handle_complete_sleep(call: ServiceCall) -> None:
-        await _call_api("complete_sleep", call)
+        await api_client.complete_sleep(_target_child(call))
 
     async def handle_start_nursing(call: ServiceCall) -> None:
-        await _call_api("start_nursing", call, _string_value(call.data.get("side")) or "left")
+        await api_client.start_nursing(
+            _target_child(call),
+            _feed_side_value(call.data.get("side"), default="left") or "left",
+        )
 
     async def handle_pause_nursing(call: ServiceCall) -> None:
-        await _call_api("pause_nursing", call)
+        await api_client.pause_nursing(_target_child(call))
 
     async def handle_resume_nursing(call: ServiceCall) -> None:
-        await _call_api("resume_nursing", call, _string_value(call.data.get("side")))
+        await api_client.resume_nursing(
+            _target_child(call),
+            _feed_side_value(call.data.get("side")),
+        )
 
     async def handle_switch_nursing_side(call: ServiceCall) -> None:
-        await _call_api("switch_nursing_side", call)
+        await api_client.switch_nursing_side(_target_child(call))
 
     async def handle_cancel_nursing(call: ServiceCall) -> None:
-        await _call_api("cancel_nursing", call)
+        await api_client.cancel_nursing(_target_child(call))
 
     async def handle_complete_nursing(call: ServiceCall) -> None:
-        await _call_api("complete_nursing", call)
+        await api_client.complete_nursing(_target_child(call))
 
     async def handle_log_diaper_pee(call: ServiceCall) -> None:
-        await _call_api(
-            "log_diaper",
-            call,
-            "pee",
-            _string_value(call.data.get("pee_amount")),
-            None,
-            None,
-            None,
-            bool(call.data.get("diaper_rash", False)),
-            _string_value(call.data.get("notes")),
+        await api_client.log_diaper(
+            _target_child(call),
+            start_time=dt_util.now(),
+            mode="pee",
+            pee_amount=_diaper_amount_value(call.data.get("pee_amount")),
+            diaper_rash=bool(call.data.get("diaper_rash", False)),
+            notes=_string_value(call.data.get("notes")),
         )
 
     async def handle_log_diaper_poo(call: ServiceCall) -> None:
-        await _call_api(
-            "log_diaper",
-            call,
-            "poo",
-            None,
-            _string_value(call.data.get("poo_amount")),
-            _string_value(call.data.get("color")),
-            _string_value(call.data.get("consistency")),
-            bool(call.data.get("diaper_rash", False)),
-            _string_value(call.data.get("notes")),
+        await api_client.log_diaper(
+            _target_child(call),
+            start_time=dt_util.now(),
+            mode="poo",
+            poo_amount=_diaper_amount_value(call.data.get("poo_amount")),
+            color=_poo_color_value(call.data.get("color")),
+            consistency=_poo_consistency_value(call.data.get("consistency")),
+            diaper_rash=bool(call.data.get("diaper_rash", False)),
+            notes=_string_value(call.data.get("notes")),
         )
 
     async def handle_log_diaper_both(call: ServiceCall) -> None:
-        await _call_api(
-            "log_diaper",
-            call,
-            "both",
-            _string_value(call.data.get("pee_amount")),
-            _string_value(call.data.get("poo_amount")),
-            _string_value(call.data.get("color")),
-            _string_value(call.data.get("consistency")),
-            bool(call.data.get("diaper_rash", False)),
-            _string_value(call.data.get("notes")),
+        await api_client.log_diaper(
+            _target_child(call),
+            start_time=dt_util.now(),
+            mode="both",
+            pee_amount=_diaper_amount_value(call.data.get("pee_amount")),
+            poo_amount=_diaper_amount_value(call.data.get("poo_amount")),
+            color=_poo_color_value(call.data.get("color")),
+            consistency=_poo_consistency_value(call.data.get("consistency")),
+            diaper_rash=bool(call.data.get("diaper_rash", False)),
+            notes=_string_value(call.data.get("notes")),
         )
 
     async def handle_log_diaper_dry(call: ServiceCall) -> None:
-        await _call_api(
-            "log_diaper",
-            call,
-            "dry",
-            None,
-            None,
-            None,
-            None,
-            bool(call.data.get("diaper_rash", False)),
-            _string_value(call.data.get("notes")),
+        await api_client.log_diaper(
+            _target_child(call),
+            start_time=dt_util.now(),
+            mode="dry",
+            diaper_rash=bool(call.data.get("diaper_rash", False)),
+            notes=_string_value(call.data.get("notes")),
         )
 
     async def handle_log_growth(call: ServiceCall) -> None:
-        await _call_api(
-            "log_growth",
-            call,
-            cast(float | None, call.data.get("weight")),
-            cast(float | None, call.data.get("height")),
-            cast(float | None, call.data.get("head")),
-            _string_value(call.data.get("units")) or "metric",
+        await api_client.log_growth(
+            _target_child(call),
+            start_time=dt_util.now(),
+            weight=cast(float | None, call.data.get("weight")),
+            height=cast(float | None, call.data.get("height")),
+            head=cast(float | None, call.data.get("head")),
+            units=_growth_units_value(call.data.get("units")),
         )
         await coordinator.async_request_refresh()
 
     async def handle_log_bottle(call: ServiceCall) -> None:
-        await _call_api(
-            "log_bottle",
-            call,
-            cast(float, call.data["amount"]),
-            _api_bottle_type(_string_value(call.data.get("bottle_type"))),
-            _string_value(call.data.get("units")) or "ml",
+        await api_client.log_bottle(
+            _target_child(call),
+            start_time=dt_util.now(),
+            amount=cast(float, call.data["amount"]),
+            bottle_type=_api_bottle_type(_string_value(call.data.get("bottle_type"))),
+            units=_bottle_units_value(call.data.get("units")),
         )
 
     hass.services.async_register(DOMAIN, "start_sleep", handle_start_sleep, schema=SERVICE_CHILD_SCHEMA)

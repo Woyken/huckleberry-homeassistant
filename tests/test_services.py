@@ -1,5 +1,5 @@
 """Test Huckleberry services."""
-from unittest.mock import patch
+from unittest.mock import ANY, patch
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.helpers import device_registry as dr
 from custom_components.huckleberry.const import DOMAIN
@@ -109,7 +109,12 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
         DOMAIN, "log_diaper_pee", {"device_id": device.id, "pee_amount": "medium"}, blocking=True
     )
     mock_huckleberry_api.log_diaper.assert_called_with(
-        "test_child_uid", "pee", "medium", None, None, None, False, None
+        "test_child_uid",
+        start_time=ANY,
+        mode="pee",
+        pee_amount="medium",
+        diaper_rash=False,
+        notes=None,
     )
 
     # Test log_diaper_poo
@@ -117,7 +122,14 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
         DOMAIN, "log_diaper_poo", {"device_id": device.id, "poo_amount": "big", "color": "brown", "consistency": "solid"}, blocking=True
     )
     mock_huckleberry_api.log_diaper.assert_called_with(
-        "test_child_uid", "poo", None, "big", "brown", "solid", False, None
+        "test_child_uid",
+        start_time=ANY,
+        mode="poo",
+        poo_amount="big",
+        color="brown",
+        consistency="solid",
+        diaper_rash=False,
+        notes=None,
     )
 
     # Test log_diaper_both
@@ -125,7 +137,15 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
         DOMAIN, "log_diaper_both", {"device_id": device.id, "pee_amount": "little", "poo_amount": "medium"}, blocking=True
     )
     mock_huckleberry_api.log_diaper.assert_called_with(
-        "test_child_uid", "both", "little", "medium", None, None, False, None
+        "test_child_uid",
+        start_time=ANY,
+        mode="both",
+        pee_amount="little",
+        poo_amount="medium",
+        color=None,
+        consistency=None,
+        diaper_rash=False,
+        notes=None,
     )
 
     # Test log_diaper_dry
@@ -133,7 +153,11 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
         DOMAIN, "log_diaper_dry", {"device_id": device.id}, blocking=True
     )
     mock_huckleberry_api.log_diaper.assert_called_with(
-        "test_child_uid", "dry", None, None, None, None, False, None
+        "test_child_uid",
+        start_time=ANY,
+        mode="dry",
+        diaper_rash=False,
+        notes=None,
     )
 
     # Test log_growth
@@ -141,7 +165,12 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
         DOMAIN, "log_growth", {"device_id": device.id, "weight": 10.5, "height": 75.0, "head": 45.0, "units": "metric"}, blocking=True
     )
     mock_huckleberry_api.log_growth.assert_called_with(
-        "test_child_uid", 10.5, 75.0, 45.0, "metric"
+        "test_child_uid",
+        start_time=ANY,
+        weight=10.5,
+        height=75.0,
+        head=45.0,
+        units="metric",
     )
 
     # Test log_bottle
@@ -149,7 +178,11 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
         DOMAIN, "log_bottle", {"device_id": device.id, "amount": 4.0, "bottle_type": "formula", "units": "oz"}, blocking=True
     )
     mock_huckleberry_api.log_bottle.assert_called_with(
-        "test_child_uid", 4.0, "Formula", "oz"
+        "test_child_uid",
+        start_time=ANY,
+        amount=4.0,
+        bottle_type="Formula",
+        units="oz",
     )
 
     # Test log_bottle with app-specific bottle type values
@@ -157,7 +190,11 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
         DOMAIN, "log_bottle", {"device_id": device.id, "amount": 120.0, "bottle_type": "Breast Milk", "units": "ml"}, blocking=True
     )
     mock_huckleberry_api.log_bottle.assert_called_with(
-        "test_child_uid", 120.0, "Breast Milk", "ml"
+        "test_child_uid",
+        start_time=ANY,
+        amount=120.0,
+        bottle_type="Breast Milk",
+        units="ml",
     )
 
 async def test_service_no_target_raises(hass: HomeAssistant, mock_huckleberry_api):
