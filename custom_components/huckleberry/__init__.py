@@ -24,6 +24,7 @@ from huckleberry_api import HuckleberryAPI
 from huckleberry_api.firebase_types import (
     BottleType,
     FeedSide,
+    FirebaseChildDocument,
     FirebaseDiaperDocumentData,
     FirebaseFeedDocumentData,
     FirebaseHealthDocumentData,
@@ -498,10 +499,15 @@ class HuckleberryDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Huckleber
                 self._realtime_data[uid].diaper_status = data
                 self.hass.loop.call_soon_threadsafe(self.async_set_updated_data, dict(self._realtime_data))
 
+            def child_callback(data: FirebaseChildDocument, uid: str = child_uid) -> None:
+                self._realtime_data[uid].child_document = data
+                self.hass.loop.call_soon_threadsafe(self.async_set_updated_data, dict(self._realtime_data))
+
             await self.api.setup_sleep_listener(child_uid, sleep_callback)
             await self.api.setup_feed_listener(child_uid, feed_callback)
             await self.api.setup_health_listener(child_uid, health_callback)
             await self.api.setup_diaper_listener(child_uid, diaper_callback)
+            await self.api.setup_child_listener(child_uid, child_callback)
 
     async def _async_update_data(self) -> dict[str, HuckleberryChildState]:
         """Refresh auth/session state while listeners provide live data."""
@@ -536,6 +542,11 @@ class HuckleberryDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Huckleber
         """Return the current diaper document for a child."""
         state = self.get_state(child_uid)
         return state.diaper_status if state is not None else None
+
+    def get_child_document(self, child_uid: str) -> FirebaseChildDocument | None:
+        """Return the current child document for a child."""
+        state = self.get_state(child_uid)
+        return state.child_document if state is not None else None
 
 async def _async_close_api_firestore_clients(api: HuckleberryAPI) -> None:
     """Close Firestore transports held by the API client.

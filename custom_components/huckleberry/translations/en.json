@@ -529,6 +529,32 @@
             "name": "Head unit"
           }
         }
+      },
+      "sweetspot": {
+        "name": "Sweetspot",
+        "state_attributes": {
+          "0_nap_day_time": {
+            "name": "0-nap day time"
+          },
+          "1_nap_day_time": {
+            "name": "1-nap day time"
+          },
+          "2_nap_day_time": {
+            "name": "2-nap day time"
+          },
+          "3_nap_day_time": {
+            "name": "3-nap day time"
+          },
+          "4_nap_day_time": {
+            "name": "4-nap day time"
+          },
+          "5_nap_day_time": {
+            "name": "5-nap day time"
+          },
+          "selected_nap_day": {
+            "name": "Selected nap day"
+          }
+        }
       }
     },
     "switch": {
