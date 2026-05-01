@@ -30,8 +30,10 @@ def _selected_sweetspot_time(sweetspot: FirebaseChildSweetspot | None) -> dateti
     if selected_nap_day is None:
         return None
 
-    selected_key = str(int(float(selected_nap_day)))
-    selected_time = sweetspot.sweetSpotTimes.get(selected_key)
+    selected_nap_day = int(float(selected_nap_day))
+    if selected_nap_day >= len(sweetspot.sweetSpotTimes):
+        return None
+    selected_time = sweetspot.sweetSpotTimes[selected_nap_day]
     if selected_time is None:
         return None
 
@@ -76,9 +78,11 @@ class HuckleberrySweetspotSensor(HuckleberryBaseEntity, SensorEntity):
             attributes["selected_nap_day"] = sweetspot.selectedNapDay
 
         if sweetspot.sweetSpotTimes:
-            for key, value in sweetspot.sweetSpotTimes.items():
+            for idx, value in enumerate(sweetspot.sweetSpotTimes):
+                if value is None:
+                    continue
                 dt = as_datetime(value)
                 if dt is not None:
-                    attributes[f"{key}_nap_day_time"] = dt.isoformat()
+                    attributes[f"{idx}_nap_day_time"] = dt.isoformat()
 
         return attributes

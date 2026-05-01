@@ -225,8 +225,8 @@ async def test_sweetspot_sensor_state_and_attributes(
         birthdate="2023-01-01",
         gender="M",
         sweetspot=FirebaseChildSweetspot(
-            selectedNapDay=0,
-            sweetSpotTimes={"0": future_zero, "1": future_two, "2": future_one},
+            selectedNapDay=0.0,
+            sweetSpotTimes=[future_zero, future_two, future_one],
         ),
     )
     coordinator.async_set_updated_data(dict(coordinator._realtime_data))
@@ -288,8 +288,8 @@ async def test_sweetspot_sensor_unavailable_when_selected_time_missing(
         birthdate="2023-01-01",
         gender="M",
         sweetspot=FirebaseChildSweetspot(
-            selectedNapDay=3,
-            sweetSpotTimes={"1": future_one, "2": future_one},
+            selectedNapDay=3.0,
+            sweetSpotTimes=[None, future_one, future_one],
         ),
     )
     coordinator.async_set_updated_data(dict(coordinator._realtime_data))
