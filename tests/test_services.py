@@ -169,7 +169,7 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
         start_time=ANY,
         mode="pee",
         pee_amount="medium",
-        how_it_happened=None,
+        how_it_happened="wentPotty",
         notes=None,
     )
 
@@ -184,7 +184,7 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
         poo_amount="big",
         color="brown",
         consistency="solid",
-        how_it_happened=None,
+        how_it_happened="wentPotty",
         notes=None,
     )
 
@@ -200,7 +200,7 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
         poo_amount="medium",
         color=None,
         consistency=None,
-        how_it_happened=None,
+        how_it_happened="wentPotty",
         notes=None,
     )
 
@@ -212,7 +212,7 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
         "test_child_uid",
         start_time=ANY,
         mode="dry",
-        how_it_happened=None,
+        how_it_happened="satButDry",
         notes=None,
     )
 
