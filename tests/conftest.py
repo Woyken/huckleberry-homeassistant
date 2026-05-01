@@ -92,6 +92,7 @@ def _build_mock_api(
     mock.complete_nursing = AsyncMock()
 
     mock.log_diaper = AsyncMock()
+    mock.log_potty = AsyncMock()
     mock.log_growth = AsyncMock()
     mock.log_bottle = AsyncMock()
 

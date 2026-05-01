@@ -241,6 +241,24 @@ All services support device selector for easy automation creation.
 - Logs a dry diaper check (no change needed)
 - Parameters: `device_id` (optional), `child_uid` (optional)
 
+### Potty Services
+
+**`huckleberry.log_potty_pee`**:
+- Logs a pee-only potty entry
+- Parameters: `device_id` (optional), `child_uid` (optional), `pee_amount` (optional), `how_it_happened` (optional), `notes` (optional)
+
+**`huckleberry.log_potty_poo`**:
+- Logs a poo-only potty entry
+- Parameters: `device_id` (optional), `child_uid` (optional), `poo_amount` (optional), `color` (optional), `consistency` (optional), `how_it_happened` (optional), `notes` (optional)
+
+**`huckleberry.log_potty_both`**:
+- Logs a potty entry with both pee and poo
+- Parameters: `device_id` (optional), `child_uid` (optional), `pee_amount` (optional), `poo_amount` (optional), `color` (optional), `consistency` (optional), `how_it_happened` (optional), `notes` (optional)
+
+**`huckleberry.log_potty_dry`**:
+- Logs a dry potty entry
+- Parameters: `device_id` (optional), `child_uid` (optional), `notes` (optional)
+
 ### Growth Service
 
 **`huckleberry.log_growth`**:

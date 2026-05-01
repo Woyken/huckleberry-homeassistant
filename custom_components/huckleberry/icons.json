@@ -17,6 +17,10 @@
     "log_diaper_poo": { "service": "mdi:emoticon-poop" },
     "log_diaper_both": { "service": "mdi:water-plus" },
     "log_diaper_dry": { "service": "mdi:water-outline" },
+    "log_potty_pee": { "service": "mdi:toilet" },
+    "log_potty_poo": { "service": "mdi:toilet" },
+    "log_potty_both": { "service": "mdi:toilet" },
+    "log_potty_dry": { "service": "mdi:toilet" },
 
     "log_growth": { "service": "mdi:ruler" },
     "log_bottle": { "service": "mdi:baby-bottle-outline" }

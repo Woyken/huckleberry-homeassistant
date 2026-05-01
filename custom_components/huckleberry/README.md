@@ -156,6 +156,13 @@ All services support device selection via dropdown or explicit `child_uid` (adva
 - **`huckleberry.log_diaper_both`**: Log both pee and poo with optional color/consistency
 - **`huckleberry.log_diaper_dry`**: Log dry diaper check
 
+### Potty Services
+
+- **`huckleberry.log_potty_pee`**: Log potty entry with pee only
+- **`huckleberry.log_potty_poo`**: Log poo with optional color/consistency
+- **`huckleberry.log_potty_both`**: Log both pee and poo with optional color/consistency
+- **`huckleberry.log_potty_dry`**: Log dry potty entry
+
 ### Growth Services
 
 - **`huckleberry.log_growth`**: Log weight, height, and head circumference
