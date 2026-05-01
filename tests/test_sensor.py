@@ -20,6 +20,7 @@ from huckleberry_api.firebase_types import (
     FirebaseHealthPrefs,
     FirebaseLastBottleData,
     FirebaseLastDiaperData,
+    FirebaseLastPottyData,
 )
 
 
@@ -69,6 +70,11 @@ async def test_sensors(hass: HomeAssistant, mock_huckleberry_api):
                 start=1234567890,
                 offset=0,
             ),
+            lastPotty=FirebaseLastPottyData(
+                mode="poo",
+                start=1234567990,
+                offset=0,
+            ),
         ),
     )
     coordinator.async_set_updated_data(dict(coordinator._realtime_data))
@@ -97,6 +103,14 @@ async def test_sensors(hass: HomeAssistant, mock_huckleberry_api):
     assert sensor_state.state == expected_date
     assert sensor_state.attributes["type"] == "Pee"
     assert sensor_state.attributes["time"] == datetime.fromtimestamp(1234567890, tz=timezone.utc).isoformat()
+
+    # Check potty sensor
+    sensor_state = hass.states.get("sensor.test_child_potty")
+    assert sensor_state is not None
+    assert sensor_state.state == datetime.fromtimestamp(1234567990, tz=timezone.utc).isoformat()
+    assert sensor_state.attributes["type"] == "Poo"
+    assert sensor_state.attributes["time"] == datetime.fromtimestamp(1234567990, tz=timezone.utc).isoformat()
+    assert sensor_state.attributes["timezone_offset_minutes"] == 0
 
 async def test_bottle_sensor(hass: HomeAssistant, mock_huckleberry_api):
     """Test bottle sensor."""

@@ -163,6 +163,12 @@ This groups entities under one device per child in HA UI.
 - Icon: `mdi:human-baby-changing-table`
 - Updates: Real-time via health listener
 
+**`sensor.{child_name}_potty`**:
+- State: Last potty timestamp
+- Attributes: `time`, `type`, `timezone_offset_minutes`, `reminder`
+- Icon: `mdi:toilet`
+- Updates: Real-time via diaper listener
+
 **`sensor.huckleberry_children`**:
 - State: Number of children
 - Attributes: List of children with metadata (uid, name, birthdate, picture)

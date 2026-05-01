@@ -163,6 +163,11 @@ All services support device selection via dropdown or explicit `child_uid` (adva
 - **`huckleberry.log_potty_both`**: Log both pee and poo with optional color/consistency
 - **`huckleberry.log_potty_dry`**: Log dry potty entry
 
+### Potty Sensor
+
+- **`sensor.{child_name}_potty`**: Shows the last potty event timestamp
+  - Attributes: `time`, `type`, `timezone_offset_minutes`, `reminder`
+
 ### Growth Services
 
 - **`huckleberry.log_growth`**: Log weight, height, and head circumference

@@ -607,6 +607,23 @@
           }
         }
       },
+      "potty": {
+        "name": "Potty",
+        "state_attributes": {
+          "time": {
+            "name": "Time"
+          },
+          "type": {
+            "name": "Type"
+          },
+          "timezone_offset_minutes": {
+            "name": "Timezone offset minutes"
+          },
+          "reminder": {
+            "name": "Reminder"
+          }
+        }
+      },
       "growth": {
         "name": "Growth",
         "state_attributes": {
