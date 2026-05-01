@@ -160,6 +160,62 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
         notes=None,
     )
 
+    # Test log_potty_pee
+    await hass.services.async_call(
+        DOMAIN, "log_potty_pee", {"device_id": device.id, "pee_amount": "medium"}, blocking=True
+    )
+    mock_huckleberry_api.log_potty.assert_called_with(
+        "test_child_uid",
+        start_time=ANY,
+        mode="pee",
+        pee_amount="medium",
+        how_it_happened="wentPotty",
+        notes=None,
+    )
+
+    # Test log_potty_poo
+    await hass.services.async_call(
+        DOMAIN, "log_potty_poo", {"device_id": device.id, "poo_amount": "big", "color": "brown", "consistency": "solid"}, blocking=True
+    )
+    mock_huckleberry_api.log_potty.assert_called_with(
+        "test_child_uid",
+        start_time=ANY,
+        mode="poo",
+        poo_amount="big",
+        color="brown",
+        consistency="solid",
+        how_it_happened="wentPotty",
+        notes=None,
+    )
+
+    # Test log_potty_both
+    await hass.services.async_call(
+        DOMAIN, "log_potty_both", {"device_id": device.id, "pee_amount": "little", "poo_amount": "medium"}, blocking=True
+    )
+    mock_huckleberry_api.log_potty.assert_called_with(
+        "test_child_uid",
+        start_time=ANY,
+        mode="both",
+        pee_amount="little",
+        poo_amount="medium",
+        color=None,
+        consistency=None,
+        how_it_happened="wentPotty",
+        notes=None,
+    )
+
+    # Test log_potty_dry
+    await hass.services.async_call(
+        DOMAIN, "log_potty_dry", {"device_id": device.id}, blocking=True
+    )
+    mock_huckleberry_api.log_potty.assert_called_with(
+        "test_child_uid",
+        start_time=ANY,
+        mode="dry",
+        how_it_happened="satButDry",
+        notes=None,
+    )
+
     # Test log_growth
     await hass.services.async_call(
         DOMAIN, "log_growth", {"device_id": device.id, "weight": 10.5, "height": 75.0, "head": 45.0, "units": "metric"}, blocking=True

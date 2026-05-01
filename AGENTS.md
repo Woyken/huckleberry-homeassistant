@@ -163,6 +163,12 @@ This groups entities under one device per child in HA UI.
 - Icon: `mdi:human-baby-changing-table`
 - Updates: Real-time via health listener
 
+**`sensor.{child_name}_potty`**:
+- State: Last potty timestamp
+- Attributes: `time`, `type`, `timezone_offset_minutes`, `reminder`
+- Icon: `mdi:toilet`
+- Updates: Real-time via diaper listener
+
 **`sensor.huckleberry_children`**:
 - State: Number of children
 - Attributes: List of children with metadata (uid, name, birthdate, picture)
@@ -240,6 +246,24 @@ All services support device selector for easy automation creation.
 **`huckleberry.log_diaper_dry`**:
 - Logs a dry diaper check (no change needed)
 - Parameters: `device_id` (optional), `child_uid` (optional)
+
+### Potty Services
+
+**`huckleberry.log_potty_pee`**:
+- Logs a pee-only potty entry
+- Parameters: `device_id` (optional), `child_uid` (optional), `pee_amount` (optional), `how_it_happened` (optional), `notes` (optional)
+
+**`huckleberry.log_potty_poo`**:
+- Logs a poo-only potty entry
+- Parameters: `device_id` (optional), `child_uid` (optional), `poo_amount` (optional), `color` (optional), `consistency` (optional), `how_it_happened` (optional), `notes` (optional)
+
+**`huckleberry.log_potty_both`**:
+- Logs a potty entry with both pee and poo
+- Parameters: `device_id` (optional), `child_uid` (optional), `pee_amount` (optional), `poo_amount` (optional), `color` (optional), `consistency` (optional), `how_it_happened` (optional), `notes` (optional)
+
+**`huckleberry.log_potty_dry`**:
+- Logs a dry potty entry
+- Parameters: `device_id` (optional), `child_uid` (optional), `notes` (optional)
 
 ### Growth Service
 
