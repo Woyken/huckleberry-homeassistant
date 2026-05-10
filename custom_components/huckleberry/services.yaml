@@ -455,3 +455,41 @@ log_bottle:
           options:
             - ml
             - oz
+
+log_solids:
+  name: Log Solids
+  description: Log a solid food meal with one or more foods.
+  fields:
+    device_id:
+      name: Child device
+      description: Select child device
+      required: true
+      selector:
+        device:
+          integration: huckleberry
+    foods:
+      name: Foods
+      description: List of food names eaten in this meal (one or more)
+      required: true
+      example: '["Banana", "Yogurt"]'
+      selector:
+        object:
+    notes:
+      name: Notes
+      description: Optional notes about this meal
+      required: false
+      example: Refused the spoon at first
+      selector:
+        text:
+    reaction:
+      name: Reaction
+      description: Optional reaction to the meal
+      required: false
+      selector:
+        select:
+          translation_key: solids_reaction
+          options:
+            - LOVED
+            - MEH
+            - HATED
+            - ALLERGIC

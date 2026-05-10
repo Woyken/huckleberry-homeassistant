@@ -163,6 +163,13 @@ All services support device selection via dropdown or explicit `child_uid` (adva
   - All measurements optional (log any combination)
   - See [GROWTH_TRACKING.md](GROWTH_TRACKING.md) for details
 
+### Solid Food Services
+
+- **`huckleberry.log_solids`**: Log a solid food meal
+  - Parameters: `foods` (list of food names, required), `notes` (optional), `reaction` (optional: `LOVED`, `MEH`, `HATED`, `ALLERGIC`)
+  - Foods are matched against curated foods and existing custom foods, or created and reused as custom foods
+  - Image attachments (`food_note_image`) deferred to a follow-up
+
 ### Service Call Examples
 
 Using device selector (recommended):
