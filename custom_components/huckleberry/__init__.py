@@ -25,6 +25,7 @@ from huckleberry_api.firebase_types import (
     BottleType,
     FeedSide,
     FirebaseChildDocument,
+    FirebaseDiaperData,
     FirebaseDiaperDocumentData,
     FirebaseFeedDocumentData,
     FirebaseHealthDocumentData,
@@ -497,6 +498,10 @@ class HuckleberryDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Huckleber
 
             def diaper_callback(data: FirebaseDiaperDocumentData, uid: str = child_uid) -> None:
                 self._realtime_data[uid].diaper_status = data
+                asyncio.run_coroutine_threadsafe(
+                    self._async_fetch_latest_diaper_interval(uid),
+                    self.hass.loop,
+                )
                 self.hass.loop.call_soon_threadsafe(self.async_set_updated_data, dict(self._realtime_data))
 
             def child_callback(data: FirebaseChildDocument, uid: str = child_uid) -> None:
@@ -542,6 +547,30 @@ class HuckleberryDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Huckleber
         """Return the current diaper document for a child."""
         state = self.get_state(child_uid)
         return state.diaper_status if state is not None else None
+
+    def get_latest_diaper_interval(self, child_uid: str) -> FirebaseDiaperData | None:
+        """Return the latest diaper interval with full details for a child."""
+        state = self.get_state(child_uid)
+        return state.latest_diaper_interval if state is not None else None
+
+    async def _async_fetch_latest_diaper_interval(self, child_uid: str) -> None:
+        """Fetch the latest diaper interval and store it in child state."""
+        from datetime import datetime, timedelta
+
+        try:
+            end = datetime.now(dt_util.DEFAULT_TIME_ZONE)
+            start = end - timedelta(days=7)
+            intervals = await self.api.list_diaper_intervals(child_uid, start, end)
+            if intervals:
+                latest = max(intervals, key=lambda i: i.start)
+                self._realtime_data[child_uid].latest_diaper_interval = latest
+                self.async_set_updated_data(dict(self._realtime_data))
+        except Exception as err:
+            _LOGGER.debug(
+                "Failed to fetch latest diaper interval for %s: %s",
+                child_uid,
+                err,
+            )
 
     def get_child_document(self, child_uid: str) -> FirebaseChildDocument | None:
         """Return the current child document for a child."""

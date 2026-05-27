@@ -6,6 +6,7 @@ from typing import Sequence
 
 from huckleberry_api.firebase_types import (
     FirebaseChildDocument,
+    FirebaseDiaperData,
     FirebaseDiaperDocumentData,
     FirebaseFeedDocumentData,
     FirebaseGrowthData,
@@ -78,6 +79,7 @@ class HuckleberryChildState:
     feed_status: FirebaseFeedDocumentData | None = None
     health_status: FirebaseHealthDocumentData | None = None
     diaper_status: FirebaseDiaperDocumentData | None = None
+    latest_diaper_interval: FirebaseDiaperData | None = None
     child_document: FirebaseChildDocument | None = None
 
     @property
