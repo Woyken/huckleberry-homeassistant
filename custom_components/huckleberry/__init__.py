@@ -25,6 +25,7 @@ from huckleberry_api.firebase_types import (
     BottleType,
     FeedSide,
     FirebaseChildDocument,
+    FirebaseDiaperData,
     FirebaseDiaperDocumentData,
     FirebaseFeedDocumentData,
     FirebaseHealthDocumentData,
@@ -35,7 +36,7 @@ from huckleberry_api.firebase_types import (
 )
 
 from .const import DOMAIN
-from .models import HuckleberryChildProfile, HuckleberryChildState
+from .models import HuckleberryChildProfile, HuckleberryChildState, DailyStatistics
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -471,6 +472,8 @@ class HuckleberryDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Huckleber
         self._realtime_data: dict[str, HuckleberryChildState] = {
             child.uid: HuckleberryChildState(profile=child) for child in children
         }
+        self._last_stats_refresh: float = 0.0
+        self._stats_refresh_interval: float = 300.0  # 5 minutes
         super().__init__(
             hass,
             _LOGGER,
@@ -497,6 +500,10 @@ class HuckleberryDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Huckleber
 
             def diaper_callback(data: FirebaseDiaperDocumentData, uid: str = child_uid) -> None:
                 self._realtime_data[uid].diaper_status = data
+                asyncio.run_coroutine_threadsafe(
+                    self._async_fetch_latest_diaper_interval(uid),
+                    self.hass.loop,
+                )
                 self.hass.loop.call_soon_threadsafe(self.async_set_updated_data, dict(self._realtime_data))
 
             def child_callback(data: FirebaseChildDocument, uid: str = child_uid) -> None:
@@ -511,8 +518,88 @@ class HuckleberryDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Huckleber
 
     async def _async_update_data(self) -> dict[str, HuckleberryChildState]:
         """Refresh auth/session state while listeners provide live data."""
+        import time
+
         await self.api.ensure_session()
+
+        now = time.monotonic()
+        if now - self._last_stats_refresh >= self._stats_refresh_interval:
+            self._last_stats_refresh = now
+            for child in self.children:
+                await self._async_refresh_daily_statistics(child.uid)
+
         return dict(self._realtime_data)
+
+    async def _async_refresh_daily_statistics(self, child_uid: str) -> None:
+        """Fetch today's intervals from Firebase and compute daily statistics."""
+        from datetime import datetime, time as dtime
+
+        try:
+            tz = dt_util.DEFAULT_TIME_ZONE
+            today = dt_util.now().date()
+            start_of_day = datetime.combine(today, dtime.min, tzinfo=tz)
+            end_of_day = datetime.combine(today, dtime.max, tzinfo=tz)
+
+            stats = DailyStatistics(date=today.isoformat())
+
+            try:
+                diaper_intervals = await self.api.list_diaper_intervals(
+                    child_uid, start_of_day, end_of_day
+                )
+                stats.diaper_count = len(diaper_intervals)
+                for d in diaper_intervals:
+                    if d.mode == "pee":
+                        stats.diaper_pee_count += 1
+                    elif d.mode == "poo":
+                        stats.diaper_poo_count += 1
+                    elif d.mode == "both":
+                        stats.diaper_mixed_count += 1
+            except Exception as err:
+                _LOGGER.debug("Failed to fetch diaper intervals for stats: %s", err)
+
+            try:
+                feed_intervals = await self.api.list_feed_intervals(
+                    child_uid, start_of_day, end_of_day
+                )
+                from huckleberry_api.firebase_types import (
+                    FirebaseBottleFeedIntervalData,
+                    FirebaseBreastFeedIntervalData,
+                    FirebaseSolidsFeedIntervalData,
+                )
+
+                for feed in feed_intervals:
+                    if isinstance(feed, FirebaseBottleFeedIntervalData):
+                        stats.bottle_count += 1
+                        amount = float(feed.amount) if feed.amount is not None else 0.0
+                        if feed.units == "oz":
+                            amount *= 29.5735  # oz to ml
+                        stats.bottle_total_ml += amount
+                    elif isinstance(feed, FirebaseBreastFeedIntervalData):
+                        stats.nursing_count += 1
+                        left = float(feed.leftDuration or 0)
+                        right = float(feed.rightDuration or 0)
+                        stats.nursing_total_seconds += int(left + right)
+                    elif isinstance(feed, FirebaseSolidsFeedIntervalData):
+                        stats.solids_count += 1
+            except Exception as err:
+                _LOGGER.debug("Failed to fetch feed intervals for stats: %s", err)
+
+            try:
+                sleep_intervals = await self.api.list_sleep_intervals(
+                    child_uid, start_of_day, end_of_day
+                )
+                stats.sleep_count = len(sleep_intervals)
+                for s in sleep_intervals:
+                    stats.sleep_total_seconds += int(float(s.duration))
+            except Exception as err:
+                _LOGGER.debug("Failed to fetch sleep intervals for stats: %s", err)
+
+            self._realtime_data[child_uid].daily_statistics = stats
+
+        except Exception as err:
+            _LOGGER.debug(
+                "Failed to refresh daily statistics for %s: %s", child_uid, err
+            )
 
     async def async_shutdown(self) -> None:
         """Shutdown coordinator and stop active listeners."""
@@ -542,6 +629,35 @@ class HuckleberryDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Huckleber
         """Return the current diaper document for a child."""
         state = self.get_state(child_uid)
         return state.diaper_status if state is not None else None
+
+    def get_latest_diaper_interval(self, child_uid: str) -> FirebaseDiaperData | None:
+        """Return the latest diaper interval with full details for a child."""
+        state = self.get_state(child_uid)
+        return state.latest_diaper_interval if state is not None else None
+
+    def get_daily_statistics(self, child_uid: str) -> DailyStatistics | None:
+        """Return the current day's aggregated statistics for a child."""
+        state = self.get_state(child_uid)
+        return state.daily_statistics if state is not None else None
+
+    async def _async_fetch_latest_diaper_interval(self, child_uid: str) -> None:
+        """Fetch the latest diaper interval and store it in child state."""
+        from datetime import datetime, timedelta
+
+        try:
+            end = datetime.now(dt_util.DEFAULT_TIME_ZONE)
+            start = end - timedelta(days=7)
+            intervals = await self.api.list_diaper_intervals(child_uid, start, end)
+            if intervals:
+                latest = max(intervals, key=lambda i: i.start)
+                self._realtime_data[child_uid].latest_diaper_interval = latest
+                self.async_set_updated_data(dict(self._realtime_data))
+        except Exception as err:
+            _LOGGER.debug(
+                "Failed to fetch latest diaper interval for %s: %s",
+                child_uid,
+                err,
+            )
 
     def get_child_document(self, child_uid: str) -> FirebaseChildDocument | None:
         """Return the current child document for a child."""

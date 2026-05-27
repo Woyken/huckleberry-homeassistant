@@ -272,10 +272,26 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
             summary = f"{mode_emoji} Diaper ({mode.capitalize()})"
             description = f"Diaper change: {mode}"
 
+            if interval.quantity is not None:
+                amount_map = {0.0: "little", 50.0: "medium", 100.0: "big"}
+                if interval.quantity.pee is not None:
+                    pee_label = amount_map.get(
+                        float(interval.quantity.pee), str(interval.quantity.pee)
+                    )
+                    description += f"\nPee amount: {pee_label}"
+                if interval.quantity.poo is not None:
+                    poo_label = amount_map.get(
+                        float(interval.quantity.poo), str(interval.quantity.poo)
+                    )
+                    description += f"\nPoo amount: {poo_label}"
             if interval.color is not None:
                 description += f"\nColor: {interval.color}"
             if interval.consistency is not None:
                 description += f"\nConsistency: {interval.consistency}"
+            if interval.diaperRash:
+                description += "\nDiaper rash: yes"
+            if interval.notes:
+                description += f"\nNotes: {interval.notes}"
 
             events.append(
                 CalendarEvent(
