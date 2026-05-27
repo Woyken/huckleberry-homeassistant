@@ -221,8 +221,9 @@ async def test_statistics_api_called_with_timestamps(
     # Verify the APIs were called (they are called during first refresh)
     mock_huckleberry_api.list_diaper_intervals.assert_called()
     call_args = mock_huckleberry_api.list_diaper_intervals.call_args
-    # Arguments should be (child_uid, start_ts, end_ts)
+    # Arguments should be (child_uid, start_datetime, end_datetime)
     assert call_args[0][0] == "child_1"
-    assert isinstance(call_args[0][1], int)
-    assert isinstance(call_args[0][2], int)
+    from datetime import datetime
+    assert isinstance(call_args[0][1], datetime)
+    assert isinstance(call_args[0][2], datetime)
     assert call_args[0][1] < call_args[0][2]

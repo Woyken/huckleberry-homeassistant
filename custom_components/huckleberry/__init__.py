@@ -532,7 +532,7 @@ class HuckleberryDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Huckleber
 
     async def _async_refresh_daily_statistics(self, child_uid: str) -> None:
         """Fetch today's intervals from Firebase and compute daily statistics."""
-        from datetime import date, datetime, time as dtime
+        from datetime import datetime, time as dtime
 
         try:
             tz = dt_util.DEFAULT_TIME_ZONE
@@ -540,14 +540,11 @@ class HuckleberryDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Huckleber
             start_of_day = datetime.combine(today, dtime.min, tzinfo=tz)
             end_of_day = datetime.combine(today, dtime.max, tzinfo=tz)
 
-            start_ts = int(start_of_day.timestamp())
-            end_ts = int(end_of_day.timestamp())
-
             stats = DailyStatistics(date=today.isoformat())
 
             try:
                 diaper_intervals = await self.api.list_diaper_intervals(
-                    child_uid, start_ts, end_ts
+                    child_uid, start_of_day, end_of_day
                 )
                 stats.diaper_count = len(diaper_intervals)
                 for d in diaper_intervals:
@@ -562,7 +559,7 @@ class HuckleberryDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Huckleber
 
             try:
                 feed_intervals = await self.api.list_feed_intervals(
-                    child_uid, start_ts, end_ts
+                    child_uid, start_of_day, end_of_day
                 )
                 from huckleberry_api.firebase_types import (
                     FirebaseBottleFeedIntervalData,
@@ -589,7 +586,7 @@ class HuckleberryDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Huckleber
 
             try:
                 sleep_intervals = await self.api.list_sleep_intervals(
-                    child_uid, start_ts, end_ts
+                    child_uid, start_of_day, end_of_day
                 )
                 stats.sleep_count = len(sleep_intervals)
                 for s in sleep_intervals:
