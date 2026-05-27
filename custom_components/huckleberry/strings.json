@@ -555,6 +555,62 @@
             "name": "Selected nap day"
           }
         }
+      },
+      "diapers_today": {
+        "name": "Diapers today",
+        "state_attributes": {
+          "pee_only": {
+            "name": "Pee only"
+          },
+          "poo_only": {
+            "name": "Poo only"
+          },
+          "mixed": {
+            "name": "Mixed"
+          },
+          "date": {
+            "name": "Date"
+          }
+        }
+      },
+      "bottles_today": {
+        "name": "Bottles today",
+        "state_attributes": {
+          "total_ml": {
+            "name": "Total mL"
+          },
+          "date": {
+            "name": "Date"
+          }
+        }
+      },
+      "nursing_today": {
+        "name": "Nursing today",
+        "state_attributes": {
+          "total_duration": {
+            "name": "Total duration"
+          },
+          "total_minutes": {
+            "name": "Total minutes"
+          },
+          "date": {
+            "name": "Date"
+          }
+        }
+      },
+      "sleep_today": {
+        "name": "Sleep today",
+        "state_attributes": {
+          "total_duration": {
+            "name": "Total duration"
+          },
+          "total_minutes": {
+            "name": "Total minutes"
+          },
+          "date": {
+            "name": "Date"
+          }
+        }
       }
     },
     "switch": {

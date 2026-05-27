@@ -18,6 +18,29 @@ from huckleberry_api.firebase_types import (
 from .timestamps import as_iso8601_datetime
 
 
+@dataclass(slots=True)
+class DailyStatistics:
+    """Aggregated daily statistics for a child."""
+
+    date: str  # ISO date string e.g. "2026-05-27"
+
+    diaper_count: int = 0
+    diaper_pee_count: int = 0
+    diaper_poo_count: int = 0
+    diaper_mixed_count: int = 0
+
+    bottle_count: int = 0
+    bottle_total_ml: float = 0.0
+
+    nursing_count: int = 0
+    nursing_total_seconds: int = 0
+
+    sleep_count: int = 0
+    sleep_total_seconds: int = 0
+
+    solids_count: int = 0
+
+
 @dataclass(frozen=True, slots=True)
 class HuckleberryChildProfile:
     """Resolved child profile used by the integration."""
@@ -81,6 +104,7 @@ class HuckleberryChildState:
     diaper_status: FirebaseDiaperDocumentData | None = None
     latest_diaper_interval: FirebaseDiaperData | None = None
     child_document: FirebaseChildDocument | None = None
+    daily_statistics: DailyStatistics | None = None
 
     @property
     def growth_data(self) -> FirebaseGrowthData | None:
