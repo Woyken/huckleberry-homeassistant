@@ -555,6 +555,51 @@
             "name": "Selected nap day"
           }
         }
+      },
+      "pumping": {
+        "name": "Pumping",
+        "state": {
+          "active": "Active",
+          "paused": "Paused",
+          "none": "None"
+        },
+        "state_attributes": {
+          "current_start": {
+            "name": "Current start"
+          },
+          "current_entry_mode": {
+            "name": "Current entry mode"
+          },
+          "current_units": {
+            "name": "Current units"
+          }
+        }
+      },
+      "last_pump": {
+        "name": "Last pump",
+        "state_attributes": {
+          "time": {
+            "name": "Time"
+          },
+          "duration": {
+            "name": "Duration"
+          },
+          "entry_mode": {
+            "name": "Entry mode"
+          },
+          "left_amount": {
+            "name": "Left amount"
+          },
+          "right_amount": {
+            "name": "Right amount"
+          },
+          "total_amount": {
+            "name": "Total amount"
+          },
+          "units": {
+            "name": "Units"
+          }
+        }
       }
     },
     "switch": {
