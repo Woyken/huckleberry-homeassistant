@@ -28,6 +28,7 @@ For Python commands in this repository (including running tests), always use the
 This integration provides:
 - Home Assistant entities for baby tracking (sensors, switches)
 - Services for controlling tracking from automations
+- Calendar history for care, pumping, and all validated activity modes
 - Device actions for advanced automation scenarios
 - Real-time updates via coordinator and Firebase listeners
 - Multi-child support with device grouping
@@ -47,6 +48,7 @@ This integration provides:
 **Platforms:**
 - `switch`: Sleep timer + left/right nursing switches per child
 - `sensor`: Sleep/nursing status + Children count + child profile + growth sensors
+- `calendar`: On-demand sleep, feed, diaper, health, pumping, and activity history
 
 **External Dependencies:**
 - `huckleberry-api>=0.2.2` - Firebase operations
