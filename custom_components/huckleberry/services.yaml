@@ -351,6 +351,210 @@ log_diaper_dry:
       selector:
         text:
 
+log_potty_pee:
+  name: Log Potty - Pee
+  description: Log a potty entry with pee only.
+  fields:
+    device_id:
+      name: Child device
+      description: Select child device
+      required: true
+      selector:
+        device:
+          integration: huckleberry
+    pee_amount:
+      name: Pee amount
+      description: Amount of pee (shows indicator in app)
+      required: false
+      selector:
+        select:
+          translation_key: diaper_amount
+          options:
+            - little
+            - medium
+            - big
+    how_it_happened:
+      name: How it happened
+      description: How the potty event happened
+      required: false
+      selector:
+        select:
+          options:
+            - wentPotty
+            - accident
+            - satButDry
+    notes:
+      name: Notes
+      description: Optional notes about this potty entry
+      required: false
+      selector:
+        text:
+
+log_potty_poo:
+  name: Log Potty - Poo
+  description: Log a potty entry with poo only.
+  fields:
+    device_id:
+      name: Child device
+      description: Select child device
+      required: true
+      selector:
+        device:
+          integration: huckleberry
+    poo_amount:
+      name: Poo amount
+      description: Amount of poo (shows indicator in app)
+      required: false
+      selector:
+        select:
+          translation_key: diaper_amount
+          options:
+            - little
+            - medium
+            - big
+    color:
+      name: Poo color
+      description: Poo color
+      required: false
+      selector:
+        select:
+          translation_key: poo_color
+          options:
+            - yellow
+            - brown
+            - black
+            - green
+            - red
+            - gray
+    consistency:
+      name: Poo consistency
+      description: Poo consistency
+      required: false
+      selector:
+        select:
+          translation_key: poo_consistency
+          options:
+            - solid
+            - loose
+            - runny
+            - mucousy
+            - hard
+            - pebbles
+            - diarrhea
+    how_it_happened:
+      name: How it happened
+      description: How the potty event happened
+      required: false
+      selector:
+        select:
+          options:
+            - wentPotty
+            - accident
+            - satButDry
+    notes:
+      name: Notes
+      description: Optional notes about this potty entry
+      required: false
+      selector:
+        text:
+
+log_potty_both:
+  name: Log Potty - Both
+  description: Log a potty entry with both pee and poo.
+  fields:
+    device_id:
+      name: Child device
+      description: Select child device
+      required: true
+      selector:
+        device:
+          integration: huckleberry
+    pee_amount:
+      name: Pee amount
+      description: Amount of pee (shows indicator in app)
+      required: false
+      selector:
+        select:
+          translation_key: diaper_amount
+          options:
+            - little
+            - medium
+            - big
+    poo_amount:
+      name: Poo amount
+      description: Amount of poo (shows indicator in app)
+      required: false
+      selector:
+        select:
+          translation_key: diaper_amount
+          options:
+            - little
+            - medium
+            - big
+    color:
+      name: Poo color
+      description: Poo color
+      required: false
+      selector:
+        select:
+          translation_key: poo_color
+          options:
+            - yellow
+            - brown
+            - black
+            - green
+            - red
+            - gray
+    consistency:
+      name: Poo consistency
+      description: Poo consistency
+      required: false
+      selector:
+        select:
+          translation_key: poo_consistency
+          options:
+            - solid
+            - loose
+            - runny
+            - mucousy
+            - hard
+            - pebbles
+            - diarrhea
+    how_it_happened:
+      name: How it happened
+      description: How the potty event happened
+      required: false
+      selector:
+        select:
+          options:
+            - wentPotty
+            - accident
+            - satButDry
+    notes:
+      name: Notes
+      description: Optional notes about this potty entry
+      required: false
+      selector:
+        text:
+
+log_potty_dry:
+  name: Log Potty - Dry
+  description: Log a dry potty entry.
+  fields:
+    device_id:
+      name: Child device
+      description: Select child device
+      required: true
+      selector:
+        device:
+          integration: huckleberry
+    notes:
+      name: Notes
+      description: Optional notes about this potty entry
+      required: false
+      selector:
+        text:
+
 log_growth:
   name: Log Growth Measurements
   description: Log child's weight, height, and head circumference measurements.
