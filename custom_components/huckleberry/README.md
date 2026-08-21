@@ -166,7 +166,7 @@ All services support device selection via dropdown or explicit `child_uid` (adva
 ### Potty Sensor
 
 - **`sensor.{child_name}_potty`**: Shows the last potty event timestamp
-  - Attributes: `time`, `type`, `timezone_offset_minutes`, `reminder`
+  - Attributes: `type`
 
 ### Growth Services
 

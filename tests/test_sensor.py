@@ -109,8 +109,6 @@ async def test_sensors(hass: HomeAssistant, mock_huckleberry_api):
     assert sensor_state is not None
     assert sensor_state.state == datetime.fromtimestamp(1234567990, tz=timezone.utc).isoformat()
     assert sensor_state.attributes["type"] == "Poo"
-    assert sensor_state.attributes["time"] == datetime.fromtimestamp(1234567990, tz=timezone.utc).isoformat()
-    assert sensor_state.attributes["timezone_offset_minutes"] == 0
 
 async def test_bottle_sensor(hass: HomeAssistant, mock_huckleberry_api):
     """Test bottle sensor."""

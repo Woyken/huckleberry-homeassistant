@@ -165,7 +165,7 @@ This groups entities under one device per child in HA UI.
 
 **`sensor.{child_name}_potty`**:
 - State: Last potty timestamp
-- Attributes: `time`, `type`, `timezone_offset_minutes`, `reminder`
+- Attributes: `type`
 - Icon: `mdi:toilet`
 - Updates: Real-time via diaper listener
 
