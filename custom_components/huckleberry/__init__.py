@@ -65,7 +65,13 @@ BOTTLE_TYPE_LABELS: Final[dict[str, BottleType]] = {
 }
 BOTTLE_TYPE_OPTIONS: Final[tuple[str, ...]] = tuple(BOTTLE_TYPE_LABELS)
 BOTTLE_TYPE_LEGACY_OPTIONS: Final[tuple[str, ...]] = tuple(get_args(BottleType))
-SOLIDS_REACTION_OPTIONS: Final[tuple[str, ...]] = tuple(get_args(SolidsReaction))
+SOLIDS_REACTION_LABELS: Final[dict[str, SolidsReaction]] = {
+    "loved": "LOVED",
+    "meh": "MEH",
+    "hated": "HATED",
+    "allergic": "ALLERGIC",
+}
+SOLIDS_REACTION_OPTIONS: Final[tuple[str, ...]] = tuple(SOLIDS_REACTION_LABELS)
 DiaperAmount = Literal["little", "medium", "big"]
 GrowthUnits = Literal["metric", "imperial"]
 BottleUnits = Literal["ml", "oz"]
@@ -231,7 +237,9 @@ def _api_bottle_type(value: str | None) -> BottleType:
 def _solids_reaction_value(value: object) -> SolidsReaction | None:
     """Return a validated solids reaction literal from service data."""
     string_value = _string_value(value)
-    return cast(SolidsReaction | None, string_value)
+    if string_value is None:
+        return None
+    return SOLIDS_REACTION_LABELS.get(string_value)
 
 
 def _solids_food_list(value: object) -> list[str]:
@@ -366,6 +374,7 @@ def _build_service_method_schema(
     include_bottle: bool = False,
     include_diaper_fields: bool = False,
     include_solids: bool = False,
+    include_potty_fields: bool = False,
 ) -> vol.Schema:
     """Create a service schema from the shared target fields."""
     schema: dict[object, object] = {
@@ -396,6 +405,13 @@ def _build_service_method_schema(
         schema[vol.Required("foods")] = list
         schema[vol.Optional("notes")] = cv.string
         schema[vol.Optional("reaction")] = vol.In(SOLIDS_REACTION_OPTIONS)
+    if include_potty_fields:
+        schema[vol.Optional("pee_amount")] = vol.In(("little", "medium", "big"))
+        schema[vol.Optional("poo_amount")] = vol.In(("little", "medium", "big"))
+        schema[vol.Optional("color")] = vol.In(POO_COLOR_OPTIONS)
+        schema[vol.Optional("consistency")] = vol.In(POO_CONSISTENCY_OPTIONS)
+        schema[vol.Optional("how_it_happened")] = vol.In(["wentPotty", "accident", "satButDry"])
+        schema[vol.Optional("notes")] = cv.string
 
     return vol.Schema(schema)
 
@@ -529,6 +545,50 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             notes=_string_value(call.data.get("notes")),
         )
 
+    async def handle_log_potty_pee(call: ServiceCall) -> None:
+        await api_client.log_potty(
+            _target_child(call),
+            start_time=dt_util.now(),
+            mode="pee",
+            pee_amount=_diaper_amount_value(call.data.get("pee_amount")),
+            how_it_happened=call.data.get("how_it_happened", "wentPotty"),
+            notes=_string_value(call.data.get("notes")),
+        )
+
+    async def handle_log_potty_poo(call: ServiceCall) -> None:
+        await api_client.log_potty(
+            _target_child(call),
+            start_time=dt_util.now(),
+            mode="poo",
+            poo_amount=_diaper_amount_value(call.data.get("poo_amount")),
+            color=_poo_color_value(call.data.get("color")),
+            consistency=_poo_consistency_value(call.data.get("consistency")),
+            how_it_happened=call.data.get("how_it_happened", "wentPotty"),
+            notes=_string_value(call.data.get("notes")),
+        )
+
+    async def handle_log_potty_both(call: ServiceCall) -> None:
+        await api_client.log_potty(
+            _target_child(call),
+            start_time=dt_util.now(),
+            mode="both",
+            pee_amount=_diaper_amount_value(call.data.get("pee_amount")),
+            poo_amount=_diaper_amount_value(call.data.get("poo_amount")),
+            color=_poo_color_value(call.data.get("color")),
+            consistency=_poo_consistency_value(call.data.get("consistency")),
+            how_it_happened=call.data.get("how_it_happened", "wentPotty"),
+            notes=_string_value(call.data.get("notes")),
+        )
+
+    async def handle_log_potty_dry(call: ServiceCall) -> None:
+        await api_client.log_potty(
+            _target_child(call),
+            start_time=dt_util.now(),
+            mode="dry",
+            how_it_happened="satButDry",
+            notes=_string_value(call.data.get("notes")),
+        )
+
     async def handle_log_growth(call: ServiceCall) -> None:
         await api_client.log_growth(
             _target_child(call),
@@ -585,6 +645,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.services.async_register(DOMAIN, "log_diaper_poo", handle_log_diaper_poo, schema=diaper_schema)
     hass.services.async_register(DOMAIN, "log_diaper_both", handle_log_diaper_both, schema=diaper_schema)
     hass.services.async_register(DOMAIN, "log_diaper_dry", handle_log_diaper_dry, schema=diaper_schema)
+
+    potty_schema = _build_service_method_schema(include_potty_fields=True)
+    hass.services.async_register(DOMAIN, "log_potty_pee", handle_log_potty_pee, schema=potty_schema)
+    hass.services.async_register(DOMAIN, "log_potty_poo", handle_log_potty_poo, schema=potty_schema)
+    hass.services.async_register(DOMAIN, "log_potty_both", handle_log_potty_both, schema=potty_schema)
+    hass.services.async_register(DOMAIN, "log_potty_dry", handle_log_potty_dry, schema=potty_schema)
 
     hass.services.async_register(
         DOMAIN,
