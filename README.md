@@ -216,7 +216,7 @@ For issues, questions, or feature requests, please open an issue on GitHub.
 
 ## Related Projects
 
-- [huckleberry-api](https://github.com/Woyken/huckleberry-api) - Python API library used by this integration
+- [huckleberry-api](https://github.com/Woyken/py-huckleberry-api) - Python API library used by this integration
 
 ## Disclaimer
 
