@@ -8,4 +8,5 @@ This repository is a Home Assistant custom integration over `huckleberry-api`. K
 - Keep platform entry points such as `sensor.py`, `switch.py`, and `calendar.py` limited to entity setup. Put entity behavior in `features/` or shared integration modules.
 - Keep `custom_components/huckleberry/manifest.json` and `pyproject.toml` synchronized when changing dependencies.
 - Run Python tools through `uv`, including tests, linting, and type checks.
+- Follow `RELEASE.md` when preparing and publishing a release.
 - Apply the `unslop` skill to PR titles and descriptions.
