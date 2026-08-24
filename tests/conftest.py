@@ -8,6 +8,7 @@ import pytest
 
 from huckleberry_api.firebase_types import (
     FirebaseChildDocument,
+    FirebaseCustomFoodTypeDocument,
     FirebaseUserChildRef,
     FirebaseUserDocument,
 )
@@ -95,6 +96,23 @@ def _build_mock_api(
     mock.log_potty = AsyncMock()
     mock.log_growth = AsyncMock()
     mock.log_bottle = AsyncMock()
+    mock.log_solids = AsyncMock()
+
+    def _mock_create_solids_custom_food(child_uid: str, name: str, image: str = "") -> FirebaseCustomFoodTypeDocument:
+        return FirebaseCustomFoodTypeDocument(
+            created_at="2026-01-01T00:00:00Z",
+            updated_at="2026-01-01T00:00:00Z",
+            name=name,
+            archived=False,
+            id=f"custom_{name.strip().lower().replace(' ', '_')}",
+            type="solids",
+            image=image,
+            source="custom",
+        )
+
+    mock.create_solids_custom_food = AsyncMock(side_effect=_mock_create_solids_custom_food)
+    mock.list_solids_curated_foods = AsyncMock(return_value=[])
+    mock.list_solids_custom_foods = AsyncMock(return_value=[])
 
     mock.list_sleep_intervals = AsyncMock(return_value=[])
     mock.list_feed_intervals = AsyncMock(return_value=[])

@@ -25,6 +25,8 @@ from huckleberry_api.firebase_types import (
     BottleType,
     FeedSide,
     FirebaseChildDocument,
+    FirebaseCuratedFoodDocument,
+    FirebaseCustomFoodTypeDocument,
     FirebaseDiaperDocumentData,
     FirebaseFeedDocumentData,
     FirebaseHealthDocumentData,
@@ -32,7 +34,9 @@ from huckleberry_api.firebase_types import (
     FirebaseUserDocument,
     PooColor,
     PooConsistency,
+    SolidsReaction,
 )
+from huckleberry_api.models import SolidsFoodReference
 
 from .const import DOMAIN
 from .models import HuckleberryChildProfile, HuckleberryChildState
@@ -61,6 +65,13 @@ BOTTLE_TYPE_LABELS: Final[dict[str, BottleType]] = {
 }
 BOTTLE_TYPE_OPTIONS: Final[tuple[str, ...]] = tuple(BOTTLE_TYPE_LABELS)
 BOTTLE_TYPE_LEGACY_OPTIONS: Final[tuple[str, ...]] = tuple(get_args(BottleType))
+SOLIDS_REACTION_LABELS: Final[dict[str, SolidsReaction]] = {
+    "loved": "LOVED",
+    "meh": "MEH",
+    "hated": "HATED",
+    "allergic": "ALLERGIC",
+}
+SOLIDS_REACTION_OPTIONS: Final[tuple[str, ...]] = tuple(SOLIDS_REACTION_LABELS)
 DiaperAmount = Literal["little", "medium", "big"]
 GrowthUnits = Literal["metric", "imperial"]
 BottleUnits = Literal["ml", "oz"]
@@ -223,12 +234,146 @@ def _api_bottle_type(value: str | None) -> BottleType:
     return BOTTLE_TYPE_LABELS.get(value, cast(BottleType, value))
 
 
+def _solids_reaction_value(value: object) -> SolidsReaction | None:
+    """Return a validated solids reaction literal from service data."""
+    string_value = _string_value(value)
+    if string_value is None:
+        return None
+    return SOLIDS_REACTION_LABELS.get(string_value)
+
+
+def _solids_food_list(value: object) -> list[str]:
+    """Coerce service-call foods value to a list of non-empty food names."""
+    if not isinstance(value, list) or not value:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="invalid_solids_foods",
+        )
+    foods: list[str] = []
+    for item in value:
+        if not isinstance(item, str):
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="invalid_solids_foods",
+            )
+        stripped = item.strip()
+        if not stripped:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="invalid_solids_foods",
+            )
+        foods.append(stripped)
+    return foods
+
+
+async def _async_get_curated_foods(
+    coordinator: HuckleberryDataUpdateCoordinator,
+) -> list[FirebaseCuratedFoodDocument]:
+    """Return cached curated foods or fetch from API."""
+    if coordinator.curated_foods is not None:
+        return coordinator.curated_foods
+    try:
+        coordinator.curated_foods = await coordinator.api.list_solids_curated_foods()
+    except Exception as err:
+        _LOGGER.warning("Failed to fetch curated foods catalog: %s", err)
+        return []
+    return coordinator.curated_foods
+
+
+async def _async_resolve_solids_food_references(
+    api_client: HuckleberryAPI,
+    coordinator: HuckleberryDataUpdateCoordinator,
+    child_uid: str,
+    food_names: list[str],
+) -> list[SolidsFoodReference]:
+    """Resolve food names to existing or newly created solid food references."""
+    curated_foods = await _async_get_curated_foods(coordinator)
+    try:
+        custom_foods = await api_client.list_solids_custom_foods(child_uid)
+    except Exception as err:
+        _LOGGER.warning("Failed to list custom foods for child %s: %s", child_uid, err)
+        custom_foods = []
+
+    custom_by_name: dict[str, FirebaseCustomFoodTypeDocument] = {
+        food.name.strip().casefold(): food
+        for food in custom_foods
+        if food.name and not food.archived
+    }
+
+    curated_by_name: dict[str, FirebaseCuratedFoodDocument] = {}
+    curated_by_alias: dict[str, FirebaseCuratedFoodDocument] = {}
+
+    for food in curated_foods:
+        if food.name:
+            curated_by_name[food.name.strip().casefold()] = food
+        if food.aka:
+            for alias in food.aka:
+                if alias:
+                    curated_by_alias[alias.strip().casefold()] = food
+
+    food_refs: list[SolidsFoodReference] = []
+
+    for name in food_names:
+        cleaned_name = name.strip()
+        name_key = cleaned_name.casefold()
+
+        if name_key in curated_by_name:
+            curated_match = curated_by_name[name_key]
+            food_refs.append(
+                SolidsFoodReference(
+                    id=curated_match.id,
+                    source="curated",
+                    name=curated_match.name,
+                    amount="",
+                )
+            )
+            continue
+
+        if name_key in curated_by_alias:
+            curated_match = curated_by_alias[name_key]
+            food_refs.append(
+                SolidsFoodReference(
+                    id=curated_match.id,
+                    source="curated",
+                    name=curated_match.name,
+                    amount="",
+                )
+            )
+            continue
+
+        if name_key in custom_by_name:
+            custom_match = custom_by_name[name_key]
+            food_refs.append(
+                SolidsFoodReference(
+                    id=custom_match.id,
+                    source="custom",
+                    name=custom_match.name,
+                    amount="",
+                )
+            )
+            continue
+
+        created_food = await api_client.create_solids_custom_food(child_uid, cleaned_name)
+        custom_by_name[name_key] = created_food
+        food_refs.append(
+            SolidsFoodReference(
+                id=created_food.id,
+                source="custom",
+                name=created_food.name,
+                amount="",
+            )
+        )
+
+    return food_refs
+
+
 def _build_service_method_schema(
     *,
     include_side: bool = False,
     include_growth: bool = False,
     include_bottle: bool = False,
     include_diaper_fields: bool = False,
+    include_solids: bool = False,
     include_potty_fields: bool = False,
 ) -> vol.Schema:
     """Create a service schema from the shared target fields."""
@@ -256,6 +401,10 @@ def _build_service_method_schema(
         schema[vol.Optional("consistency")] = vol.In(POO_CONSISTENCY_OPTIONS)
         schema[vol.Optional("diaper_rash", default=False)] = cv.boolean
         schema[vol.Optional("notes")] = cv.string
+    if include_solids:
+        schema[vol.Required("foods")] = list
+        schema[vol.Optional("notes")] = cv.string
+        schema[vol.Optional("reaction")] = vol.In(SOLIDS_REACTION_OPTIONS)
     if include_potty_fields:
         schema[vol.Optional("pee_amount")] = vol.In(("little", "medium", "big"))
         schema[vol.Optional("poo_amount")] = vol.In(("little", "medium", "big"))
@@ -460,6 +609,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             units=_bottle_units_value(call.data.get("units")),
         )
 
+    async def handle_log_solids(call: ServiceCall) -> None:
+        child_uid = _target_child(call)
+        food_names = _solids_food_list(call.data.get("foods"))
+        food_refs = await _async_resolve_solids_food_references(
+            api_client,
+            coordinator,
+            child_uid,
+            food_names,
+        )
+        await api_client.log_solids(
+            child_uid,
+            start_time=dt_util.now(),
+            foods=food_refs,
+            notes=_string_value(call.data.get("notes")) or "",
+            reaction=_solids_reaction_value(call.data.get("reaction")),
+        )
+
     hass.services.async_register(DOMAIN, "start_sleep", handle_start_sleep, schema=SERVICE_CHILD_SCHEMA)
     hass.services.async_register(DOMAIN, "pause_sleep", handle_pause_sleep, schema=SERVICE_CHILD_SCHEMA)
     hass.services.async_register(DOMAIN, "resume_sleep", handle_resume_sleep, schema=SERVICE_CHILD_SCHEMA)
@@ -498,6 +664,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         handle_log_bottle,
         schema=_build_service_method_schema(include_bottle=True),
     )
+    hass.services.async_register(
+        DOMAIN,
+        "log_solids",
+        handle_log_solids,
+        schema=_build_service_method_schema(include_solids=True),
+    )
 
     return True
 
@@ -526,6 +698,7 @@ class HuckleberryDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Huckleber
     ) -> None:
         self.api = api
         self.children = children
+        self.curated_foods: list[FirebaseCuratedFoodDocument] | None = None
         self._realtime_data: dict[str, HuckleberryChildState] = {
             child.uid: HuckleberryChildState(profile=child) for child in children
         }

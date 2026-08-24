@@ -56,6 +56,14 @@
         "ml": "mL",
         "oz": "oz"
       }
+    },
+    "solids_reaction": {
+      "options": {
+        "loved": "Loved",
+        "meh": "Meh",
+        "hated": "Hated",
+        "allergic": "Allergic"
+      }
     }
   },
   "config": {
@@ -450,11 +458,36 @@
           "description": "Measurement units for amount"
         }
       }
+    },
+    "log_solids": {
+      "name": "Log solids",
+      "description": "Log a solid food meal with one or more foods.",
+      "fields": {
+        "device_id": {
+          "name": "Child device",
+          "description": "Select child device"
+        },
+        "foods": {
+          "name": "Foods",
+          "description": "List of food names eaten in this meal (one or more)"
+        },
+        "notes": {
+          "name": "Notes",
+          "description": "Optional notes about this meal"
+        },
+        "reaction": {
+          "name": "Reaction",
+          "description": "Optional reaction to the meal"
+        }
+      }
     }
   },
   "exceptions": {
     "invalid_child_device": {
       "message": "Could not resolve device_id to a Huckleberry child. Select the child's device from the device selector."
+    },
+    "invalid_solids_foods": {
+      "message": "Provide at least one non-empty food name in the foods list."
     }
   },
   "entity": {

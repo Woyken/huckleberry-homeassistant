@@ -87,6 +87,9 @@ All services support device selection for easy use in automations:
 ### Bottle Feeding
 - `huckleberry.log_bottle` - Log bottle feeding (formula or breastmilk) with amount in oz or ml
 
+### Solid Food Tracking
+- `huckleberry.log_solids` - Log a solid food meal with one or more foods, optional notes and reaction (LOVED/MEH/HATED/ALLERGIC)
+
 ### Diaper Changes
 - `huckleberry.log_diaper_pee`
 - `huckleberry.log_diaper_poo`
@@ -165,6 +168,25 @@ automation:
           amount: 120.0
           bottle_type: Formula
           units: ml
+```
+
+### Log Solid Food Meal
+```yaml
+automation:
+  - alias: "Log Lunch Solids"
+    trigger:
+      - platform: time
+        at: "12:30:00"
+    action:
+      - service: huckleberry.log_solids
+        target:
+          device_id: YOUR_DEVICE_ID
+        data:
+          foods:
+            - Banana
+            - Yogurt
+          notes: Lunch
+          reaction: LOVED
 ```
 
 ## Device Actions
