@@ -87,6 +87,9 @@ All services support device selection for easy use in automations:
 ### Bottle Feeding
 - `huckleberry.log_bottle` - Log bottle feeding (formula or breastmilk) with amount in oz or ml
 
+### Solid Food Tracking
+- `huckleberry.log_solids` - Log a solid food meal with one or more foods, optional notes and reaction (LOVED/MEH/HATED/ALLERGIC)
+
 ### Diaper Changes
 - `huckleberry.log_diaper_pee`
 - `huckleberry.log_diaper_poo`
@@ -167,6 +170,25 @@ automation:
           units: ml
 ```
 
+### Log Solid Food Meal
+```yaml
+automation:
+  - alias: "Log Lunch Solids"
+    trigger:
+      - platform: time
+        at: "12:30:00"
+    action:
+      - service: huckleberry.log_solids
+        target:
+          device_id: YOUR_DEVICE_ID
+        data:
+          foods:
+            - Banana
+            - Yogurt
+          notes: Lunch
+          reaction: LOVED
+```
+
 ## Device Actions
 
 Device actions have been removed in v0.4.0. Use HA services instead — they support the same `device_id` selector in the automation editor. See [Services](#services) above and the [Migration Guide](MIGRATION.md).
@@ -194,7 +216,7 @@ For issues, questions, or feature requests, please open an issue on GitHub.
 
 ## Related Projects
 
-- [huckleberry-api](https://github.com/Woyken/huckleberry-api) - Python API library used by this integration
+- [huckleberry-api](https://github.com/Woyken/py-huckleberry-api) - Python API library used by this integration
 
 ## Disclaimer
 
