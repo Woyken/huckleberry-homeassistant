@@ -21,6 +21,9 @@ from huckleberry_api.firebase_types import (
     FirebaseLastBottleData,
     FirebaseLastDiaperData,
     FirebaseLastPottyData,
+    FirebaseLastPumpData,
+    FirebasePumpDocumentData,
+    FirebasePumpPrefs,
 )
 
 
@@ -362,3 +365,56 @@ async def test_sweetspot_sensor_handles_sparse_null_slots(
     assert sensor_state.attributes["selected_nap_day"] == 0
     assert sensor_state.attributes["0_nap_day_time"] == datetime.fromtimestamp(future_zero, tz=timezone.utc).isoformat()
     assert "1_nap_day_time" not in sensor_state.attributes
+
+async def test_pumping_sensors(hass: HomeAssistant, mock_huckleberry_api):
+    """Test pumping sensors."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_EMAIL: "test@example.com",
+            CONF_PASSWORD: "test_password",
+        },
+    )
+    entry.add_to_hass(hass)
+
+    with patch(
+        "custom_components.huckleberry.HuckleberryAPI",
+        return_value=mock_huckleberry_api,
+    ):
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+    coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+
+    # Simulate a completed pump session via typed models
+    state = coordinator._realtime_data["child_1"]
+    state.pump_status = FirebasePumpDocumentData(
+        prefs=FirebasePumpPrefs(
+            lastPump=FirebaseLastPumpData(
+                start=1234567890,
+                duration=600,
+                entryMode="leftright",
+                leftAmount=10.0,
+                rightAmount=15.0,
+                units="ml",
+                offset=0,
+            ),
+        ),
+    )
+    coordinator.async_set_updated_data(dict(coordinator._realtime_data))
+    await hass.async_block_till_done()
+
+    # Pumping state sensor exposes previous pump session
+    sensor_state = hass.states.get("sensor.test_child_pumping")
+    assert sensor_state is not None
+    assert sensor_state.state == "none"
+    expected_date = datetime.fromtimestamp(1234567890, tz=timezone.utc).isoformat()
+    assert sensor_state.attributes["previous_start"] == expected_date
+    assert sensor_state.attributes["previous_entry_mode"] == "leftright"
+    assert sensor_state.attributes["previous_left_amount"] == 10.0
+    assert sensor_state.attributes["previous_right_amount"] == 15.0
+    assert sensor_state.attributes["previous_total_amount"] == 25.0
+    assert sensor_state.attributes["previous_units"] == "ml"
+    assert sensor_state.attributes["previous_duration"] == "PT10M"
+
+

@@ -76,6 +76,7 @@ def _build_mock_api(
     mock.setup_feed_listener = AsyncMock()
     mock.setup_health_listener = AsyncMock()
     mock.setup_diaper_listener = AsyncMock()
+    mock.setup_pump_listener = AsyncMock()
     mock.setup_child_listener = AsyncMock()
     mock.stop_all_listeners = AsyncMock()
 
