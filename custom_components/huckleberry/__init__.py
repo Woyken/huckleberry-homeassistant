@@ -376,6 +376,7 @@ def _build_service_method_schema(
     include_diaper_fields: bool = False,
     include_solids: bool = False,
     include_potty_fields: bool = False,
+    include_pump: bool = False,
 ) -> vol.Schema:
     """Create a service schema from the shared target fields."""
     schema: dict[object, object] = {
@@ -413,6 +414,11 @@ def _build_service_method_schema(
         schema[vol.Optional("consistency")] = vol.In(POO_CONSISTENCY_OPTIONS)
         schema[vol.Optional("how_it_happened")] = vol.In(["wentPotty", "accident", "satButDry"])
         schema[vol.Optional("notes")] = cv.string
+    if include_pump:
+        schema[vol.Required("total_amount")] = vol.Coerce(float)
+        schema[vol.Required("duration")] = vol.Coerce(int)
+        schema[vol.Optional("duration_unit", default="minutes")] = vol.In(("minutes", "seconds"))
+        schema[vol.Optional("units", default="ml")] = vol.In(("ml", "oz"))
 
     return vol.Schema(schema)
 
@@ -610,6 +616,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             units=_bottle_units_value(call.data.get("units")),
         )
 
+    async def handle_log_pump(call: ServiceCall) -> None:
+        duration_value = cast(int, call.data["duration"])
+        duration_unit = _string_value(call.data.get("duration_unit")) or "minutes"
+        duration_seconds = duration_value * 60 if duration_unit == "minutes" else duration_value
+        await api_client.log_pump(
+            _target_child(call),
+            start_time=dt_util.now(),
+            total_amount=cast(float, call.data["total_amount"]),
+            duration=duration_seconds,
+            units=_string_value(call.data.get("units")) or "ml",
+        )
+
     async def handle_log_solids(call: ServiceCall) -> None:
         child_uid = _target_child(call)
         food_names = _solids_food_list(call.data.get("foods"))
@@ -664,6 +682,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "log_bottle",
         handle_log_bottle,
         schema=_build_service_method_schema(include_bottle=True),
+    )
+    hass.services.async_register(
+        DOMAIN,
+        "log_pump",
+        handle_log_pump,
+        schema=_build_service_method_schema(include_pump=True),
     )
     hass.services.async_register(
         DOMAIN,
