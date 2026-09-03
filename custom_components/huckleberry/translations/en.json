@@ -56,6 +56,14 @@
         "ml": "mL",
         "oz": "oz"
       }
+    },
+    "solids_reaction": {
+      "options": {
+        "loved": "Loved",
+        "meh": "Meh",
+        "hated": "Hated",
+        "allergic": "Allergic"
+      }
     }
   },
   "config": {
@@ -303,6 +311,106 @@
         }
       }
     },
+    "log_potty_pee": {
+      "name": "Log potty - pee",
+      "description": "Log a potty entry with pee only.",
+      "fields": {
+        "device_id": {
+          "name": "Child device",
+          "description": "Select child device"
+        },
+        "pee_amount": {
+          "name": "Pee amount",
+          "description": "Amount of pee (shows indicator in app)"
+        },
+        "how_it_happened": {
+          "name": "How it happened",
+          "description": "How the potty event happened"
+        },
+        "notes": {
+          "name": "Notes",
+          "description": "Optional notes about this potty entry"
+        }
+      }
+    },
+    "log_potty_poo": {
+      "name": "Log potty - poo",
+      "description": "Log a potty entry with poo only.",
+      "fields": {
+        "device_id": {
+          "name": "Child device",
+          "description": "Select child device"
+        },
+        "poo_amount": {
+          "name": "Poo amount",
+          "description": "Amount of poo (shows indicator in app)"
+        },
+        "color": {
+          "name": "Poo color",
+          "description": "Poo color"
+        },
+        "consistency": {
+          "name": "Poo consistency",
+          "description": "Poo consistency"
+        },
+        "how_it_happened": {
+          "name": "How it happened",
+          "description": "How the potty event happened"
+        },
+        "notes": {
+          "name": "Notes",
+          "description": "Optional notes about this potty entry"
+        }
+      }
+    },
+    "log_potty_both": {
+      "name": "Log potty - both",
+      "description": "Log a potty entry with both pee and poo.",
+      "fields": {
+        "device_id": {
+          "name": "Child device",
+          "description": "Select child device"
+        },
+        "pee_amount": {
+          "name": "Pee amount",
+          "description": "Amount of pee (shows indicator in app)"
+        },
+        "poo_amount": {
+          "name": "Poo amount",
+          "description": "Amount of poo (shows indicator in app)"
+        },
+        "color": {
+          "name": "Poo color",
+          "description": "Poo color"
+        },
+        "consistency": {
+          "name": "Poo consistency",
+          "description": "Poo consistency"
+        },
+        "how_it_happened": {
+          "name": "How it happened",
+          "description": "How the potty event happened"
+        },
+        "notes": {
+          "name": "Notes",
+          "description": "Optional notes about this potty entry"
+        }
+      }
+    },
+    "log_potty_dry": {
+      "name": "Log potty - dry",
+      "description": "Log a dry potty entry.",
+      "fields": {
+        "device_id": {
+          "name": "Child device",
+          "description": "Select child device"
+        },
+        "notes": {
+          "name": "Notes",
+          "description": "Optional notes about this potty entry"
+        }
+      }
+    },
     "log_growth": {
       "name": "Log growth measurements",
       "description": "Log child's weight, height, and head circumference measurements.",
@@ -350,11 +458,36 @@
           "description": "Measurement units for amount"
         }
       }
+    },
+    "log_solids": {
+      "name": "Log solids",
+      "description": "Log a solid food meal with one or more foods.",
+      "fields": {
+        "device_id": {
+          "name": "Child device",
+          "description": "Select child device"
+        },
+        "foods": {
+          "name": "Foods",
+          "description": "List of food names eaten in this meal (one or more)"
+        },
+        "notes": {
+          "name": "Notes",
+          "description": "Optional notes about this meal"
+        },
+        "reaction": {
+          "name": "Reaction",
+          "description": "Optional reaction to the meal"
+        }
+      }
     }
   },
   "exceptions": {
     "invalid_child_device": {
       "message": "Could not resolve device_id to a Huckleberry child. Select the child's device from the device selector."
+    },
+    "invalid_solids_foods": {
+      "message": "Provide at least one non-empty food name in the foods list."
     }
   },
   "entity": {
@@ -502,6 +635,14 @@
           "time": {
             "name": "Time"
           },
+          "type": {
+            "name": "Type"
+          }
+        }
+      },
+      "potty": {
+        "name": "Potty",
+        "state_attributes": {
           "type": {
             "name": "Type"
           }

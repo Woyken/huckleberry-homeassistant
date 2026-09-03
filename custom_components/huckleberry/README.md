@@ -156,12 +156,31 @@ All services support device selection via dropdown or explicit `child_uid` (adva
 - **`huckleberry.log_diaper_both`**: Log both pee and poo with optional color/consistency
 - **`huckleberry.log_diaper_dry`**: Log dry diaper check
 
+### Potty Services
+
+- **`huckleberry.log_potty_pee`**: Log potty entry with pee only
+- **`huckleberry.log_potty_poo`**: Log poo with optional color/consistency
+- **`huckleberry.log_potty_both`**: Log both pee and poo with optional color/consistency
+- **`huckleberry.log_potty_dry`**: Log dry potty entry
+
+### Potty Sensor
+
+- **`sensor.{child_name}_potty`**: Shows the last potty event timestamp
+  - Attributes: `type`
+
 ### Growth Services
 
 - **`huckleberry.log_growth`**: Log weight, height, and head circumference
   - Parameters: `weight`, `height`, `head`, `units` (metric/imperial)
   - All measurements optional (log any combination)
   - See [GROWTH_TRACKING.md](GROWTH_TRACKING.md) for details
+
+### Solid Food Services
+
+- **`huckleberry.log_solids`**: Log a solid food meal
+  - Parameters: `foods` (list of food names, required), `notes` (optional), `reaction` (optional: `LOVED`, `MEH`, `HATED`, `ALLERGIC`)
+  - Foods are matched against curated foods and existing custom foods, or created and reused as custom foods
+  - Image attachments (`food_note_image`) deferred to a follow-up
 
 ### Service Call Examples
 
