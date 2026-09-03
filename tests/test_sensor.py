@@ -392,20 +392,17 @@ async def test_pumping_sensors(hass: HomeAssistant, mock_huckleberry_api):
     coordinator.async_set_updated_data(dict(coordinator._realtime_data))
     await hass.async_block_till_done()
 
-    # Last pump sensor exposes the completed session
-    sensor_state = hass.states.get("sensor.test_child_last_pump")
-    assert sensor_state is not None
-    expected_date = datetime.fromtimestamp(1234567890, tz=timezone.utc).isoformat()
-    assert sensor_state.state == expected_date
-    assert sensor_state.attributes["entry_mode"] == "leftright"
-    assert sensor_state.attributes["left_amount"] == 10.0
-    assert sensor_state.attributes["right_amount"] == 15.0
-    assert sensor_state.attributes["total_amount"] == 25.0
-    assert sensor_state.attributes["units"] == "ml"
-    assert sensor_state.attributes["duration"] == "PT10M"
-
-    # Pumping state sensor has no timer data -> unknown
+    # Pumping state sensor exposes previous pump session
     sensor_state = hass.states.get("sensor.test_child_pumping")
     assert sensor_state is not None
-    assert sensor_state.state == "unknown"
+    assert sensor_state.state == "none"
+    expected_date = datetime.fromtimestamp(1234567890, tz=timezone.utc).isoformat()
+    assert sensor_state.attributes["previous_start"] == expected_date
+    assert sensor_state.attributes["previous_entry_mode"] == "leftright"
+    assert sensor_state.attributes["previous_left_amount"] == 10.0
+    assert sensor_state.attributes["previous_right_amount"] == 15.0
+    assert sensor_state.attributes["previous_total_amount"] == 25.0
+    assert sensor_state.attributes["previous_units"] == "ml"
+    assert sensor_state.attributes["previous_duration"] == "PT10M"
+
 

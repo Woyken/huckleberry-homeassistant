@@ -572,32 +572,27 @@
           },
           "current_units": {
             "name": "Current units"
-          }
-        }
-      },
-      "last_pump": {
-        "name": "Last pump",
-        "state_attributes": {
-          "time": {
-            "name": "Time"
           },
-          "duration": {
-            "name": "Duration"
+          "previous_start": {
+            "name": "Previous start"
           },
-          "entry_mode": {
-            "name": "Entry mode"
+          "previous_duration": {
+            "name": "Previous duration"
           },
-          "left_amount": {
-            "name": "Left amount"
+          "previous_entry_mode": {
+            "name": "Previous entry mode"
           },
-          "right_amount": {
-            "name": "Right amount"
+          "previous_left_amount": {
+            "name": "Previous left amount"
           },
-          "total_amount": {
-            "name": "Total amount"
+          "previous_right_amount": {
+            "name": "Previous right amount"
           },
-          "units": {
-            "name": "Units"
+          "previous_total_amount": {
+            "name": "Previous total amount"
+          },
+          "previous_units": {
+            "name": "Previous units"
           }
         }
       }
