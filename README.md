@@ -15,7 +15,7 @@ This integration provides real-time baby tracking in Home Assistant by connectin
 - 🍼 **Bottle Feeding**: Log bottle feeds with amount and type
 - 🧷 **Diaper Changes**: Log pee, poo, both, or dry checks
 - 📏 **Growth Measurements**: Track weight, height, head circumference
-- 📅 **Calendar**: Historical events per child in HA's calendar view
+- 📅 **Calendar**: Historical care, pumping, and activity events per child
 - 🔄 **Real-time Sync**: Instant updates via Firebase listeners
 - 👶 **Multi-child Support**: Separate devices per child
 
@@ -60,7 +60,7 @@ This integration provides real-time baby tracking in Home Assistant by connectin
   - `switch.{child_name}_nursing_right` - Right side nursing
 
 - **Calendar** (1):
-  - `calendar.{child_name}_events` - All historical events (sleep, nursing, diaper, growth)
+  - `calendar.{child_name}_events` - Historical care, pumping, and activity events
 
 ### Global:
 - `sensor.huckleberry_children` - Number of children
@@ -107,6 +107,9 @@ Each child gets a calendar entity that displays all historical events:
 - **🍼 Feeding events**: Shows duration, left/right side information
 - **🩲 Diaper changes**: Shows type (pee/poo/both/dry) and details
 - **📏 Growth measurements**: Shows weight, height, head circumference
+- **🤱 Pumping sessions**: Shows amounts, units, duration, entry mode, and notes
+- **🛁 Activities**: Shows bath, teeth brushing, indoor/outdoor play, screen time,
+  skin-to-skin, story time, and tummy time
 
 The calendar can be added to dashboards and used in automations. Events are automatically fetched when you view the calendar for a specific date range.
 
