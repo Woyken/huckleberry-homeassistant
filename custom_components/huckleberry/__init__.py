@@ -4,7 +4,9 @@ from __future__ import annotations
 import asyncio
 import inspect
 import logging
-from datetime import timedelta
+from collections.abc import Iterator
+from contextlib import contextmanager
+from datetime import datetime, timedelta
 from typing import Final, Literal, TypedDict, cast, get_args
 
 import voluptuous as vol
@@ -185,6 +187,32 @@ def _get_child_uid_from_call(
 def _string_value(value: object) -> str | None:
     """Return a string value when present."""
     return value if isinstance(value, str) else None
+
+
+def _event_time_value(value: object) -> datetime | None:
+    """Return a service-call event time as a timezone-aware local datetime.
+
+    The schema validates the field with ``cv.datetime``, which parses strings via
+    ``dt_util.parse_datetime`` and leaves naive wall-clock values naive. Those are
+    localised to Home Assistant's configured timezone, which is what someone
+    entering a time at the panel means. Aware values keep their instant.
+    """
+    if not isinstance(value, datetime):
+        return None
+    return dt_util.as_local(value)
+
+
+@contextmanager
+def _as_service_validation_error(translation_key: str) -> Iterator[None]:
+    """Surface huckleberry-api rejections as Home Assistant validation errors."""
+    try:
+        yield
+    except ValueError as err:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key=translation_key,
+            translation_placeholders={"error": str(err)},
+        ) from err
 
 
 def _feed_side_value(value: object, *, default: FeedSide | None = None) -> FeedSide | None:
@@ -380,6 +408,9 @@ def _build_service_method_schema(
     include_potty_fields: bool = False,
     include_pump: bool = False,
     include_activity: bool = False,
+    include_start_time: bool = False,
+    include_end_time: bool = False,
+    require_start_time: bool = False,
 ) -> vol.Schema:
     """Create a service schema from the shared target fields."""
     schema: dict[object, object] = {
@@ -426,6 +457,12 @@ def _build_service_method_schema(
         schema[vol.Required("mode")] = vol.In(ACTIVITY_MODE_OPTIONS)
         schema[vol.Optional("duration")] = vol.Coerce(float)
         schema[vol.Optional("notes")] = cv.string
+    if require_start_time:
+        schema[vol.Required("start_time")] = cv.datetime
+    elif include_start_time:
+        schema[vol.Optional("start_time")] = cv.datetime
+    if include_end_time:
+        schema[vol.Optional("end_time")] = cv.datetime
 
     return vol.Schema(schema)
 
@@ -477,7 +514,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         return _get_child_uid_from_call(hass, call)
 
     async def handle_start_sleep(call: ServiceCall) -> None:
-        await api_client.start_sleep(_target_child(call))
+        with _as_service_validation_error("invalid_start_time"):
+            await api_client.start_sleep(
+                _target_child(call),
+                start_time=_event_time_value(call.data.get("start_time")),
+            )
 
     async def handle_pause_sleep(call: ServiceCall) -> None:
         await api_client.pause_sleep(_target_child(call))
@@ -489,7 +530,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await api_client.cancel_sleep(_target_child(call))
 
     async def handle_complete_sleep(call: ServiceCall) -> None:
-        await api_client.complete_sleep(_target_child(call))
+        with _as_service_validation_error("invalid_end_time"):
+            await api_client.complete_sleep(
+                _target_child(call),
+                end_time=_event_time_value(call.data.get("end_time")),
+            )
+
+    async def handle_set_sleep_start_time(call: ServiceCall) -> None:
+        # The schema requires start_time, so the value is always a datetime here.
+        start_time = _event_time_value(call.data["start_time"])
+        assert start_time is not None
+        with _as_service_validation_error("invalid_start_time"):
+            await api_client.set_sleep_start_time(_target_child(call), start_time)
 
     async def handle_start_nursing(call: ServiceCall) -> None:
         await api_client.start_nursing(
@@ -617,7 +669,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def handle_log_bottle(call: ServiceCall) -> None:
         await api_client.log_bottle(
             _target_child(call),
-            start_time=dt_util.now(),
+            start_time=_event_time_value(call.data.get("start_time")) or dt_util.now(),
             amount=cast(float, call.data["amount"]),
             bottle_type=_api_bottle_type(_string_value(call.data.get("bottle_type"))),
             units=_bottle_units_value(call.data.get("units")),
@@ -661,11 +713,27 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             reaction=_solids_reaction_value(call.data.get("reaction")),
         )
 
-    hass.services.async_register(DOMAIN, "start_sleep", handle_start_sleep, schema=SERVICE_CHILD_SCHEMA)
+    hass.services.async_register(
+        DOMAIN,
+        "start_sleep",
+        handle_start_sleep,
+        schema=_build_service_method_schema(include_start_time=True),
+    )
     hass.services.async_register(DOMAIN, "pause_sleep", handle_pause_sleep, schema=SERVICE_CHILD_SCHEMA)
     hass.services.async_register(DOMAIN, "resume_sleep", handle_resume_sleep, schema=SERVICE_CHILD_SCHEMA)
     hass.services.async_register(DOMAIN, "cancel_sleep", handle_cancel_sleep, schema=SERVICE_CHILD_SCHEMA)
-    hass.services.async_register(DOMAIN, "complete_sleep", handle_complete_sleep, schema=SERVICE_CHILD_SCHEMA)
+    hass.services.async_register(
+        DOMAIN,
+        "complete_sleep",
+        handle_complete_sleep,
+        schema=_build_service_method_schema(include_end_time=True),
+    )
+    hass.services.async_register(
+        DOMAIN,
+        "set_sleep_start_time",
+        handle_set_sleep_start_time,
+        schema=_build_service_method_schema(require_start_time=True),
+    )
 
     nursing_schema = _build_service_method_schema(include_side=True)
     hass.services.async_register(DOMAIN, "start_nursing", handle_start_nursing, schema=nursing_schema)
@@ -697,7 +765,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         DOMAIN,
         "log_bottle",
         handle_log_bottle,
-        schema=_build_service_method_schema(include_bottle=True),
+        schema=_build_service_method_schema(include_bottle=True, include_start_time=True),
     )
     hass.services.async_register(
         DOMAIN,

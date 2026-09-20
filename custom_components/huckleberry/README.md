@@ -132,11 +132,14 @@ All services support device selection via dropdown or explicit `child_uid` (adva
 
 ### Sleep Services
 
-- **`huckleberry.start_sleep`**: Start new sleep session
+- **`huckleberry.start_sleep`**: Start new sleep session. Optional `start_time` backdates it to when the child actually fell asleep
 - **`huckleberry.pause_sleep`**: Pause current sleep (preserves timer)
 - **`huckleberry.resume_sleep`**: Resume paused sleep
 - **`huckleberry.cancel_sleep`**: Cancel sleep without saving to history
-- **`huckleberry.complete_sleep`**: Complete and save sleep with interval
+- **`huckleberry.complete_sleep`**: Complete and save sleep with interval. Optional `end_time` backdates the wake. Ignored while paused, since the pause already recorded an end time
+- **`huckleberry.set_sleep_start_time`**: Correct the start time of a sleep that is still running
+
+Times entered without a timezone are read in Home Assistant's configured timezone. A time more than 60 seconds in the future is rejected, as is an `end_time` that falls before the sleep started.
 
 ### Feeding Services
 

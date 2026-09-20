@@ -1,6 +1,6 @@
 start_sleep:
   name: Start Sleep
-  description: Start a new sleep session.
+  description: Start a new sleep session, optionally backdated to when the child actually fell asleep.
   fields:
     device_id:
       name: Child device
@@ -9,6 +9,12 @@ start_sleep:
       selector:
         device:
           integration: huckleberry
+    start_time:
+      name: Start time
+      description: When the child fell asleep. Defaults to now. Use it to log a sleep that already started.
+      required: false
+      selector:
+        datetime:
 pause_sleep:
   name: Pause Sleep
   description: Pause the active sleep session without completing it.
@@ -44,7 +50,7 @@ cancel_sleep:
           integration: huckleberry
 complete_sleep:
   name: Complete Sleep
-  description: Complete current sleep and save interval to history.
+  description: Complete current sleep and save interval to history, optionally backdated to when the child woke.
   fields:
     device_id:
       name: Child device
@@ -53,6 +59,29 @@ complete_sleep:
       selector:
         device:
           integration: huckleberry
+    end_time:
+      name: End time
+      description: When the child woke. Defaults to now. Ignored while the sleep is paused, because the pause already recorded an end time.
+      required: false
+      selector:
+        datetime:
+set_sleep_start_time:
+  name: Set Sleep Start Time
+  description: Correct the start time of a sleep session that is currently running.
+  fields:
+    device_id:
+      name: Child device
+      description: Select child device
+      required: true
+      selector:
+        device:
+          integration: huckleberry
+    start_time:
+      name: Start time
+      description: When the child actually fell asleep.
+      required: true
+      selector:
+        datetime:
 
 start_nursing:
   name: Start Nursing
@@ -659,6 +688,12 @@ log_bottle:
           options:
             - ml
             - oz
+    start_time:
+      name: Start time
+      description: When the feeding happened. Defaults to now. Use it to log a feeding that already happened.
+      required: false
+      selector:
+        datetime:
 
 log_activity:
   name: Log Activity

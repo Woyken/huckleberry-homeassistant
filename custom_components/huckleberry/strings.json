@@ -91,11 +91,15 @@
   "services": {
     "start_sleep": {
       "name": "Start sleep",
-      "description": "Start a new sleep session.",
+      "description": "Start a new sleep session, optionally backdated to when the child actually fell asleep.",
       "fields": {
         "device_id": {
           "name": "Child device",
           "description": "Select child device"
+        },
+        "start_time": {
+          "name": "Start time",
+          "description": "When the child fell asleep. Defaults to now. Use it to log a sleep that already started."
         }
       }
     },
@@ -131,11 +135,29 @@
     },
     "complete_sleep": {
       "name": "Complete sleep",
-      "description": "Complete current sleep and save interval to history.",
+      "description": "Complete current sleep and save interval to history, optionally backdated to when the child woke.",
       "fields": {
         "device_id": {
           "name": "Child device",
           "description": "Select child device"
+        },
+        "end_time": {
+          "name": "End time",
+          "description": "When the child woke. Defaults to now. Ignored while the sleep is paused, because the pause already recorded an end time."
+        }
+      }
+    },
+    "set_sleep_start_time": {
+      "name": "Set sleep start time",
+      "description": "Correct the start time of a sleep session that is currently running.",
+      "fields": {
+        "device_id": {
+          "name": "Child device",
+          "description": "Select child device"
+        },
+        "start_time": {
+          "name": "Start time",
+          "description": "When the child actually fell asleep."
         }
       }
     },
@@ -456,6 +478,10 @@
         "units": {
           "name": "Units",
           "description": "Measurement units for amount"
+        },
+        "start_time": {
+          "name": "Start time",
+          "description": "When the feeding happened. Defaults to now. Use it to log a feeding that already happened."
         }
       }
     },
@@ -488,6 +514,12 @@
     },
     "invalid_solids_foods": {
       "message": "Provide at least one non-empty food name in the foods list."
+    },
+    "invalid_start_time": {
+      "message": "Invalid start time: {error}"
+    },
+    "invalid_end_time": {
+      "message": "Invalid end time: {error}"
     }
   },
   "entity": {

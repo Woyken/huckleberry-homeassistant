@@ -40,7 +40,7 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
     await hass.services.async_call(
         DOMAIN, "start_sleep", {"device_id": device.id}, blocking=True
     )
-    mock_huckleberry_api.start_sleep.assert_called_with("test_child_uid")
+    mock_huckleberry_api.start_sleep.assert_called_with("test_child_uid", start_time=None)
 
     # Test pause_sleep
     await hass.services.async_call(
@@ -64,7 +64,7 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
     await hass.services.async_call(
         DOMAIN, "complete_sleep", {"device_id": device.id}, blocking=True
     )
-    mock_huckleberry_api.complete_sleep.assert_called_with("test_child_uid")
+    mock_huckleberry_api.complete_sleep.assert_called_with("test_child_uid", end_time=None)
 
     # Test start_nursing (left)
     await hass.services.async_call(

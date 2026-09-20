@@ -85,6 +85,7 @@ def _build_mock_api(
     mock.resume_sleep = AsyncMock()
     mock.cancel_sleep = AsyncMock()
     mock.complete_sleep = AsyncMock()
+    mock.set_sleep_start_time = AsyncMock()
 
     mock.start_nursing = AsyncMock()
     mock.pause_nursing = AsyncMock()
