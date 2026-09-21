@@ -160,6 +160,12 @@ log_diaper_pee:
       selector:
         device:
           integration: huckleberry
+    start_time:
+      name: Event date and time
+      description: Date and time when the event occurred (defaults to now)
+      required: false
+      selector:
+        datetime:
     pee_amount:
       name: Pee amount
       description: Amount of pee (shows indicator in app)
@@ -196,6 +202,12 @@ log_diaper_poo:
       selector:
         device:
           integration: huckleberry
+    start_time:
+      name: Event date and time
+      description: Date and time when the event occurred (defaults to now)
+      required: false
+      selector:
+        datetime:
     poo_amount:
       name: Poo amount
       description: Amount of poo (shows indicator in app)
@@ -261,6 +273,12 @@ log_diaper_both:
       selector:
         device:
           integration: huckleberry
+    start_time:
+      name: Event date and time
+      description: Date and time when the event occurred (defaults to now)
+      required: false
+      selector:
+        datetime:
     pee_amount:
       name: Pee amount
       description: Amount of pee (shows indicator in app)
@@ -337,6 +355,12 @@ log_diaper_dry:
       selector:
         device:
           integration: huckleberry
+    start_time:
+      name: Event date and time
+      description: Date and time when the event occurred (defaults to now)
+      required: false
+      selector:
+        datetime:
     diaper_rash:
       name: Diaper rash
       description: Baby has diaper rash
@@ -362,6 +386,12 @@ log_potty_pee:
       selector:
         device:
           integration: huckleberry
+    start_time:
+      name: Event date and time
+      description: Date and time when the event occurred (defaults to now)
+      required: false
+      selector:
+        datetime:
     pee_amount:
       name: Pee amount
       description: Amount of pee (shows indicator in app)
@@ -401,6 +431,12 @@ log_potty_poo:
       selector:
         device:
           integration: huckleberry
+    start_time:
+      name: Event date and time
+      description: Date and time when the event occurred (defaults to now)
+      required: false
+      selector:
+        datetime:
     poo_amount:
       name: Poo amount
       description: Amount of poo (shows indicator in app)
@@ -469,6 +505,12 @@ log_potty_both:
       selector:
         device:
           integration: huckleberry
+    start_time:
+      name: Event date and time
+      description: Date and time when the event occurred (defaults to now)
+      required: false
+      selector:
+        datetime:
     pee_amount:
       name: Pee amount
       description: Amount of pee (shows indicator in app)
@@ -548,6 +590,12 @@ log_potty_dry:
       selector:
         device:
           integration: huckleberry
+    start_time:
+      name: Event date and time
+      description: Date and time when the event occurred (defaults to now)
+      required: false
+      selector:
+        datetime:
     notes:
       name: Notes
       description: Optional notes about this potty entry
@@ -622,6 +670,12 @@ log_bottle:
       selector:
         device:
           integration: huckleberry
+    start_time:
+      name: Event date and time
+      description: Date and time when the event occurred (defaults to now)
+      required: false
+      selector:
+        datetime:
     amount:
       name: Amount
       description: Amount of bottle feeding (in oz or ml)
@@ -671,6 +725,12 @@ log_activity:
       selector:
         device:
           integration: huckleberry
+    start_time:
+      name: Event date and time
+      description: Date and time when the event occurred (defaults to now)
+      required: false
+      selector:
+        datetime:
     mode:
       name: Activity type
       description: Type of activity
@@ -715,6 +775,12 @@ log_solids:
       selector:
         device:
           integration: huckleberry
+    start_time:
+      name: Event date and time
+      description: Date and time when the event occurred (defaults to now)
+      required: false
+      selector:
+        datetime:
     foods:
       name: Foods
       description: List of food names eaten in this meal (one or more)
@@ -753,6 +819,12 @@ log_pump:
       selector:
         device:
           integration: huckleberry
+    start_time:
+      name: Event date and time
+      description: Date and time when the event occurred (defaults to now)
+      required: false
+      selector:
+        datetime:
     total_amount:
       name: Total amount
       description: Total amount pumped (split evenly across left and right)

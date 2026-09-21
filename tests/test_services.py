@@ -1,4 +1,5 @@
 """Test Huckleberry services."""
+from datetime import datetime, timedelta, timezone
 from unittest.mock import ANY, patch
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.helpers import device_registry as dr
@@ -240,6 +241,51 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
     mock_huckleberry_api.log_bottle.assert_called_with(
         "test_child_uid",
         start_time=ANY,
+        amount=4.0,
+        bottle_type="Formula",
+        units="oz",
+    )
+
+    # Test log_bottle with an explicit event time
+    event_time = datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
+    await hass.services.async_call(
+        DOMAIN,
+        "log_bottle",
+        {
+            "device_id": device.id,
+            "amount": 4.0,
+            "bottle_type": "formula",
+            "units": "oz",
+            "start_time": event_time.isoformat(),
+        },
+        blocking=True,
+    )
+    mock_huckleberry_api.log_bottle.assert_called_with(
+        "test_child_uid",
+        start_time=event_time,
+        amount=4.0,
+        bottle_type="Formula",
+        units="oz",
+    )
+
+    # Naive service times use Home Assistant's configured timezone.
+    await hass.config.async_set_time_zone("Etc/GMT+5")
+    local_event_time = datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone(timedelta(hours=-5)))
+    await hass.services.async_call(
+        DOMAIN,
+        "log_bottle",
+        {
+            "device_id": device.id,
+            "amount": 4.0,
+            "bottle_type": "formula",
+            "units": "oz",
+            "start_time": "2026-01-02T03:04:05",
+        },
+        blocking=True,
+    )
+    mock_huckleberry_api.log_bottle.assert_called_with(
+        "test_child_uid",
+        start_time=local_event_time,
         amount=4.0,
         bottle_type="Formula",
         units="oz",
