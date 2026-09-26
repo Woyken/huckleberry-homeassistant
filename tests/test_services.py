@@ -1,12 +1,16 @@
 """Test Huckleberry services."""
+from datetime import UTC, datetime
 from unittest.mock import ANY, patch
+import pytest
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import device_registry as dr
 from custom_components.huckleberry.const import DOMAIN
 from homeassistant.core import HomeAssistant
 from huckleberry_api.firebase_types import (
     FirebaseCuratedFoodDocument,
     FirebaseCustomFoodTypeDocument,
+    FirebaseSleepDetails,
 )
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -421,3 +425,79 @@ async def test_service_no_target_raises(hass: HomeAssistant, mock_huckleberry_ap
         await hass.services.async_call(
             DOMAIN, "start_sleep", {}, blocking=True
         )
+
+
+async def test_log_sleep(hass: HomeAssistant, mock_huckleberry_api):
+    """Test log_sleep reads naive times in the configured time zone."""
+    await hass.config.async_set_time_zone("Europe/Copenhagen")
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_EMAIL: "test@example.com",
+            CONF_PASSWORD: "test_password",
+        },
+    )
+    entry.add_to_hass(hass)
+
+    with patch(
+        "custom_components.huckleberry.HuckleberryAPI",
+        return_value=mock_huckleberry_api,
+    ):
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+    device_registry = dr.async_get(hass)
+    device = device_registry.async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, "test_child_uid")},
+        name="Test Child"
+    )
+
+    # 12:10 wall-clock time in Copenhagen (CEST) is 10:10 UTC
+    await hass.services.async_call(
+        DOMAIN,
+        "log_sleep",
+        {
+            "device_id": device.id,
+            "start_time": "2026-08-28 12:10:00",
+            "end_time": "2026-08-28 13:30:00",
+            "notes": "Daycare",
+        },
+        blocking=True,
+    )
+    call_args = mock_huckleberry_api.log_sleep.call_args
+    assert call_args.args == ("test_child_uid",)
+    assert call_args.kwargs["start_time"] == datetime(2026, 8, 28, 10, 10, tzinfo=UTC)
+    assert call_args.kwargs["end_time"] == datetime(2026, 8, 28, 11, 30, tzinfo=UTC)
+    assert call_args.kwargs["details"] == FirebaseSleepDetails(notes="Daycare")
+
+    # An aware time keeps its instant, and no notes means no details
+    await hass.services.async_call(
+        DOMAIN,
+        "log_sleep",
+        {
+            "device_id": device.id,
+            "start_time": "2026-08-28T10:10:00+00:00",
+            "end_time": "2026-08-28T11:30:00+00:00",
+        },
+        blocking=True,
+    )
+    call_args = mock_huckleberry_api.log_sleep.call_args
+    assert call_args.kwargs["start_time"] == datetime(2026, 8, 28, 10, 10, tzinfo=UTC)
+    assert call_args.kwargs["end_time"] == datetime(2026, 8, 28, 11, 30, tzinfo=UTC)
+    assert call_args.kwargs["details"] is None
+
+    # An end before the start is rejected without calling the API
+    mock_huckleberry_api.log_sleep.reset_mock()
+    with pytest.raises(ServiceValidationError):
+        await hass.services.async_call(
+            DOMAIN,
+            "log_sleep",
+            {
+                "device_id": device.id,
+                "start_time": "2026-08-28 13:30:00",
+                "end_time": "2026-08-28 12:10:00",
+            },
+            blocking=True,
+        )
+    mock_huckleberry_api.log_sleep.assert_not_called()

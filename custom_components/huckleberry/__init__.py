@@ -4,7 +4,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Final, Literal, TypedDict, cast, get_args
 
 import voluptuous as vol
@@ -32,6 +32,7 @@ from huckleberry_api.firebase_types import (
     FirebaseFeedDocumentData,
     FirebaseHealthDocumentData,
     FirebasePumpDocumentData,
+    FirebaseSleepDetails,
     FirebaseSleepDocumentData,
     FirebaseUserDocument,
     PooColor,
@@ -380,6 +381,7 @@ def _build_service_method_schema(
     include_potty_fields: bool = False,
     include_pump: bool = False,
     include_activity: bool = False,
+    include_sleep_interval: bool = False,
 ) -> vol.Schema:
     """Create a service schema from the shared target fields."""
     schema: dict[object, object] = {
@@ -425,6 +427,10 @@ def _build_service_method_schema(
     if include_activity:
         schema[vol.Required("mode")] = vol.In(ACTIVITY_MODE_OPTIONS)
         schema[vol.Optional("duration")] = vol.Coerce(float)
+        schema[vol.Optional("notes")] = cv.string
+    if include_sleep_interval:
+        schema[vol.Required("start_time")] = cv.datetime
+        schema[vol.Required("end_time")] = cv.datetime
         schema[vol.Optional("notes")] = cv.string
 
     return vol.Schema(schema)
@@ -490,6 +496,24 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     async def handle_complete_sleep(call: ServiceCall) -> None:
         await api_client.complete_sleep(_target_child(call))
+
+    async def handle_log_sleep(call: ServiceCall) -> None:
+        # Naive times are wall-clock times in the configured time zone. The API
+        # calls timestamp(), which would read a naive value in the host's zone.
+        start_time = dt_util.as_local(cast(datetime, call.data["start_time"]))
+        end_time = dt_util.as_local(cast(datetime, call.data["end_time"]))
+        if end_time < start_time:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="invalid_sleep_interval",
+            )
+        notes = _string_value(call.data.get("notes"))
+        await api_client.log_sleep(
+            _target_child(call),
+            start_time=start_time,
+            end_time=end_time,
+            details=FirebaseSleepDetails(notes=notes) if notes else None,
+        )
 
     async def handle_start_nursing(call: ServiceCall) -> None:
         await api_client.start_nursing(
@@ -666,6 +690,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.services.async_register(DOMAIN, "resume_sleep", handle_resume_sleep, schema=SERVICE_CHILD_SCHEMA)
     hass.services.async_register(DOMAIN, "cancel_sleep", handle_cancel_sleep, schema=SERVICE_CHILD_SCHEMA)
     hass.services.async_register(DOMAIN, "complete_sleep", handle_complete_sleep, schema=SERVICE_CHILD_SCHEMA)
+    hass.services.async_register(
+        DOMAIN,
+        "log_sleep",
+        handle_log_sleep,
+        schema=_build_service_method_schema(include_sleep_interval=True),
+    )
 
     nursing_schema = _build_service_method_schema(include_side=True)
     hass.services.async_register(DOMAIN, "start_nursing", handle_start_nursing, schema=nursing_schema)

@@ -139,6 +139,28 @@
         }
       }
     },
+    "log_sleep": {
+      "name": "Log sleep",
+      "description": "Log a finished sleep with its start and end time, without using the sleep timer.",
+      "fields": {
+        "device_id": {
+          "name": "Child device",
+          "description": "Select child device"
+        },
+        "start_time": {
+          "name": "Start time",
+          "description": "When the sleep started"
+        },
+        "end_time": {
+          "name": "End time",
+          "description": "When the sleep ended"
+        },
+        "notes": {
+          "name": "Notes",
+          "description": "Optional notes about this sleep"
+        }
+      }
+    },
     "start_nursing": {
       "name": "Start nursing",
       "description": "Start a nursing (breastfeeding) session on the specified side.",
@@ -488,6 +510,9 @@
     },
     "invalid_solids_foods": {
       "message": "Provide at least one non-empty food name in the foods list."
+    },
+    "invalid_sleep_interval": {
+      "message": "The sleep end time cannot be before its start time."
     }
   },
   "entity": {
