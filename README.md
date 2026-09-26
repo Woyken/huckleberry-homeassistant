@@ -78,6 +78,7 @@ All services support device selection for easy use in automations:
 - `huckleberry.resume_sleep`
 - `huckleberry.cancel_sleep`
 - `huckleberry.complete_sleep`
+- `huckleberry.log_sleep` - Log a finished sleep with its start and end time, without using the sleep timer. Times without a UTC offset are read in Home Assistant's time zone.
 
 ### Nursing Tracking
 - `huckleberry.start_nursing`
@@ -231,6 +232,23 @@ automation:
           mode: tummyTime
           duration: 300
           notes: Morning play mat session
+```
+
+### Log a Nap After the Fact
+```yaml
+automation:
+  - alias: "Log Nap From Helpers"
+    trigger:
+      - platform: state
+        entity_id: input_button.log_nap
+    action:
+      - service: huckleberry.log_sleep
+        target:
+          device_id: YOUR_DEVICE_ID
+        data:
+          start_time: "{{ states('input_datetime.nap_start') }}"
+          end_time: "{{ states('input_datetime.nap_end') }}"
+          notes: Daycare
 ```
 
 ## Device Actions

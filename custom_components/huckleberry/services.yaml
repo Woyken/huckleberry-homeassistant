@@ -53,6 +53,37 @@ complete_sleep:
       selector:
         device:
           integration: huckleberry
+log_sleep:
+  name: Log Sleep
+  description: Log a finished sleep with its start and end time, without using the sleep timer.
+  fields:
+    device_id:
+      name: Child device
+      description: Select child device
+      required: true
+      selector:
+        device:
+          integration: huckleberry
+    start_time:
+      name: Start time
+      description: When the sleep started
+      required: true
+      example: "2026-01-15 12:10:00"
+      selector:
+        datetime:
+    end_time:
+      name: End time
+      description: When the sleep ended
+      required: true
+      example: "2026-01-15 13:30:00"
+      selector:
+        datetime:
+    notes:
+      name: Notes
+      description: Optional notes about this sleep
+      required: false
+      selector:
+        text:
 
 start_nursing:
   name: Start Nursing
