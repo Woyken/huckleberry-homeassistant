@@ -671,6 +671,29 @@
           }
         }
       },
+      "medication": {
+        "name": "Medication",
+        "state_attributes": {
+          "time": {
+            "name": "Time"
+          },
+          "medication_id": {
+            "name": "Medication ID"
+          },
+          "medication_name": {
+            "name": "Medication name"
+          },
+          "amount": {
+            "name": "Amount"
+          },
+          "units": {
+            "name": "Units"
+          },
+          "notes": {
+            "name": "Notes"
+          }
+        }
+      },
       "sweetspot": {
         "name": "Sweetspot",
         "state_attributes": {
