@@ -215,6 +215,10 @@
           "name": "Child device",
           "description": "Select child device"
         },
+        "start_time": {
+          "name": "Event date and time",
+          "description": "Date and time when the event occurred (defaults to now)"
+        },
         "pee_amount": {
           "name": "Pee amount",
           "description": "Amount of pee (shows indicator in app)"
@@ -236,6 +240,10 @@
         "device_id": {
           "name": "Child device",
           "description": "Select child device"
+        },
+        "start_time": {
+          "name": "Event date and time",
+          "description": "Date and time when the event occurred (defaults to now)"
         },
         "poo_amount": {
           "name": "Poo amount",
@@ -266,6 +274,10 @@
         "device_id": {
           "name": "Child device",
           "description": "Select child device"
+        },
+        "start_time": {
+          "name": "Event date and time",
+          "description": "Date and time when the event occurred (defaults to now)"
         },
         "pee_amount": {
           "name": "Pee amount",
@@ -301,6 +313,10 @@
           "name": "Child device",
           "description": "Select child device"
         },
+        "start_time": {
+          "name": "Event date and time",
+          "description": "Date and time when the event occurred (defaults to now)"
+        },
         "diaper_rash": {
           "name": "Diaper rash",
           "description": "Baby has diaper rash"
@@ -318,6 +334,10 @@
         "device_id": {
           "name": "Child device",
           "description": "Select child device"
+        },
+        "start_time": {
+          "name": "Event date and time",
+          "description": "Date and time when the event occurred (defaults to now)"
         },
         "pee_amount": {
           "name": "Pee amount",
@@ -340,6 +360,10 @@
         "device_id": {
           "name": "Child device",
           "description": "Select child device"
+        },
+        "start_time": {
+          "name": "Event date and time",
+          "description": "Date and time when the event occurred (defaults to now)"
         },
         "poo_amount": {
           "name": "Poo amount",
@@ -370,6 +394,10 @@
         "device_id": {
           "name": "Child device",
           "description": "Select child device"
+        },
+        "start_time": {
+          "name": "Event date and time",
+          "description": "Date and time when the event occurred (defaults to now)"
         },
         "pee_amount": {
           "name": "Pee amount",
@@ -404,6 +432,10 @@
         "device_id": {
           "name": "Child device",
           "description": "Select child device"
+        },
+        "start_time": {
+          "name": "Event date and time",
+          "description": "Date and time when the event occurred (defaults to now)"
         },
         "notes": {
           "name": "Notes",
@@ -445,6 +477,10 @@
           "name": "Child device",
           "description": "Select child device"
         },
+        "start_time": {
+          "name": "Event date and time",
+          "description": "Date and time when the event occurred (defaults to now)"
+        },
         "amount": {
           "name": "Amount",
           "description": "Amount of bottle feeding (in oz or ml)"
@@ -459,6 +495,26 @@
         }
       }
     },
+    "log_activity": {
+      "name": "Log activity",
+      "description": "Log an activity session.",
+      "fields": {
+        "start_time": {
+          "name": "Event date and time",
+          "description": "Date and time when the event occurred (defaults to now)"
+        }
+      }
+    },
+    "log_pump": {
+      "name": "Log pump",
+      "description": "Log a pumping session.",
+      "fields": {
+        "start_time": {
+          "name": "Event date and time",
+          "description": "Date and time when the event occurred (defaults to now)"
+        }
+      }
+    },
     "log_solids": {
       "name": "Log solids",
       "description": "Log a solid food meal with one or more foods.",
@@ -466,6 +522,10 @@
         "device_id": {
           "name": "Child device",
           "description": "Select child device"
+        },
+        "start_time": {
+          "name": "Event date and time",
+          "description": "Date and time when the event occurred (defaults to now)"
         },
         "foods": {
           "name": "Foods",

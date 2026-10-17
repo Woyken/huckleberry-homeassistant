@@ -4,7 +4,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Final, Literal, TypedDict, cast, get_args
 
 import voluptuous as vol
@@ -185,6 +185,14 @@ def _get_child_uid_from_call(
 def _string_value(value: object) -> str | None:
     """Return a string value when present."""
     return value if isinstance(value, str) else None
+
+
+def _event_start_time(call: ServiceCall) -> datetime:
+    """Return the requested event time or the current time."""
+    start_time = call.data.get("start_time")
+    if isinstance(start_time, datetime):
+        return dt_util.as_local(start_time)
+    return dt_util.now()
 
 
 def _feed_side_value(value: object, *, default: FeedSide | None = None) -> FeedSide | None:
@@ -380,12 +388,15 @@ def _build_service_method_schema(
     include_potty_fields: bool = False,
     include_pump: bool = False,
     include_activity: bool = False,
+    include_start_time: bool = False,
 ) -> vol.Schema:
     """Create a service schema from the shared target fields."""
     schema: dict[object, object] = {
         vol.Required(CONF_DEVICE_ID): cv.string,
     }
 
+    if include_start_time:
+        schema[vol.Optional("start_time")] = cv.datetime
     if include_side:
         schema[vol.Optional("side")] = vol.In(FEED_SIDE_OPTIONS)
     if include_growth:
@@ -518,7 +529,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def handle_log_diaper_pee(call: ServiceCall) -> None:
         await api_client.log_diaper(
             _target_child(call),
-            start_time=dt_util.now(),
+            start_time=_event_start_time(call),
             mode="pee",
             pee_amount=_diaper_amount_value(call.data.get("pee_amount")),
             diaper_rash=bool(call.data.get("diaper_rash", False)),
@@ -528,7 +539,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def handle_log_diaper_poo(call: ServiceCall) -> None:
         await api_client.log_diaper(
             _target_child(call),
-            start_time=dt_util.now(),
+            start_time=_event_start_time(call),
             mode="poo",
             poo_amount=_diaper_amount_value(call.data.get("poo_amount")),
             color=_poo_color_value(call.data.get("color")),
@@ -540,7 +551,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def handle_log_diaper_both(call: ServiceCall) -> None:
         await api_client.log_diaper(
             _target_child(call),
-            start_time=dt_util.now(),
+            start_time=_event_start_time(call),
             mode="both",
             pee_amount=_diaper_amount_value(call.data.get("pee_amount")),
             poo_amount=_diaper_amount_value(call.data.get("poo_amount")),
@@ -553,7 +564,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def handle_log_diaper_dry(call: ServiceCall) -> None:
         await api_client.log_diaper(
             _target_child(call),
-            start_time=dt_util.now(),
+            start_time=_event_start_time(call),
             mode="dry",
             diaper_rash=bool(call.data.get("diaper_rash", False)),
             notes=_string_value(call.data.get("notes")),
@@ -562,7 +573,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def handle_log_potty_pee(call: ServiceCall) -> None:
         await api_client.log_potty(
             _target_child(call),
-            start_time=dt_util.now(),
+            start_time=_event_start_time(call),
             mode="pee",
             pee_amount=_diaper_amount_value(call.data.get("pee_amount")),
             how_it_happened=call.data.get("how_it_happened", "wentPotty"),
@@ -572,7 +583,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def handle_log_potty_poo(call: ServiceCall) -> None:
         await api_client.log_potty(
             _target_child(call),
-            start_time=dt_util.now(),
+            start_time=_event_start_time(call),
             mode="poo",
             poo_amount=_diaper_amount_value(call.data.get("poo_amount")),
             color=_poo_color_value(call.data.get("color")),
@@ -584,7 +595,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def handle_log_potty_both(call: ServiceCall) -> None:
         await api_client.log_potty(
             _target_child(call),
-            start_time=dt_util.now(),
+            start_time=_event_start_time(call),
             mode="both",
             pee_amount=_diaper_amount_value(call.data.get("pee_amount")),
             poo_amount=_diaper_amount_value(call.data.get("poo_amount")),
@@ -597,7 +608,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def handle_log_potty_dry(call: ServiceCall) -> None:
         await api_client.log_potty(
             _target_child(call),
-            start_time=dt_util.now(),
+            start_time=_event_start_time(call),
             mode="dry",
             how_it_happened="satButDry",
             notes=_string_value(call.data.get("notes")),
@@ -617,7 +628,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def handle_log_bottle(call: ServiceCall) -> None:
         await api_client.log_bottle(
             _target_child(call),
-            start_time=dt_util.now(),
+            start_time=_event_start_time(call),
             amount=cast(float, call.data["amount"]),
             bottle_type=_api_bottle_type(_string_value(call.data.get("bottle_type"))),
             units=_bottle_units_value(call.data.get("units")),
@@ -629,7 +640,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         duration_seconds = duration_value * 60 if duration_unit == "minutes" else duration_value
         await api_client.log_pump(
             _target_child(call),
-            start_time=dt_util.now(),
+            start_time=_event_start_time(call),
             total_amount=cast(float, call.data["total_amount"]),
             duration=duration_seconds,
             units=_bottle_units_value(call.data.get("units")),
@@ -639,7 +650,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await api_client.log_activity(
             _target_child(call),
             mode=cast(ActivityMode, call.data["mode"]),
-            start_time=dt_util.now(),
+            start_time=_event_start_time(call),
             duration=cast(float | None, call.data.get("duration")),
             notes=_string_value(call.data.get("notes")),
         )
@@ -655,7 +666,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
         await api_client.log_solids(
             child_uid,
-            start_time=dt_util.now(),
+            start_time=_event_start_time(call),
             foods=food_refs,
             notes=_string_value(call.data.get("notes")) or "",
             reaction=_solids_reaction_value(call.data.get("reaction")),
@@ -675,13 +686,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.services.async_register(DOMAIN, "cancel_nursing", handle_cancel_nursing, schema=SERVICE_CHILD_SCHEMA)
     hass.services.async_register(DOMAIN, "complete_nursing", handle_complete_nursing, schema=SERVICE_CHILD_SCHEMA)
 
-    diaper_schema = _build_service_method_schema(include_diaper_fields=True)
+    diaper_schema = _build_service_method_schema(include_diaper_fields=True, include_start_time=True)
     hass.services.async_register(DOMAIN, "log_diaper_pee", handle_log_diaper_pee, schema=diaper_schema)
     hass.services.async_register(DOMAIN, "log_diaper_poo", handle_log_diaper_poo, schema=diaper_schema)
     hass.services.async_register(DOMAIN, "log_diaper_both", handle_log_diaper_both, schema=diaper_schema)
     hass.services.async_register(DOMAIN, "log_diaper_dry", handle_log_diaper_dry, schema=diaper_schema)
 
-    potty_schema = _build_service_method_schema(include_potty_fields=True)
+    potty_schema = _build_service_method_schema(include_potty_fields=True, include_start_time=True)
     hass.services.async_register(DOMAIN, "log_potty_pee", handle_log_potty_pee, schema=potty_schema)
     hass.services.async_register(DOMAIN, "log_potty_poo", handle_log_potty_poo, schema=potty_schema)
     hass.services.async_register(DOMAIN, "log_potty_both", handle_log_potty_both, schema=potty_schema)
@@ -697,25 +708,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         DOMAIN,
         "log_bottle",
         handle_log_bottle,
-        schema=_build_service_method_schema(include_bottle=True),
+        schema=_build_service_method_schema(include_bottle=True, include_start_time=True),
     )
     hass.services.async_register(
         DOMAIN,
         "log_pump",
         handle_log_pump,
-        schema=_build_service_method_schema(include_pump=True),
+        schema=_build_service_method_schema(include_pump=True, include_start_time=True),
     )
     hass.services.async_register(
         DOMAIN,
         "log_activity",
         handle_log_activity,
-        schema=_build_service_method_schema(include_activity=True),
+        schema=_build_service_method_schema(include_activity=True, include_start_time=True),
     )
     hass.services.async_register(
         DOMAIN,
         "log_solids",
         handle_log_solids,
-        schema=_build_service_method_schema(include_solids=True),
+        schema=_build_service_method_schema(include_solids=True, include_start_time=True),
     )
 
     return True
