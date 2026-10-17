@@ -154,3 +154,23 @@ def test_build_feed_events_extracts_bottle_event(calendar):
     assert len(bottle_events) == 1
     assert bottle_events[0].summary == "🍼 Bottle (120 ml)"
     assert "Type: Formula" in (bottle_events[0].description or "")
+
+
+def test_build_feed_events_accepts_bottle_without_amount(calendar):
+    """Bottle entries without a recorded volume should not show a made-up amount."""
+    intervals = [
+        FirebaseBottleFeedIntervalData(
+            mode="bottle",
+            start=1700000600,
+            units="ml",
+            bottleType="Formula",
+            offset=0,
+        ),
+    ]
+
+    feed_events, bottle_events = HuckleberryCalendar._build_feed_events(intervals)
+
+    assert feed_events == []
+    assert len(bottle_events) == 1
+    assert bottle_events[0].summary == "🍼 Bottle"
+    assert bottle_events[0].description == "Bottle feeding\nType: Formula"

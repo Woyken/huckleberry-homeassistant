@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
-from huckleberry_api.firebase_types import FirebaseMedicationData
+from huckleberry_api.firebase_types import FirebaseLastMedicationData
 
 from .. import HuckleberryDataUpdateCoordinator
 from ..entity import HuckleberryBaseEntity
@@ -29,7 +29,7 @@ class HuckleberryMedicationSensor(HuckleberryBaseEntity, SensorEntity):
         super().__init__(coordinator, child)
         self._attr_unique_id = f"{self.child_uid}_medication"
 
-    def _last_medication(self) -> FirebaseMedicationData | None:
+    def _last_medication(self) -> FirebaseLastMedicationData | None:
         state = self.coordinator.get_state(self.child_uid)
         return state.medication_data if state is not None else None
 
