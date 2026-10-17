@@ -1,4 +1,5 @@
 """Calendar platform for Huckleberry integration."""
+
 from __future__ import annotations
 
 import logging
@@ -12,10 +13,12 @@ from homeassistant.util import dt as dt_util
 
 from huckleberry_api import HuckleberryAPI
 from huckleberry_api.firebase_types import (
+    FirebaseActivityIntervalData,
     FirebaseBottleFeedIntervalData,
     FirebaseBreastFeedIntervalData,
     FirebaseDiaperData,
     FirebaseGrowthData,
+    FirebasePumpIntervalData,
     FirebaseSleepIntervalData,
     FirebaseSolidsFeedIntervalData,
 )
@@ -121,6 +124,22 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
         except Exception as err:
             _LOGGER.error("Error fetching health events: %s", err)
 
+        try:
+            pump_intervals = await self._api.list_pump_intervals(
+                self.child_uid, start_date, end_date
+            )
+            events.extend(self._build_pump_events(pump_intervals))
+        except Exception as err:
+            _LOGGER.error("Error fetching pump events: %s", err)
+
+        try:
+            activity_intervals = await self._api.list_activity_intervals(
+                self.child_uid, start_date, end_date
+            )
+            events.extend(self._build_activity_events(activity_intervals))
+        except Exception as err:
+            _LOGGER.error("Error fetching activity events: %s", err)
+
         events.sort(key=lambda e: e.start)
         self._events = events
         _LOGGER.debug("Found %d events for %s", len(events), self.child_name)
@@ -218,11 +237,15 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
                     else _format_duration(total_duration_seconds)
                 )
                 summary = f"🍼 Feed ({sides_str})"
-                description = f"Feeding - Total: {_format_duration(total_duration_seconds)}"
+                description = (
+                    f"Feeding - Total: {_format_duration(total_duration_seconds)}"
+                )
                 if left_duration_seconds > 0:
                     description += f"\nLeft: {_format_duration(left_duration_seconds)}"
                 if right_duration_seconds > 0:
-                    description += f"\nRight: {_format_duration(right_duration_seconds)}"
+                    description += (
+                        f"\nRight: {_format_duration(right_duration_seconds)}"
+                    )
 
                 feed_events.append(
                     CalendarEvent(
@@ -318,6 +341,91 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
                     end=event_time,
                     summary=summary,
                     description=description,
+                )
+            )
+        return events
+
+    @staticmethod
+    def _build_pump_events(
+        intervals: list[FirebasePumpIntervalData],
+    ) -> list[CalendarEvent]:
+        """Build calendar events from pumping intervals."""
+        events: list[CalendarEvent] = []
+        for interval in intervals:
+            start_time = datetime.fromtimestamp(
+                interval.start, tz=dt_util.DEFAULT_TIME_ZONE
+            )
+            duration_seconds = float(interval.duration or 0)
+            end_time = start_time + timedelta(seconds=duration_seconds)
+            left_amount = float(interval.leftAmount or 0)
+            right_amount = float(interval.rightAmount or 0)
+            total_amount = left_amount + right_amount
+
+            amount_text = f"{total_amount:g} {interval.units}"
+            summary = f"🤱 Pump ({amount_text})"
+            description_lines = [
+                f"Pumping total: {amount_text}",
+                f"Entry mode: {interval.entryMode}",
+            ]
+            if left_amount:
+                description_lines.append(f"Left: {left_amount:g} {interval.units}")
+            if right_amount:
+                description_lines.append(f"Right: {right_amount:g} {interval.units}")
+            if duration_seconds:
+                description_lines.append(
+                    f"Duration: {_format_duration(duration_seconds)}"
+                )
+            if interval.notes:
+                description_lines.append(interval.notes)
+
+            events.append(
+                CalendarEvent(
+                    start=start_time,
+                    end=end_time,
+                    summary=summary,
+                    description="\n".join(description_lines),
+                )
+            )
+        return events
+
+    @staticmethod
+    def _build_activity_events(
+        intervals: list[FirebaseActivityIntervalData],
+    ) -> list[CalendarEvent]:
+        """Build calendar events from activity intervals."""
+        activity_display = {
+            "bath": ("🛁", "Bath"),
+            "brushTeeth": ("🪥", "Brush Teeth"),
+            "indoorPlay": ("🧸", "Indoor Play"),
+            "outdoorPlay": ("🌳", "Outdoor Play"),
+            "screenTime": ("📺", "Screen Time"),
+            "skinToSkin": ("🤱", "Skin-to-Skin"),
+            "storyTime": ("📖", "Story Time"),
+            "tummyTime": ("👶", "Tummy Time"),
+        }
+        events: list[CalendarEvent] = []
+        for interval in intervals:
+            start_time = datetime.fromtimestamp(
+                interval.start, tz=dt_util.DEFAULT_TIME_ZONE
+            )
+            duration_seconds = float(interval.duration or 0)
+            end_time = start_time + timedelta(seconds=duration_seconds)
+            emoji, label = activity_display[interval.mode]
+            summary = f"{emoji} {label}"
+            description_lines = [f"Activity: {label}"]
+            if duration_seconds:
+                duration_text = _format_duration(duration_seconds)
+                summary += f" ({duration_text})"
+                description_lines.append(f"Duration: {duration_text}")
+            if interval.notes:
+                description_lines.append(interval.notes)
+
+            events.append(
+                CalendarEvent(
+                    start=start_time,
+                    end=end_time,
+                    summary=summary,
+                    description="\n".join(description_lines),
                 )
             )
         return events
