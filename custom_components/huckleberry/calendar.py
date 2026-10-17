@@ -179,8 +179,11 @@ class HuckleberryCalendar(HuckleberryBaseEntity, CalendarEntity):
                 units = interval.units
                 bottle_type = interval.bottleType
 
-                summary = f"🍼 Bottle ({amount} {units})"
-                description = f"Bottle feeding: {amount} {units}"
+                summary = "🍼 Bottle"
+                description = "Bottle feeding"
+                if amount is not None:
+                    summary += f" ({amount} {units})"
+                    description += f": {amount} {units}"
                 if bottle_type:
                     description += f"\nType: {bottle_type}"
 
