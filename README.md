@@ -56,6 +56,7 @@ This integration provides real-time baby tracking in Home Assistant by connectin
   - `sensor.{child_name}_growth` - Latest growth measurements
   - `sensor.{child_name}_medication` - Last medication dose (name, amount, units, and notes)
   - `sensor.{child_name}_bottle` - Last bottle feeding (time, amount, type)
+  - `sensor.{child_name}_solids` - Last solid meal timestamp, with `time`, `foods` as a list of names, optional `notes`, and `reaction` (LOVED/MEH/HATED/ALLERGIC). Updates from the app and `huckleberry.log_solids`.
   - `sensor.{child_name}_diaper` - Last diaper change
 
 - **Switches** (3):

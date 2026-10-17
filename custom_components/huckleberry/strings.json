@@ -629,6 +629,23 @@
           }
         }
       },
+      "solids": {
+        "name": "Solids",
+        "state_attributes": {
+          "time": {
+            "name": "Time"
+          },
+          "foods": {
+            "name": "Foods"
+          },
+          "notes": {
+            "name": "Notes"
+          },
+          "reaction": {
+            "name": "Reaction"
+          }
+        }
+      },
       "diaper": {
         "name": "Diaper",
         "state_attributes": {

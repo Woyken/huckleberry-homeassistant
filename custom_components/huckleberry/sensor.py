@@ -19,6 +19,7 @@ from .features.nursing import build_nursing_sensors
 from .features.potty import build_potty_sensors
 from .features.pumping import build_pumping_sensors
 from .features.sleep import build_sleep_sensors
+from .features.solids import build_solids_sensors
 from .features.sweetspot import build_sweetspot_sensors
 
 
@@ -36,11 +37,11 @@ async def async_setup_entry(
     entities.extend(build_diaper_sensors(entry_data["coordinator"], entry_data["children"]))
     entities.extend(build_potty_sensors(entry_data["coordinator"], entry_data["children"]))
     entities.extend(build_bottle_sensors(entry_data["coordinator"], entry_data["children"]))
+    entities.extend(build_solids_sensors(entry_data["coordinator"], entry_data["children"]))
     entities.extend(build_nursing_sensors(entry_data["coordinator"], entry_data["children"]))
     entities.extend(build_pumping_sensors(entry_data["coordinator"], entry_data["children"]))
     entities.extend(build_sleep_sensors(entry_data["coordinator"], entry_data["children"]))
     entities.extend(build_sweetspot_sensors(entry_data["coordinator"], entry_data["children"]))
 
     async_add_entities(entities)
-
 
