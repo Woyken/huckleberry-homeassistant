@@ -90,7 +90,7 @@ All services support device selection for easy use in automations:
 - `huckleberry.complete_nursing`
 
 ### Bottle Feeding
-- `huckleberry.log_bottle` - Log bottle feeding (formula or breastmilk) with amount in oz or ml
+- `huckleberry.log_bottle` - Log bottle feeding (formula or breastmilk) with amount in oz or ml and an optional start time
 
 ### Pumping Tracking
 - `huckleberry.log_pump` - Log a pumping session with total amount and duration
@@ -180,6 +180,8 @@ automation:
           bottle_type: Formula
           units: ml
 ```
+
+Set `start_time` to log a feeding that happened earlier instead of now.
 
 ### Log Solid Food Meal
 ```yaml
