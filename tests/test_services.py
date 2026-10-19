@@ -1,4 +1,5 @@
 """Test Huckleberry services."""
+from datetime import UTC, datetime
 from unittest.mock import ANY, patch
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.helpers import device_registry as dr
@@ -254,6 +255,27 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
         start_time=ANY,
         amount=120.0,
         bottle_type="Breast Milk",
+        units="ml",
+    )
+
+    # Test log_bottle with an explicit start time
+    await hass.services.async_call(
+        DOMAIN,
+        "log_bottle",
+        {
+            "device_id": device.id,
+            "start_time": "2026-01-02T03:04:05+00:00",
+            "amount": 90.0,
+            "bottle_type": "formula",
+            "units": "ml",
+        },
+        blocking=True,
+    )
+    mock_huckleberry_api.log_bottle.assert_called_with(
+        "test_child_uid",
+        start_time=datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC),
+        amount=90.0,
+        bottle_type="Formula",
         units="ml",
     )
 

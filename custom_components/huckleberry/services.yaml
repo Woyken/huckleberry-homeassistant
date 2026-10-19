@@ -622,6 +622,12 @@ log_bottle:
       selector:
         device:
           integration: huckleberry
+    start_time:
+      name: Start time
+      description: When the bottle feeding started. Defaults to now.
+      required: false
+      selector:
+        datetime:
     amount:
       name: Amount
       description: Amount of bottle feeding (in oz or ml)
