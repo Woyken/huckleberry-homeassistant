@@ -14,7 +14,6 @@ concurrency:
 
 jobs:
   beta:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
 
     steps:
@@ -61,12 +60,12 @@ jobs:
           TAG="v${NEXT_VERSION}-beta.$(date +%Y%m%d).${GITHUB_RUN_NUMBER}"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
 
-      - name: Write beta version to manifest
+      - name: Rewrite manifest version in the build tree
         env:
           TAG: ${{ steps.version.outputs.tag }}
         run: |
-          # HACS compares the manifest version against the release tag with
-          # the leading v stripped.
+          # HACS matches the beta release against the manifest inside the zip.
+          # Only the build tree gets the bumped version; main's manifest stays.
           sed -i 's/"version": "[^"]*"/"version": "'"${TAG#v}"'"/' \
             custom_components/huckleberry/manifest.json
           grep '"version"' custom_components/huckleberry/manifest.json
@@ -85,16 +84,15 @@ jobs:
           fi
           cat /tmp/beta-notes.md
 
-      - name: Commit version and push tag
+      - name: Tag the merge commit
         env:
           TAG: ${{ steps.version.outputs.tag }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add custom_components/huckleberry/manifest.json
-          git commit -m "Beta ${TAG}"
-          git tag "$TAG"
-          git push origin HEAD:main "$TAG"
+          # The version rewrite in the steps above only touches the working
+          # tree (the shipped zip gets the bumped manifest). The tag itself
+          # points at the merge commit. main's manifest stays as is.
+          git tag "$TAG" "${{ github.sha }}"
+          git push origin "$TAG"
 
       - name: Create beta release
         env:

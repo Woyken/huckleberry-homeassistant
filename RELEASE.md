@@ -236,6 +236,6 @@ The release is complete only when:
 
 ## Beta channel
 
-Every merge to `main` triggers the `Beta release` workflow, which runs the checks and publishes a beta prerelease tagged `v<next patch>-beta.<YYYYMMDD>.<run number>`. Its notes are rendered from the accumulated `changelog.d/` fragments.
+Every merge to `main` triggers the `Beta release` workflow, which runs the checks and publishes a beta prerelease tagged `v<next patch>-beta.<YYYYMMDD>.<run number>`. Its notes are rendered from the accumulated `changelog.d/` fragments. Betas don't commit to `main`: the tag points at the merge commit and the bumped manifest lives only in the shipped zip.
 
 HACS offers betas to users who enable "Show beta versions". A stable release published with `--latest` supersedes them; beta tags are left in place.
