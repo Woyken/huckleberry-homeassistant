@@ -15,7 +15,7 @@ Every PR must add a news fragment in `changelog.d/`, named `<PR-number>.<type>.m
 - `fix` — compatible fixes (renders under "Fixed")
 - `misc` — chores, dependency bumps, CI changes (renders nothing; an empty file is fine)
 
-Each fragment contains one user-facing sentence. Questions/PR numbers are added automatically. PR validation fails with `towncrier check` if no fragment was added. To skip, add an empty-ish `changelog.d/<PR-number>.misc.md` containing `# Skip changelog`.
+Each fragment contains one user-facing sentence. Questions/PR numbers are added automatically. PR validation fails with `towncrier check` if no fragment was added. To skip, add an empty-ish `changelog.d/73.misc.md` containing `# Skip changelog`.
 
 ## 1. Inspect the unreleased changes
 
