@@ -2,7 +2,20 @@
 
 This project publishes releases through GitHub. HACS uses the GitHub release tag and displays the GitHub release body to users, so every release needs manually written release notes.
 
+In addition to stable releases, every merge to `main` is published automatically as a beta prerelease (see the "Beta channel" section below).
+
 Replace `X.Y.Z` in the commands below with the new version, including the leading `v` only where shown.
+
+## Changelog fragments
+
+Every PR must add a news fragment in `changelog.d/`, named `<PR-number>.<type>.md`, where type is:
+
+- `breaking` — breaking changes (renders under "Breaking changes")
+- `feature` — new compatible features (renders under "Added")
+- `fix` — compatible fixes (renders under "Fixed")
+- `misc` — chores, dependency bumps, CI changes (renders nothing; an empty file is fine)
+
+Each fragment contains one user-facing sentence. Questions/PR numbers are added automatically. PR validation fails with `towncrier check` if no fragment was added. To skip, add an empty-ish `changelog.d/<PR-number>.misc.md` containing `# Skip changelog`.
 
 ## 1. Inspect the unreleased changes
 
@@ -52,6 +65,12 @@ uv lock
 git diff --check
 git diff -- pyproject.toml custom_components/huckleberry/manifest.json uv.lock
 uv lock --check
+```
+
+Then consume the accumulated changelog fragments so they do not repeat in later beta drafts:
+
+```bash
+uv run towncrier build --version X.Y.Z --name Huckleberry
 ```
 
 ## 3. Run release verification
@@ -151,6 +170,14 @@ The release tag must point to the merge commit on `main`, not the release branch
 
 Write the notes manually. Do not use GitHub's generated notes as the user-facing body. Describe only changes since the previous release and use names that users see in Home Assistant.
 
+As a starting point, render the accumulated changelog fragments:
+
+```bash
+uv run towncrier build --draft --version X.Y.Z --name Huckleberry
+```
+
+The draft lists fragment contents under their type headings; rewrite it into the user-facing structure below rather than publishing it directly.
+
 Use this structure:
 
 ```markdown
@@ -206,3 +233,21 @@ The release is complete only when:
 - The GitHub release is published, not a draft or prerelease.
 - The release body contains the reviewed manual notes that HACS users will see.
 - The local worktree is clean on `main`.
+
+## Beta channel
+
+Every merge to `main` triggers the `Beta release` workflow (`.github/workflows/release-beta.yml`). It runs Ruff, Ty, and pytest, then publishes a beta prerelease:
+
+- Version: `v<next patch>-beta.<YYYYMMDD>.<run number>`, computed from the latest stable tag — no beta counting or manual input.
+- The manifest version is updated to match the tag and committed as `github-actions[bot]`; that push itself never triggers a new beta.
+- `huckleberry.zip` is built from `custom_components/huckleberry/` and attached to the release.
+- Beta release notes are rendered from the accumulated `changelog.d/` fragments via `towncrier build --draft`.
+- The release is created with `--prerelease` and no `--latest` flag, so HACS only offers it to users who opted into beta versions.
+
+The workflows share a `beta-release` concurrency group: overlapping merges are queued, not released in parallel.
+
+When a stable release is later published with `--latest` (as in the process above), it automatically supersedes all earlier betas in HACS. Beta tags are left in place and never cleaned up.
+
+## Stable versions vs. betas in HACS
+
+Users see the newest stable release by default. Selecting "Show beta versions" in HACS offers the newest beta prerelease, which tracks `main` between stable releases.

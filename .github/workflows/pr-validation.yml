@@ -57,3 +57,31 @@ jobs:
 
       - name: Run Ty
         run: uv run ty check
+
+  changelog:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Install dependencies
+        run: uv sync --locked --dev
+
+      - name: Check for changelog fragment
+        run: uv run towncrier check --compare-with "origin/$GITHUB_BASE_REF"
