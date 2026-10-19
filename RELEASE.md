@@ -236,18 +236,6 @@ The release is complete only when:
 
 ## Beta channel
 
-Every merge to `main` triggers the `Beta release` workflow (`.github/workflows/release-beta.yml`). It runs Ruff, Ty, and pytest, then publishes a beta prerelease:
+Every merge to `main` triggers the `Beta release` workflow, which runs the checks and publishes a beta prerelease tagged `v<next patch>-beta.<YYYYMMDD>.<run number>`. Its notes are rendered from the accumulated `changelog.d/` fragments.
 
-- Version: `v<next patch>-beta.<YYYYMMDD>.<run number>`, computed from the latest stable tag — no beta counting or manual input.
-- The manifest version is updated to match the tag and committed as `github-actions[bot]`; that push itself never triggers a new beta.
-- `huckleberry.zip` is built from `custom_components/huckleberry/` and attached to the release.
-- Beta release notes are rendered from the accumulated `changelog.d/` fragments via `towncrier build --draft`.
-- The release is created with `--prerelease` and no `--latest` flag, so HACS only offers it to users who opted into beta versions.
-
-The workflows share a `beta-release` concurrency group: overlapping merges are queued, not released in parallel.
-
-When a stable release is later published with `--latest` (as in the process above), it automatically supersedes all earlier betas in HACS. Beta tags are left in place and never cleaned up.
-
-## Stable versions vs. betas in HACS
-
-Users see the newest stable release by default. Selecting "Show beta versions" in HACS offers the newest beta prerelease, which tracks `main` between stable releases.
+HACS offers betas to users who enable "Show beta versions". A stable release published with `--latest` supersedes them; beta tags are left in place.
