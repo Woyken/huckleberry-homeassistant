@@ -110,7 +110,13 @@ class HuckleberrySleepSwitch(HuckleberryBaseEntity, SwitchEntity):
         return bool(timer is not None and timer.active and not timer.paused)
 
     async def async_turn_on(self, **kwargs: object) -> None:
-        """Start the sleep timer."""
+        """Start the sleep timer, saving a paused session first."""
+        sleep_status = self.coordinator.get_sleep_status(self.child_uid)
+        timer = sleep_status.timer if sleep_status is not None else None
+        if timer is not None and timer.active and timer.paused:
+            _LOGGER.info("Saving paused sleep timer for %s", self.child_name)
+            await self._api.complete_sleep(self.child_uid)
+
         _LOGGER.info("Starting sleep timer for %s", self.child_name)
         await self._api.start_sleep(self.child_uid)
 
