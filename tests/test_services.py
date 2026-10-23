@@ -10,7 +10,11 @@ from homeassistant.core import HomeAssistant
 from huckleberry_api.firebase_types import (
     FirebaseCuratedFoodDocument,
     FirebaseCustomFoodTypeDocument,
+    FirebaseSleepCondition,
     FirebaseSleepDetails,
+    FirebaseSleepDocumentData,
+    FirebaseSleepLocations,
+    FirebaseSleepTimerData,
 )
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -667,21 +671,38 @@ async def test_timer_times_and_bottle_notes(hass: HomeAssistant, mock_huckleberr
         )
     mock_huckleberry_api.complete_sleep.assert_not_called()
 
-    # An empty notes value clears the timer notes instead of keeping them
-    await hass.services.async_call(
-        DOMAIN,
-        "complete_sleep",
-        {
-            "device_id": device.id,
-            "notes": "",
-        },
-        blocking=True,
+    # An empty notes value clears the timer notes while keeping other details
+    coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+    sleep_status = FirebaseSleepDocumentData(
+        timer=FirebaseSleepTimerData(
+            active=True,
+            paused=False,
+            uuid="test_sleep",
+            details=FirebaseSleepDetails(
+                startSleepCondition=FirebaseSleepCondition(happy=True),
+                sleepLocations=FirebaseSleepLocations(onOwnInBed=True),
+            ),
+        )
     )
+    with patch.object(coordinator, "get_sleep_status", return_value=sleep_status):
+        await hass.services.async_call(
+            DOMAIN,
+            "complete_sleep",
+            {
+                "device_id": device.id,
+                "notes": "",
+            },
+            blocking=True,
+        )
     mock_huckleberry_api.complete_sleep.assert_called_with(
         "test_child_uid",
         start_time=None,
         end_time=None,
-        details=FirebaseSleepDetails(notes=""),
+        details=FirebaseSleepDetails(
+            startSleepCondition=FirebaseSleepCondition(happy=True),
+            sleepLocations=FirebaseSleepLocations(onOwnInBed=True),
+            notes="",
+        ),
     )
 
     # Times spanning a DST fall-back compare as UTC instants, not wall time

@@ -535,6 +535,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await api_client.cancel_sleep(_target_child(call))
 
     async def handle_complete_sleep(call: ServiceCall) -> None:
+        child_uid = _target_child(call)
         start_time = _local_datetime_value(call.data.get("start_time"))
         end_time = _local_datetime_value(call.data.get("end_time"))
         now = dt_util.now()
@@ -557,14 +558,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 translation_domain=DOMAIN,
                 translation_key="invalid_sleep_end_time",
             )
-        details = (
-            FirebaseSleepDetails(notes=_string_value(call.data.get("notes")) or "")
-            if "notes" in call.data
-            else None
-        )
+        details: FirebaseSleepDetails | None = None
+        if "notes" in call.data:
+            sleep_status = coordinator.get_sleep_status(child_uid)
+            timer = sleep_status.timer if sleep_status is not None else None
+            timer_details = timer.details if timer is not None else None
+            notes = _string_value(call.data.get("notes")) or ""
+            details = (
+                timer_details.model_copy(update={"notes": notes})
+                if timer_details is not None
+                else FirebaseSleepDetails(notes=notes)
+            )
         try:
             await api_client.complete_sleep(
-                _target_child(call),
+                child_uid,
                 start_time=start_time,
                 end_time=end_time,
                 details=details,
