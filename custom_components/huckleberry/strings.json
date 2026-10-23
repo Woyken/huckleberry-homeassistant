@@ -516,7 +516,10 @@
       "message": "Provide at least one non-empty food name in the foods list."
     },
     "invalid_sleep_interval": {
-      "message": "The sleep end time cannot be before its start time."
+      "message": "The sleep end time must be after its start time."
+    },
+    "invalid_sleep_end_time": {
+      "message": "The sleep end time cannot be in the future."
     }
   },
   "entity": {

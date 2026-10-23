@@ -503,10 +503,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # calls timestamp(), which would read a naive value in the host's zone.
         start_time = dt_util.as_local(cast(datetime, call.data["start_time"]))
         end_time = dt_util.as_local(cast(datetime, call.data["end_time"]))
-        if end_time < start_time:
+        if end_time <= start_time:
             raise ServiceValidationError(
                 translation_domain=DOMAIN,
                 translation_key="invalid_sleep_interval",
+            )
+        if end_time > dt_util.now():
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="invalid_sleep_end_time",
             )
         notes = _string_value(call.data.get("notes"))
         await api_client.log_sleep(

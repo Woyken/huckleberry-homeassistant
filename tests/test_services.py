@@ -522,3 +522,31 @@ async def test_log_sleep(hass: HomeAssistant, mock_huckleberry_api):
             blocking=True,
         )
     mock_huckleberry_api.log_sleep.assert_not_called()
+
+    # An end equal to the start is rejected without calling the API
+    with pytest.raises(ServiceValidationError):
+        await hass.services.async_call(
+            DOMAIN,
+            "log_sleep",
+            {
+                "device_id": device.id,
+                "start_time": "2026-08-28 12:10:00",
+                "end_time": "2026-08-28 12:10:00",
+            },
+            blocking=True,
+        )
+    mock_huckleberry_api.log_sleep.assert_not_called()
+
+    # An end in the future is rejected without calling the API
+    with pytest.raises(ServiceValidationError):
+        await hass.services.async_call(
+            DOMAIN,
+            "log_sleep",
+            {
+                "device_id": device.id,
+                "start_time": "2999-01-01 00:00:00",
+                "end_time": "2999-01-01 01:00:00",
+            },
+            blocking=True,
+        )
+    mock_huckleberry_api.log_sleep.assert_not_called()
