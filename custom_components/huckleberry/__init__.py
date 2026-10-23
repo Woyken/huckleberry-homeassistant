@@ -396,6 +396,7 @@ def _build_service_method_schema(
         schema[vol.Optional("head")] = vol.Coerce(float)
         schema[vol.Optional("units", default="metric")] = vol.In(("metric", "imperial"))
     if include_bottle:
+        schema[vol.Optional("start_time")] = cv.datetime
         schema[vol.Required("amount")] = vol.Coerce(float)
         schema[vol.Required("bottle_type")] = vol.In(
             BOTTLE_TYPE_OPTIONS + BOTTLE_TYPE_LEGACY_OPTIONS
@@ -639,9 +640,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await coordinator.async_request_refresh()
 
     async def handle_log_bottle(call: ServiceCall) -> None:
+        start_time = cast(datetime | None, call.data.get("start_time"))
         await api_client.log_bottle(
             _target_child(call),
-            start_time=dt_util.now(),
+            start_time=dt_util.as_local(start_time) if start_time is not None else dt_util.now(),
             amount=cast(float, call.data["amount"]),
             bottle_type=_api_bottle_type(_string_value(call.data.get("bottle_type"))),
             units=_bottle_units_value(call.data.get("units")),

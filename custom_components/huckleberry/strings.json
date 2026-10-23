@@ -467,6 +467,10 @@
           "name": "Child device",
           "description": "Select child device"
         },
+        "start_time": {
+          "name": "Start time",
+          "description": "When the bottle feeding started. Defaults to now."
+        },
         "amount": {
           "name": "Amount",
           "description": "Amount of bottle feeding (in oz or ml)"
@@ -654,6 +658,23 @@
           }
         }
       },
+      "solids": {
+        "name": "Solids",
+        "state_attributes": {
+          "time": {
+            "name": "Time"
+          },
+          "foods": {
+            "name": "Foods"
+          },
+          "notes": {
+            "name": "Notes"
+          },
+          "reaction": {
+            "name": "Reaction"
+          }
+        }
+      },
       "diaper": {
         "name": "Diaper",
         "state_attributes": {
@@ -693,6 +714,29 @@
           },
           "head_unit": {
             "name": "Head unit"
+          }
+        }
+      },
+      "medication": {
+        "name": "Medication",
+        "state_attributes": {
+          "time": {
+            "name": "Time"
+          },
+          "medication_id": {
+            "name": "Medication ID"
+          },
+          "medication_name": {
+            "name": "Medication name"
+          },
+          "amount": {
+            "name": "Amount"
+          },
+          "units": {
+            "name": "Units"
+          },
+          "notes": {
+            "name": "Notes"
           }
         }
       },

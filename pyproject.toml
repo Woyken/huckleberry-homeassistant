@@ -1,11 +1,11 @@
 [project]
 name = "huckleberry-homeassistant"
-version = "0.5.3"
+version = "0.5.5"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
-    "huckleberry-api==0.4.3",
+    "huckleberry-api==0.4.8",
 ]
 
 [dependency-groups]
@@ -13,6 +13,7 @@ dev = [
     "pytest>=8.0.2",
     "pytest-homeassistant-custom-component>=0.13.109",
     "ruff>=0.15.0",
+    "towncrier>=26.9.0",
     "ty>=0.0.21",
     "tzdata>=2025.2",
 ]
@@ -26,6 +27,28 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 norecursedirs = [".git"]
 addopts = "--allow-hosts=127.0.0.1,::1"
+
+[tool.towncrier]
+directory = "changelog.d"
+filename = "CHANGELOG.md"
+start_string = "<!-- towncrier release notes start -->\n"
+
+[[tool.towncrier.type]]
+directory = "breaking"
+name = "Breaking changes"
+
+[[tool.towncrier.type]]
+directory = "feature"
+name = "Added"
+
+[[tool.towncrier.type]]
+directory = "fix"
+name = "Fixed"
+
+[[tool.towncrier.type]]
+directory = "misc"
+name = "Other"
+showcontent = false
 
 [tool.ty.src]
 include = ["custom_components/huckleberry"]

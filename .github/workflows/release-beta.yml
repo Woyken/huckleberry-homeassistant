@@ -1,0 +1,106 @@
+name: Beta release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: beta-release
+
+jobs:
+  beta:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch all tags
+        run: git fetch --tags --force origin
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Install dependencies
+        run: uv sync --locked --dev
+
+      - name: Run Ruff
+        run: uv run ruff check .
+
+      - name: Run Ty
+        run: uv run ty check
+
+      - name: Run tests
+        run: uv run pytest
+
+      - name: Compute beta version
+        id: version
+        run: |
+          BASE=$(git for-each-ref "refs/tags/v*" --sort=-v:refname --format='%(refname:short)' | grep -v -- '-' | head -1)
+          # Stable tags are vX.Y.Z. Preview builds roll the patch forward, with
+          # a date stamp and the workflow's incrementing run number.
+          BASE_VERSION=${BASE#v}
+          BASE_PATCH=${BASE_VERSION##*.}
+          NEXT_VERSION="${BASE_VERSION%.*}.$((BASE_PATCH + 1))"
+          TAG="v${NEXT_VERSION}-beta.$(date +%Y%m%d).${GITHUB_RUN_NUMBER}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Rewrite manifest version in the build tree
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          # HACS matches the beta release against the manifest inside the zip.
+          # Only the build tree gets the bumped version; main's manifest stays.
+          sed -i 's/"version": "[^"]*"/"version": "'"${TAG#v}"'"/' \
+            custom_components/huckleberry/manifest.json
+          grep '"version"' custom_components/huckleberry/manifest.json
+
+      - name: Build huckleberry.zip
+        run: (cd custom_components/huckleberry && zip -r ../../huckleberry.zip .)
+
+      - name: Render beta release notes
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          uv run towncrier build --draft --version "${TAG#v}" --name Huckleberry \
+            | sed -n '/^# /,$p' > /tmp/beta-notes.md || true
+          if [ ! -s /tmp/beta-notes.md ]; then
+            printf '# Huckleberry\n\nInternal maintenance changes.\n' > /tmp/beta-notes.md
+          fi
+          cat /tmp/beta-notes.md
+
+      - name: Tag the merge commit
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          # The version rewrite in the steps above only touches the working
+          # tree (the shipped zip gets the bumped manifest). The tag itself
+          # points at the merge commit. main's manifest stays as is.
+          git tag "$TAG" "${{ github.sha }}"
+          git push origin "$TAG"
+
+      - name: Create beta release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          gh release create "$TAG" \
+            --title "$TAG" \
+            --notes-file /tmp/beta-notes.md \
+            --prerelease \
+            huckleberry.zip

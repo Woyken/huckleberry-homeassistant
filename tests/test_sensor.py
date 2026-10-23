@@ -2,6 +2,8 @@
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, patch
 
+import pytest
+
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
@@ -15,11 +17,12 @@ from huckleberry_api.firebase_types import (
     FirebaseDiaperPrefs,
     FirebaseFeedDocumentData,
     FirebaseFeedPrefs,
-    FirebaseGrowthData,
     FirebaseHealthDocumentData,
     FirebaseHealthPrefs,
     FirebaseLastBottleData,
     FirebaseLastDiaperData,
+    FirebaseLastGrowthData,
+    FirebaseLastMedicationData,
     FirebaseLastPottyData,
     FirebaseLastPumpData,
     FirebasePumpDocumentData,
@@ -52,7 +55,9 @@ async def test_sensors(hass: HomeAssistant, mock_huckleberry_api):
     state = coordinator._realtime_data["child_1"]
     state.health_status = FirebaseHealthDocumentData(
         prefs=FirebaseHealthPrefs(
-            lastGrowthEntry=FirebaseGrowthData(
+            lastGrowthEntry=FirebaseLastGrowthData(
+                id_="growth-entry",
+                type="health",
                 mode="growth",
                 start=1234567890,
                 lastUpdated=1234567890,
@@ -159,6 +164,61 @@ async def test_bottle_sensor(hass: HomeAssistant, mock_huckleberry_api):
     assert sensor_state.attributes["units"] == "ml"
     assert sensor_state.attributes["type"] == "Formula"
     assert sensor_state.attributes["time"] == datetime.fromtimestamp(1234567890, tz=timezone.utc).isoformat()
+
+
+@pytest.mark.parametrize("multientry_key", [None, "medication-batch-entry"])
+async def test_medication_sensor(hass: HomeAssistant, mock_huckleberry_api, multientry_key):
+    """Test the latest medication sensor exposes dose metadata."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_EMAIL: "test@example.com",
+            CONF_PASSWORD: "test_password",
+        },
+    )
+    entry.add_to_hass(hass)
+
+    with patch(
+        "custom_components.huckleberry.HuckleberryAPI",
+        return_value=mock_huckleberry_api,
+    ):
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+    coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+    state = coordinator._realtime_data["child_1"]
+    state.health_status = FirebaseHealthDocumentData(
+        prefs=FirebaseHealthPrefs(
+            lastMedication=FirebaseLastMedicationData.model_validate(
+                {
+                    "_id": "medication-entry",
+                    "type": "health",
+                    "isNight": False,
+                    "multientry_key": multientry_key,
+                    "mode": "medication",
+                    "start": 1234567890,
+                    "lastUpdated": 1234567890,
+                    "offset": 0,
+                    "medication_id": "vitamin-k-d",
+                    "medication_name": "Vitamin K-D",
+                    "amount": 0.08,
+                    "units": "ml",
+                    "notes": "Morning dose",
+                }
+            ),
+        ),
+    )
+    coordinator.async_set_updated_data(dict(coordinator._realtime_data))
+    await hass.async_block_till_done()
+
+    sensor_state = hass.states.get("sensor.test_child_medication")
+    assert sensor_state is not None
+    assert sensor_state.state == datetime.fromtimestamp(1234567890, tz=timezone.utc).isoformat()
+    assert sensor_state.attributes["medication_id"] == "vitamin-k-d"
+    assert sensor_state.attributes["medication_name"] == "Vitamin K-D"
+    assert sensor_state.attributes["amount"] == 0.08
+    assert sensor_state.attributes["units"] == "ml"
+    assert sensor_state.attributes["notes"] == "Morning dose"
 
 
 async def test_entities_skip_blank_configuration_url(hass: HomeAssistant, mock_huckleberry_api):
@@ -416,5 +476,4 @@ async def test_pumping_sensors(hass: HomeAssistant, mock_huckleberry_api):
     assert sensor_state.attributes["previous_total_amount"] == 25.0
     assert sensor_state.attributes["previous_units"] == "ml"
     assert sensor_state.attributes["previous_duration"] == "PT10M"
-
 

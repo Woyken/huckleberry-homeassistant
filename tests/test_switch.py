@@ -81,3 +81,52 @@ async def test_switches(hass: HomeAssistant, mock_huckleberry_api):
         "switch", "turn_on", {"entity_id": "switch.test_child_nursing_right"}, blocking=True
     )
     mock_huckleberry_api.start_nursing.assert_called_with("child_1", "right")
+
+
+async def test_sleep_switch_saves_paused_session_before_starting(
+    hass: HomeAssistant, mock_huckleberry_api
+):
+    """Turning on a paused sleep switch saves the paused session, then starts a new one."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_EMAIL: "test@example.com",
+            CONF_PASSWORD: "test_password",
+        },
+    )
+    entry.add_to_hass(hass)
+
+    with patch(
+        "custom_components.huckleberry.HuckleberryAPI",
+        return_value=mock_huckleberry_api,
+    ):
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+    coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+
+    state = coordinator._realtime_data["child_1"]
+    state.sleep_status = FirebaseSleepDocumentData(
+        timer=FirebaseSleepTimerData(
+            active=True,
+            paused=True,
+            uuid="test",
+        ),
+    )
+    coordinator.async_set_updated_data(dict(coordinator._realtime_data))
+    await hass.async_block_till_done()
+
+    switch_state = hass.states.get("switch.test_child_sleep_timer")
+    assert switch_state.state == STATE_OFF
+
+    calls: list[str] = []
+    mock_huckleberry_api.complete_sleep.side_effect = lambda *_: calls.append("complete")
+    mock_huckleberry_api.start_sleep.side_effect = lambda *_: calls.append("start")
+
+    await hass.services.async_call(
+        "switch", "turn_on", {"entity_id": "switch.test_child_sleep_timer"}, blocking=True
+    )
+
+    assert calls == ["complete", "start"]
+    mock_huckleberry_api.complete_sleep.assert_called_once_with("child_1")
+    mock_huckleberry_api.start_sleep.assert_called_once_with("child_1")

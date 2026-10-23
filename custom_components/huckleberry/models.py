@@ -8,8 +8,9 @@ from huckleberry_api.firebase_types import (
     FirebaseChildDocument,
     FirebaseDiaperDocumentData,
     FirebaseFeedDocumentData,
-    FirebaseGrowthData,
     FirebaseHealthDocumentData,
+    FirebaseLastGrowthData,
+    FirebaseLastMedicationData,
     FirebasePumpDocumentData,
     FirebaseSleepDocumentData,
     FirebaseUserChildRef,
@@ -83,10 +84,16 @@ class HuckleberryChildState:
     child_document: FirebaseChildDocument | None = None
 
     @property
-    def growth_data(self) -> FirebaseGrowthData | None:
+    def growth_data(self) -> FirebaseLastGrowthData | None:
         """Return the latest growth entry from the health document."""
         prefs = self.health_status.prefs if self.health_status is not None else None
         return prefs.lastGrowthEntry if prefs is not None else None
+
+    @property
+    def medication_data(self) -> FirebaseLastMedicationData | None:
+        """Return the latest medication entry from the health document."""
+        prefs = self.health_status.prefs if self.health_status is not None else None
+        return prefs.lastMedication if prefs is not None else None
 
 
 def children_sensor_attributes(
