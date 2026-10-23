@@ -137,6 +137,7 @@ All services support device selection via dropdown or explicit `child_uid` (adva
 - **`huckleberry.resume_sleep`**: Resume paused sleep
 - **`huckleberry.cancel_sleep`**: Cancel sleep without saving to history
 - **`huckleberry.complete_sleep`**: Complete and save sleep with interval
+- **`huckleberry.log_sleep`**: Log a finished sleep with explicit start and end times (does not touch the timer)
 
 ### Feeding Services
 
