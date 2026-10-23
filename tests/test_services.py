@@ -1,6 +1,6 @@
 """Test Huckleberry services."""
 from datetime import UTC, datetime
-from unittest.mock import ANY, patch
+from unittest.mock import ANY, AsyncMock, patch
 import pytest
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.exceptions import ServiceValidationError
@@ -638,6 +638,7 @@ async def test_timer_times_and_bottle_notes(hass: HomeAssistant, mock_huckleberr
         )
     mock_huckleberry_api.start_sleep.side_effect = None
 
+    mock_huckleberry_api.get_sleep = AsyncMock(return_value=None)
     await hass.services.async_call(
         DOMAIN,
         "complete_sleep",
@@ -672,7 +673,6 @@ async def test_timer_times_and_bottle_notes(hass: HomeAssistant, mock_huckleberr
     mock_huckleberry_api.complete_sleep.assert_not_called()
 
     # An empty notes value clears the timer notes while keeping other details
-    coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
     sleep_status = FirebaseSleepDocumentData(
         timer=FirebaseSleepTimerData(
             active=True,
@@ -684,16 +684,17 @@ async def test_timer_times_and_bottle_notes(hass: HomeAssistant, mock_huckleberr
             ),
         )
     )
-    with patch.object(coordinator, "get_sleep_status", return_value=sleep_status):
-        await hass.services.async_call(
-            DOMAIN,
-            "complete_sleep",
-            {
-                "device_id": device.id,
-                "notes": "",
-            },
-            blocking=True,
-        )
+    mock_huckleberry_api.get_sleep = AsyncMock(return_value=sleep_status)
+    await hass.services.async_call(
+        DOMAIN,
+        "complete_sleep",
+        {
+            "device_id": device.id,
+            "notes": "",
+        },
+        blocking=True,
+    )
+    mock_huckleberry_api.get_sleep.assert_called_once_with("test_child_uid")
     mock_huckleberry_api.complete_sleep.assert_called_with(
         "test_child_uid",
         start_time=None,

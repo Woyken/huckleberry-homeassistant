@@ -560,7 +560,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             )
         details: FirebaseSleepDetails | None = None
         if "notes" in call.data:
-            sleep_status = coordinator.get_sleep_status(child_uid)
+            # Read the timer that is about to be completed, not coordinator
+            # state that may still describe a previous session.
+            sleep_status = await api_client.get_sleep(child_uid)
             timer = sleep_status.timer if sleep_status is not None else None
             timer_details = timer.details if timer is not None else None
             notes = _string_value(call.data.get("notes")) or ""
