@@ -618,6 +618,22 @@ async def test_timer_times_and_bottle_notes(hass: HomeAssistant, mock_huckleberr
         )
     mock_huckleberry_api.start_sleep.assert_not_called()
 
+    # A library rejection is translated instead of leaking a ValueError
+    mock_huckleberry_api.start_sleep.side_effect = ValueError(
+        "start_time must not be after the paused sleep end time"
+    )
+    with pytest.raises(ServiceValidationError):
+        await hass.services.async_call(
+            DOMAIN,
+            "start_sleep",
+            {
+                "device_id": device.id,
+                "start_time": "2026-08-28 12:10:00",
+            },
+            blocking=True,
+        )
+    mock_huckleberry_api.start_sleep.side_effect = None
+
     await hass.services.async_call(
         DOMAIN,
         "complete_sleep",
@@ -650,6 +666,44 @@ async def test_timer_times_and_bottle_notes(hass: HomeAssistant, mock_huckleberr
             blocking=True,
         )
     mock_huckleberry_api.complete_sleep.assert_not_called()
+
+    # An empty notes value clears the timer notes instead of keeping them
+    await hass.services.async_call(
+        DOMAIN,
+        "complete_sleep",
+        {
+            "device_id": device.id,
+            "notes": "",
+        },
+        blocking=True,
+    )
+    mock_huckleberry_api.complete_sleep.assert_called_with(
+        "test_child_uid",
+        start_time=None,
+        end_time=None,
+        details=FirebaseSleepDetails(notes=""),
+    )
+
+    # Times spanning a DST fall-back compare as UTC instants, not wall time
+    await hass.services.async_call(
+        DOMAIN,
+        "complete_sleep",
+        {
+            "device_id": device.id,
+            "start_time": "2025-10-26T02:50:00+02:00",
+            "end_time": "2025-10-26T02:10:00+01:00",
+        },
+        blocking=True,
+    )
+    call_args = mock_huckleberry_api.complete_sleep.call_args
+    assert call_args.args == ("test_child_uid",)
+    assert call_args.kwargs["start_time"].astimezone(UTC) == datetime(
+        2025, 10, 26, 0, 50, tzinfo=UTC
+    )
+    assert call_args.kwargs["end_time"].astimezone(UTC) == datetime(
+        2025, 10, 26, 1, 10, tzinfo=UTC
+    )
+    assert call_args.kwargs["details"] is None
 
     await hass.services.async_call(
         DOMAIN,

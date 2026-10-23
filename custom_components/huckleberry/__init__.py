@@ -4,7 +4,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 import logging
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Final, Literal, TypedDict, cast, get_args
 
 import voluptuous as vol
@@ -193,6 +193,11 @@ def _local_datetime_value(value: object) -> datetime | None:
     if not isinstance(value, datetime):
         return None
     return dt_util.as_local(value)
+
+
+def _utc_datetime(value: datetime) -> datetime:
+    """Return an aware datetime as a UTC instant for ordering comparisons."""
+    return value.astimezone(UTC)
 
 
 def _feed_side_value(value: object, *, default: FeedSide | None = None) -> FeedSide | None:
@@ -503,15 +508,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     async def handle_start_sleep(call: ServiceCall) -> None:
         start_time = _local_datetime_value(call.data.get("start_time"))
-        if start_time is not None and start_time > dt_util.now():
+        if start_time is not None and _utc_datetime(start_time) > _utc_datetime(dt_util.now()):
             raise ServiceValidationError(
                 translation_domain=DOMAIN,
                 translation_key="invalid_sleep_start_time",
             )
-        await api_client.start_sleep(
-            _target_child(call),
-            start_time=start_time,
-        )
+        try:
+            await api_client.start_sleep(
+                _target_child(call),
+                start_time=start_time,
+            )
+        except ValueError as err:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="invalid_timer_interval",
+                translation_placeholders={"error": str(err)},
+            ) from err
 
     async def handle_pause_sleep(call: ServiceCall) -> None:
         await api_client.pause_sleep(_target_child(call))
@@ -526,28 +538,36 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         start_time = _local_datetime_value(call.data.get("start_time"))
         end_time = _local_datetime_value(call.data.get("end_time"))
         now = dt_util.now()
-        if start_time is not None and start_time > now:
+        if start_time is not None and _utc_datetime(start_time) > _utc_datetime(now):
             raise ServiceValidationError(
                 translation_domain=DOMAIN,
                 translation_key="invalid_sleep_start_time",
             )
-        if start_time is not None and end_time is not None and end_time <= start_time:
+        if (
+            start_time is not None
+            and end_time is not None
+            and _utc_datetime(end_time) <= _utc_datetime(start_time)
+        ):
             raise ServiceValidationError(
                 translation_domain=DOMAIN,
                 translation_key="invalid_sleep_interval",
             )
-        if end_time is not None and end_time > now:
+        if end_time is not None and _utc_datetime(end_time) > _utc_datetime(now):
             raise ServiceValidationError(
                 translation_domain=DOMAIN,
                 translation_key="invalid_sleep_end_time",
             )
-        notes = _string_value(call.data.get("notes"))
+        details = (
+            FirebaseSleepDetails(notes=_string_value(call.data.get("notes")) or "")
+            if "notes" in call.data
+            else None
+        )
         try:
             await api_client.complete_sleep(
                 _target_child(call),
                 start_time=start_time,
                 end_time=end_time,
-                details=FirebaseSleepDetails(notes=notes) if notes else None,
+                details=details,
             )
         except ValueError as err:
             raise ServiceValidationError(
@@ -581,16 +601,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     async def handle_start_nursing(call: ServiceCall) -> None:
         start_time = _local_datetime_value(call.data.get("start_time"))
-        if start_time is not None and start_time > dt_util.now():
+        if start_time is not None and _utc_datetime(start_time) > _utc_datetime(dt_util.now()):
             raise ServiceValidationError(
                 translation_domain=DOMAIN,
                 translation_key="invalid_nursing_start_time",
             )
-        await api_client.start_nursing(
-            _target_child(call),
-            _feed_side_value(call.data.get("side"), default="left") or "left",
-            start_time=start_time,
-        )
+        try:
+            await api_client.start_nursing(
+                _target_child(call),
+                _feed_side_value(call.data.get("side"), default="left") or "left",
+                start_time=start_time,
+            )
+        except ValueError as err:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="invalid_timer_interval",
+                translation_placeholders={"error": str(err)},
+            ) from err
 
     async def handle_pause_nursing(call: ServiceCall) -> None:
         await api_client.pause_nursing(_target_child(call))
@@ -611,17 +638,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         start_time = _local_datetime_value(call.data.get("start_time"))
         end_time = _local_datetime_value(call.data.get("end_time"))
         now = dt_util.now()
-        if start_time is not None and start_time > now:
+        if start_time is not None and _utc_datetime(start_time) > _utc_datetime(now):
             raise ServiceValidationError(
                 translation_domain=DOMAIN,
                 translation_key="invalid_nursing_start_time",
             )
-        if start_time is not None and end_time is not None and end_time <= start_time:
+        if (
+            start_time is not None
+            and end_time is not None
+            and _utc_datetime(end_time) <= _utc_datetime(start_time)
+        ):
             raise ServiceValidationError(
                 translation_domain=DOMAIN,
                 translation_key="invalid_nursing_interval",
             )
-        if end_time is not None and end_time > now:
+        if end_time is not None and _utc_datetime(end_time) > _utc_datetime(now):
             raise ServiceValidationError(
                 translation_domain=DOMAIN,
                 translation_key="invalid_nursing_end_time",
