@@ -96,6 +96,10 @@
         "device_id": {
           "name": "Child device",
           "description": "Select child device"
+        },
+        "start_time": {
+          "name": "Start time",
+          "description": "When the sleep started. Defaults to now. If a sleep session is already running, this moves its start."
         }
       }
     },
@@ -136,6 +140,18 @@
         "device_id": {
           "name": "Child device",
           "description": "Select child device"
+        },
+        "start_time": {
+          "name": "Start time",
+          "description": "Overrides the sleep start time for the saved interval."
+        },
+        "end_time": {
+          "name": "End time",
+          "description": "Overrides the sleep end time for the saved interval. Defaults to the paused end time or now."
+        },
+        "notes": {
+          "name": "Notes",
+          "description": "Optional notes about this sleep, replacing the timer's notes."
         }
       }
     },
@@ -172,6 +188,10 @@
         "side": {
           "name": "Side",
           "description": "Which side to start on (left or right)"
+        },
+        "start_time": {
+          "name": "Start time",
+          "description": "When the nursing session started. Defaults to now. If a session is already running, this moves its start."
         }
       }
     },
@@ -226,6 +246,14 @@
         "device_id": {
           "name": "Child device",
           "description": "Select child device"
+        },
+        "start_time": {
+          "name": "Start time",
+          "description": "Overrides the session start time for the saved interval."
+        },
+        "end_time": {
+          "name": "End time",
+          "description": "Overrides the end of the current nursing segment. Defaults to now."
         }
       }
     },
@@ -482,6 +510,10 @@
         "units": {
           "name": "Units",
           "description": "Measurement units for amount"
+        },
+        "notes": {
+          "name": "Notes",
+          "description": "Optional notes about this bottle feeding."
         }
       }
     },
@@ -518,8 +550,23 @@
     "invalid_sleep_interval": {
       "message": "The sleep end time must be after its start time."
     },
+    "invalid_sleep_start_time": {
+      "message": "The sleep start time cannot be in the future."
+    },
     "invalid_sleep_end_time": {
       "message": "The sleep end time cannot be in the future."
+    },
+    "invalid_nursing_interval": {
+      "message": "The nursing end time must be after its start time."
+    },
+    "invalid_nursing_start_time": {
+      "message": "The nursing start time cannot be in the future."
+    },
+    "invalid_nursing_end_time": {
+      "message": "The nursing end time cannot be in the future."
+    },
+    "invalid_timer_interval": {
+      "message": "The timer times are invalid: {error}"
     }
   },
   "entity": {
