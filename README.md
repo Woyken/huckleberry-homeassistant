@@ -75,23 +75,23 @@ This integration provides real-time baby tracking in Home Assistant by connectin
 All services support device selection for easy use in automations:
 
 ### Sleep Tracking
-- `huckleberry.start_sleep`
+- `huckleberry.start_sleep` - Start the sleep timer
 - `huckleberry.pause_sleep`
 - `huckleberry.resume_sleep`
 - `huckleberry.cancel_sleep`
-- `huckleberry.complete_sleep`
+- `huckleberry.complete_sleep` - Complete the sleep timer
 - `huckleberry.log_sleep` - Log a finished sleep with its start and end time, without using the sleep timer. Times without a UTC offset are read in Home Assistant's time zone.
 
 ### Nursing Tracking
-- `huckleberry.start_nursing`
+- `huckleberry.start_nursing` - Start nursing
 - `huckleberry.pause_nursing`
 - `huckleberry.resume_nursing`
 - `huckleberry.switch_nursing_side`
 - `huckleberry.cancel_nursing`
-- `huckleberry.complete_nursing`
+- `huckleberry.complete_nursing` - Complete nursing
 
 ### Bottle Feeding
-- `huckleberry.log_bottle` - Log bottle feeding (formula or breastmilk) with amount in oz or ml and an optional start time
+- `huckleberry.log_bottle` - Log bottle feeding (formula or breastmilk) with amount in oz or ml
 
 ### Pumping Tracking
 - `huckleberry.log_pump` - Log a pumping session with total amount and duration

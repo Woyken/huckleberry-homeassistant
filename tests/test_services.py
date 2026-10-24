@@ -1,6 +1,6 @@
 """Test Huckleberry services."""
 from datetime import UTC, datetime
-from unittest.mock import ANY, patch
+from unittest.mock import ANY, AsyncMock, patch
 import pytest
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.exceptions import ServiceValidationError
@@ -10,7 +10,11 @@ from homeassistant.core import HomeAssistant
 from huckleberry_api.firebase_types import (
     FirebaseCuratedFoodDocument,
     FirebaseCustomFoodTypeDocument,
+    FirebaseSleepCondition,
     FirebaseSleepDetails,
+    FirebaseSleepDocumentData,
+    FirebaseSleepLocations,
+    FirebaseSleepTimerData,
 )
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -44,7 +48,7 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
     await hass.services.async_call(
         DOMAIN, "start_sleep", {"device_id": device.id}, blocking=True
     )
-    mock_huckleberry_api.start_sleep.assert_called_with("test_child_uid")
+    mock_huckleberry_api.start_sleep.assert_called_with("test_child_uid", start_time=None)
 
     # Test pause_sleep
     await hass.services.async_call(
@@ -68,19 +72,25 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
     await hass.services.async_call(
         DOMAIN, "complete_sleep", {"device_id": device.id}, blocking=True
     )
-    mock_huckleberry_api.complete_sleep.assert_called_with("test_child_uid")
+    mock_huckleberry_api.complete_sleep.assert_called_with(
+        "test_child_uid", start_time=None, end_time=None, details=None
+    )
 
     # Test start_nursing (left)
     await hass.services.async_call(
         DOMAIN, "start_nursing", {"device_id": device.id, "side": "left"}, blocking=True
     )
-    mock_huckleberry_api.start_nursing.assert_called_with("test_child_uid", "left")
+    mock_huckleberry_api.start_nursing.assert_called_with(
+        "test_child_uid", "left", start_time=None
+    )
 
     # Test start_nursing (right)
     await hass.services.async_call(
         DOMAIN, "start_nursing", {"device_id": device.id, "side": "right"}, blocking=True
     )
-    mock_huckleberry_api.start_nursing.assert_called_with("test_child_uid", "right")
+    mock_huckleberry_api.start_nursing.assert_called_with(
+        "test_child_uid", "right", start_time=None
+    )
 
     # Test pause_nursing
     await hass.services.async_call(
@@ -110,7 +120,9 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
     await hass.services.async_call(
         DOMAIN, "complete_nursing", {"device_id": device.id}, blocking=True
     )
-    mock_huckleberry_api.complete_nursing.assert_called_with("test_child_uid")
+    mock_huckleberry_api.complete_nursing.assert_called_with(
+        "test_child_uid", start_time=None, end_time=None
+    )
 
     # Test log_diaper_pee
     await hass.services.async_call(
@@ -247,6 +259,7 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
         amount=4.0,
         bottle_type="Formula",
         units="oz",
+        notes=None,
     )
 
     # Test log_bottle with app-specific bottle type values
@@ -259,6 +272,7 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
         amount=120.0,
         bottle_type="Breast Milk",
         units="ml",
+        notes=None,
     )
 
     # Test log_bottle with an explicit start time
@@ -280,6 +294,7 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
         amount=90.0,
         bottle_type="Formula",
         units="ml",
+        notes=None,
     )
 
     # Test log_pump
@@ -550,3 +565,217 @@ async def test_log_sleep(hass: HomeAssistant, mock_huckleberry_api):
             blocking=True,
         )
     mock_huckleberry_api.log_sleep.assert_not_called()
+
+
+async def test_timer_times_and_bottle_notes(hass: HomeAssistant, mock_huckleberry_api):
+    """Test explicit times on live timers and bottle notes."""
+    await hass.config.async_set_time_zone("Europe/Copenhagen")
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_EMAIL: "test@example.com",
+            CONF_PASSWORD: "test_password",
+        },
+    )
+    entry.add_to_hass(hass)
+
+    with patch(
+        "custom_components.huckleberry.HuckleberryAPI",
+        return_value=mock_huckleberry_api,
+    ):
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+    device_registry = dr.async_get(hass)
+    device = device_registry.async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, "test_child_uid")},
+        name="Test Child"
+    )
+
+    # 12:10 wall-clock time in Copenhagen (CEST) is 10:10 UTC
+    await hass.services.async_call(
+        DOMAIN,
+        "start_sleep",
+        {
+            "device_id": device.id,
+            "start_time": "2026-08-28 12:10:00",
+        },
+        blocking=True,
+    )
+    mock_huckleberry_api.start_sleep.assert_called_with(
+        "test_child_uid",
+        start_time=datetime(2026, 8, 28, 10, 10, tzinfo=UTC),
+    )
+
+    # A start in the future is rejected without calling the API
+    mock_huckleberry_api.start_sleep.reset_mock()
+    with pytest.raises(ServiceValidationError):
+        await hass.services.async_call(
+            DOMAIN,
+            "start_sleep",
+            {
+                "device_id": device.id,
+                "start_time": "2999-01-01 00:00:00",
+            },
+            blocking=True,
+        )
+    mock_huckleberry_api.start_sleep.assert_not_called()
+
+    # A library rejection is translated instead of leaking a ValueError
+    mock_huckleberry_api.start_sleep.side_effect = ValueError(
+        "start_time must not be after the paused sleep end time"
+    )
+    with pytest.raises(ServiceValidationError):
+        await hass.services.async_call(
+            DOMAIN,
+            "start_sleep",
+            {
+                "device_id": device.id,
+                "start_time": "2026-08-28 12:10:00",
+            },
+            blocking=True,
+        )
+    mock_huckleberry_api.start_sleep.side_effect = None
+
+    mock_huckleberry_api.get_sleep = AsyncMock(return_value=None)
+    await hass.services.async_call(
+        DOMAIN,
+        "complete_sleep",
+        {
+            "device_id": device.id,
+            "start_time": "2026-08-28 12:10:00",
+            "end_time": "2026-08-28 13:30:00",
+            "notes": "Daycare",
+        },
+        blocking=True,
+    )
+    mock_huckleberry_api.complete_sleep.assert_called_with(
+        "test_child_uid",
+        start_time=datetime(2026, 8, 28, 10, 10, tzinfo=UTC),
+        end_time=datetime(2026, 8, 28, 11, 30, tzinfo=UTC),
+        details=FirebaseSleepDetails(notes="Daycare"),
+    )
+
+    # An end before the start is rejected without calling the API
+    mock_huckleberry_api.complete_sleep.reset_mock()
+    with pytest.raises(ServiceValidationError):
+        await hass.services.async_call(
+            DOMAIN,
+            "complete_sleep",
+            {
+                "device_id": device.id,
+                "start_time": "2026-08-28 13:30:00",
+                "end_time": "2026-08-28 12:10:00",
+            },
+            blocking=True,
+        )
+    mock_huckleberry_api.complete_sleep.assert_not_called()
+
+    # An empty notes value clears the timer notes while keeping other details
+    sleep_status = FirebaseSleepDocumentData(
+        timer=FirebaseSleepTimerData(
+            active=True,
+            paused=False,
+            uuid="test_sleep",
+            details=FirebaseSleepDetails(
+                startSleepCondition=FirebaseSleepCondition(happy=True),
+                sleepLocations=FirebaseSleepLocations(onOwnInBed=True),
+            ),
+        )
+    )
+    mock_huckleberry_api.get_sleep = AsyncMock(return_value=sleep_status)
+    await hass.services.async_call(
+        DOMAIN,
+        "complete_sleep",
+        {
+            "device_id": device.id,
+            "notes": "",
+        },
+        blocking=True,
+    )
+    mock_huckleberry_api.get_sleep.assert_called_once_with("test_child_uid")
+    mock_huckleberry_api.complete_sleep.assert_called_with(
+        "test_child_uid",
+        start_time=None,
+        end_time=None,
+        details=FirebaseSleepDetails(
+            startSleepCondition=FirebaseSleepCondition(happy=True),
+            sleepLocations=FirebaseSleepLocations(onOwnInBed=True),
+            notes="",
+        ),
+    )
+
+    # Times spanning a DST fall-back compare as UTC instants, not wall time
+    await hass.services.async_call(
+        DOMAIN,
+        "complete_sleep",
+        {
+            "device_id": device.id,
+            "start_time": "2025-10-26T02:50:00+02:00",
+            "end_time": "2025-10-26T02:10:00+01:00",
+        },
+        blocking=True,
+    )
+    call_args = mock_huckleberry_api.complete_sleep.call_args
+    assert call_args.args == ("test_child_uid",)
+    assert call_args.kwargs["start_time"].astimezone(UTC) == datetime(
+        2025, 10, 26, 0, 50, tzinfo=UTC
+    )
+    assert call_args.kwargs["end_time"].astimezone(UTC) == datetime(
+        2025, 10, 26, 1, 10, tzinfo=UTC
+    )
+    assert call_args.kwargs["details"] is None
+
+    await hass.services.async_call(
+        DOMAIN,
+        "start_nursing",
+        {
+            "device_id": device.id,
+            "side": "right",
+            "start_time": "2026-08-28 12:10:00",
+        },
+        blocking=True,
+    )
+    mock_huckleberry_api.start_nursing.assert_called_with(
+        "test_child_uid",
+        "right",
+        start_time=datetime(2026, 8, 28, 10, 10, tzinfo=UTC),
+    )
+
+    await hass.services.async_call(
+        DOMAIN,
+        "complete_nursing",
+        {
+            "device_id": device.id,
+            "start_time": "2026-08-28 12:10:00",
+            "end_time": "2026-08-28 12:40:00",
+        },
+        blocking=True,
+    )
+    mock_huckleberry_api.complete_nursing.assert_called_with(
+        "test_child_uid",
+        start_time=datetime(2026, 8, 28, 10, 10, tzinfo=UTC),
+        end_time=datetime(2026, 8, 28, 10, 40, tzinfo=UTC),
+    )
+
+    await hass.services.async_call(
+        DOMAIN,
+        "log_bottle",
+        {
+            "device_id": device.id,
+            "amount": 90.0,
+            "bottle_type": "formula",
+            "units": "ml",
+            "notes": "Fussy",
+        },
+        blocking=True,
+    )
+    mock_huckleberry_api.log_bottle.assert_called_with(
+        "test_child_uid",
+        start_time=ANY,
+        amount=90.0,
+        bottle_type="Formula",
+        units="ml",
+        notes="Fussy",
+    )
