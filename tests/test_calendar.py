@@ -2,6 +2,9 @@
 import pytest
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, AsyncMock
+from zoneinfo import ZoneInfo
+
+from homeassistant.util import dt as dt_util
 
 from huckleberry_api.firebase_types import (
     FirebaseActivityIntervalData,
@@ -24,6 +27,14 @@ from huckleberry_api.firebase_types import (
 )
 
 from custom_components.huckleberry.calendar import HuckleberryCalendar
+from custom_components.huckleberry.features.calendar_events import (
+    build_activity_events,
+    build_diaper_events,
+    build_feed_events,
+    build_health_events,
+    build_pump_events,
+    build_sleep_events,
+)
 from custom_components.huckleberry.models import HuckleberryChildProfile
 
 
@@ -110,7 +121,7 @@ def test_build_feed_events_splits_intervals(calendar):
         ),
     ]
 
-    feed_events, bottle_events = HuckleberryCalendar._build_feed_events(intervals)
+    feed_events, bottle_events = build_feed_events(intervals)
 
     assert len(feed_events) == 1
     assert len(bottle_events) == 1
@@ -133,7 +144,7 @@ def test_build_feed_events_formats_feed_description(calendar):
         ),
     ]
 
-    feed_events, bottle_events = HuckleberryCalendar._build_feed_events(intervals)
+    feed_events, bottle_events = build_feed_events(intervals)
 
     assert len(feed_events) == 1
     assert len(bottle_events) == 0
@@ -163,7 +174,7 @@ def test_build_feed_events_extracts_bottle_event(calendar):
         ),
     ]
 
-    feed_events, bottle_events = HuckleberryCalendar._build_feed_events(intervals)
+    feed_events, bottle_events = build_feed_events(intervals)
 
     assert len(feed_events) == 1
     assert len(bottle_events) == 1
@@ -183,7 +194,7 @@ def test_build_feed_events_accepts_bottle_without_amount(calendar):
         ),
     ]
 
-    feed_events, bottle_events = HuckleberryCalendar._build_feed_events(intervals)
+    feed_events, bottle_events = build_feed_events(intervals)
 
     assert feed_events == []
     assert len(bottle_events) == 1
@@ -207,7 +218,7 @@ def test_build_sleep_events_includes_recorded_details(calendar):
         ),
     ]
 
-    events = HuckleberryCalendar._build_sleep_events(intervals)
+    events = build_sleep_events(intervals)
 
     assert len(events) == 1
     assert events[0].summary == "💤 Sleep (1h 30m)"
@@ -218,6 +229,23 @@ def test_build_sleep_events_includes_recorded_details(calendar):
     assert "Start condition: Happy" in description
     assert "Sleep location: Stroller" in description
     assert "End condition: Upset" in description
+
+def test_build_sleep_events_uses_absolute_end_time():
+    """Sleep end times should follow absolute time across a DST change."""
+    berlin = ZoneInfo("Europe/Berlin")
+    original_time_zone = dt_util.DEFAULT_TIME_ZONE
+    dt_util.DEFAULT_TIME_ZONE = berlin
+    try:
+        start = datetime(2026, 3, 29, 1, 30, tzinfo=berlin).timestamp()
+
+        events = build_sleep_events(
+            [FirebaseSleepIntervalData(start=start, duration=7200, offset=60)]
+        )
+    finally:
+        dt_util.DEFAULT_TIME_ZONE = original_time_zone
+
+    assert events[0].end.timestamp() - events[0].start.timestamp() == 7200
+    assert events[0].end == datetime.fromtimestamp(start + 7200, tz=berlin)
 
 
 def test_build_feed_events_includes_solids_details(calendar):
@@ -240,7 +268,7 @@ def test_build_feed_events_includes_solids_details(calendar):
         ),
     ]
 
-    feed_events, bottle_events = HuckleberryCalendar._build_feed_events(intervals)
+    feed_events, bottle_events = build_feed_events(intervals)
 
     assert bottle_events == []
     assert len(feed_events) == 1
@@ -273,7 +301,7 @@ def test_build_diaper_events_distinguishes_potty_and_details(calendar):
         ),
     ]
 
-    events = HuckleberryCalendar._build_diaper_events(intervals)
+    events = build_diaper_events(intervals)
 
     assert len(events) == 2
     assert events[0].summary == "🚽 Potty (Both, Went potty)"
@@ -323,7 +351,7 @@ def test_build_health_events_covers_all_health_entry_types(calendar):
         ),
     ]
 
-    events = HuckleberryCalendar._build_health_events(entries)
+    events = build_health_events(entries)
 
     assert [event.summary for event in events] == [
         "📏 Growth Measurement",
@@ -366,7 +394,7 @@ def test_build_pump_events(calendar):
         ),
     ]
 
-    events = HuckleberryCalendar._build_pump_events(intervals)
+    events = build_pump_events(intervals)
 
     assert len(events) == 2
     assert events[0].summary == "🍼 Pump (15m · 115 ml)"
@@ -400,7 +428,7 @@ def test_build_activity_events(calendar):
         ),
     ]
 
-    events = HuckleberryCalendar._build_activity_events(intervals)
+    events = build_activity_events(intervals)
 
     assert len(events) == 2
     assert events[0].summary == "🧸 Tummy Time (5m)"
