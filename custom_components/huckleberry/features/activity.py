@@ -154,6 +154,11 @@ class HuckleberryActivitySensor(HuckleberryBaseEntity, SensorEntity):
         )
 
     @property
+    def mode(self) -> ActivityMode:
+        """Return the activity mode."""
+        return self._mode
+
+    @property
     def has_activity_entry(self) -> bool:
         """Return whether this mode has a completed session."""
         return activity_mode_has_entry(

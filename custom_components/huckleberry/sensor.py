@@ -10,6 +10,8 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.entity_registry import RegistryEntryDisabler
 
+from huckleberry_api.firebase_types import ActivityMode
+
 from . import HuckleberryEntryData
 from .const import DOMAIN
 from .features.activity import HuckleberryActivitySensor, build_activity_sensors
@@ -56,7 +58,8 @@ async def async_setup_entry(
         for entity in activity_sensors
         if isinstance(entity, HuckleberryActivitySensor)
     ]
-    handled_unique_ids: set[str] = set()
+    children_by_uid = {child.uid: child for child in entry_data["children"]}
+    handled_modes: set[tuple[str, ActivityMode]] = set()
     ready = False
     registry = er.async_get(hass)
 
@@ -69,11 +72,8 @@ async def async_setup_entry(
         new_entities: list[SensorEntity] = []
         for entity in last_activity_sensors:
             unique_id = entity.unique_id
-            if (
-                unique_id is None
-                or unique_id in handled_unique_ids
-                or not entity.has_activity_entry
-            ):
+            mode_key = (entity.child_uid, entity.mode)
+            if unique_id is None or mode_key in handled_modes or not entity.has_activity_entry:
                 continue
 
             entity_id = registry.async_get_entity_id("sensor", DOMAIN, unique_id)
@@ -86,14 +86,18 @@ async def async_setup_entry(
             if registry_entry.disabled_by is RegistryEntryDisabler.INTEGRATION:
                 registry.async_update_entity(entity_id, disabled_by=None)
             elif registry_entry.disabled_by is not None:
-                handled_unique_ids.add(unique_id)
+                handled_modes.add(mode_key)
                 continue
             elif hass.states.get(entity_id) is not None:
-                handled_unique_ids.add(unique_id)
+                handled_modes.add(mode_key)
                 continue
 
-            handled_unique_ids.add(unique_id)
-            new_entities.append(entity)
+            handled_modes.add(mode_key)
+            child = children_by_uid.get(entity.child_uid)
+            if child is not None:
+                new_entities.append(
+                    HuckleberryActivitySensor(coordinator, child, entity.mode)
+                )
 
         if new_entities:
             async_add_entities(new_entities)
