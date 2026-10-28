@@ -169,9 +169,11 @@ class HuckleberryActivitySensor(HuckleberryBaseEntity, SensorEntity):
         self._mode = mode
         self._attr_translation_key = ACTIVITY_TRANSLATION_KEYS[mode]
         self._attr_unique_id = f"{self.child_uid}_{self._attr_translation_key}"
-        self._attr_entity_registry_enabled_default = activity_mode_has_entry(
-            coordinator.get_activity_status(self.child_uid), mode
-        )
+
+    @property
+    def entity_registry_enabled_default(self) -> bool:
+        """Return True when this mode already has a completed session."""
+        return self.has_activity_entry
 
     @property
     def mode(self) -> ActivityMode:
@@ -290,7 +292,6 @@ def setup_activity_sensor_activation(
 
     children_by_uid = {child.uid: child for child in children}
     handled_modes: set[tuple[str, ActivityMode]] = set()
-    ready = False
     registry = er.async_get(hass)
 
     @callback
@@ -325,6 +326,9 @@ def setup_activity_sensor_activation(
             elif hass.states.get(entity_id) is not None:
                 handled_modes.add(mode_key)
                 continue
+            else:
+                # The platform is already adding an enabled entity.
+                continue
 
             handled_modes.add(mode_key)
             child = children_by_uid.get(sensor.child_uid)
@@ -336,18 +340,5 @@ def setup_activity_sensor_activation(
         if new_entities:
             async_add_entities(new_entities)
 
-    @callback
-    def _async_sync_if_ready() -> None:
-        if ready:
-            _async_sync_activity_sensors()
-
-    entry.async_on_unload(coordinator.async_add_listener(_async_sync_if_ready))
-
-    async def _async_initial_sync() -> None:
-        """Apply activity data after the platform has registered its entities."""
-        nonlocal ready
-        await hass.async_block_till_done()
-        ready = True
-        _async_sync_activity_sensors()
-
-    hass.async_create_task(_async_initial_sync())
+    entry.async_on_unload(coordinator.async_add_listener(_async_sync_activity_sensors))
+    _async_sync_activity_sensors()
