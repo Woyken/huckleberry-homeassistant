@@ -7,6 +7,7 @@ import pytest
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.entity_registry import RegistryEntryDisabler
 from huckleberry_api.firebase_types import (
     FirebaseActivityDocumentData,
     FirebaseActivityPrefs,
@@ -58,7 +59,7 @@ async def activity_callback(hass: HomeAssistant, mock_huckleberry_api):
 
 
 async def test_activity_last_sensors(hass: HomeAssistant, activity_callback):
-    """Last activity sensors expose the completed session for each mode."""
+    """Last activity sensors appear for modes with a completed session."""
     activity_callback(
         FirebaseActivityDocumentData(
             prefs=FirebaseActivityPrefs(
@@ -82,42 +83,52 @@ async def test_activity_last_sensors(hass: HomeAssistant, activity_callback):
     assert tummy_time.attributes["time"] == _expected_time(1700003600)
     assert tummy_time.attributes["duration"] == "PT2M"
 
-    story_time = hass.states.get(LAST_ACTIVITY_ENTITIES["story_time"])
-    assert story_time is not None
-    assert story_time.state == "unknown"
-    assert "time" not in story_time.attributes
-    assert "duration" not in story_time.attributes
+    assert hass.states.get(LAST_ACTIVITY_ENTITIES["story_time"]) is None
 
-    registry_entry = er.async_get(hass).async_get(LAST_ACTIVITY_ENTITIES["bath"])
-    assert registry_entry is not None
-    assert registry_entry.unique_id == "child_1_activity_bath"
+    registry = er.async_get(hass)
+    bath_registry = registry.async_get(LAST_ACTIVITY_ENTITIES["bath"])
+    assert bath_registry is not None
+    assert bath_registry.unique_id == "child_1_activity_bath"
+    assert bath_registry.disabled_by is None
+
+    story_time_id = registry.async_get_entity_id(
+        "sensor", DOMAIN, "child_1_activity_story_time"
+    )
+    assert story_time_id is not None
+    story_time_registry = registry.async_get(story_time_id)
+    assert story_time_registry is not None
+    assert story_time_registry.disabled_by is RegistryEntryDisabler.INTEGRATION
 
 
-@pytest.mark.parametrize(
-    "activities",
-    [
-        FirebaseActivityDocumentData(),
-        FirebaseActivityDocumentData(prefs=FirebaseActivityPrefs()),
-        FirebaseActivityDocumentData(
-            prefs=FirebaseActivityPrefs(lastBath=FirebaseLastActivityData())
-        ),
-    ],
-)
-async def test_activity_last_sensor_missing_data(
+async def test_activity_sensors_hidden_without_data(
     hass: HomeAssistant,
     activity_callback,
-    activities: FirebaseActivityDocumentData,
 ):
-    """Missing activity data leaves the last sensors unknown."""
-    activity_callback(activities)
+    """Modes without a session stay disabled, while the timer sensor is visible."""
+    activity_callback(
+        FirebaseActivityDocumentData(
+            prefs=FirebaseActivityPrefs(
+                lastBath=FirebaseLastActivityData(),
+            ),
+        )
+    )
     await hass.async_block_till_done()
 
     for entity_id in LAST_ACTIVITY_ENTITIES.values():
-        state = hass.states.get(entity_id)
-        assert state is not None
-        assert state.state == "unknown"
-        assert "time" not in state.attributes
-        assert "duration" not in state.attributes
+        assert hass.states.get(entity_id) is None
+
+    timer_state = hass.states.get("sensor.test_child_activity")
+    assert timer_state is not None
+    assert timer_state.state == "unknown"
+
+    registry = er.async_get(hass)
+    for mode in LAST_ACTIVITY_ENTITIES:
+        unique_id = f"child_1_activity_{mode}"
+        entity_id = registry.async_get_entity_id("sensor", DOMAIN, unique_id)
+        assert entity_id is not None
+        registry_entry = registry.async_get(entity_id)
+        assert registry_entry is not None
+        assert registry_entry.disabled_by is RegistryEntryDisabler.INTEGRATION
 
 
 @pytest.mark.parametrize(
@@ -221,6 +232,33 @@ async def test_activity_timer_sensor_previous_session(
     assert state.attributes["previous_duration"] == "PT2M"
 
 
+async def test_user_disabled_activity_sensor_stays_disabled(
+    hass: HomeAssistant,
+    activity_callback,
+):
+    """A sensor disabled by the user is not enabled when a session appears."""
+    registry = er.async_get(hass)
+    entity_id = registry.async_get_entity_id(
+        "sensor", DOMAIN, "child_1_activity_bath"
+    )
+    assert entity_id is not None
+    registry.async_update_entity(entity_id, disabled_by=RegistryEntryDisabler.USER)
+
+    activity_callback(
+        FirebaseActivityDocumentData(
+            prefs=FirebaseActivityPrefs(
+                lastBath=FirebaseLastActivityData(start=1700000000, duration=300),
+            ),
+        )
+    )
+    await hass.async_block_till_done()
+
+    assert hass.states.get(LAST_ACTIVITY_ENTITIES["bath"]) is None
+    registry_entry = registry.async_get(entity_id)
+    assert registry_entry is not None
+    assert registry_entry.disabled_by is RegistryEntryDisabler.USER
+
+
 async def test_activity_sensors_multiple_children(
     hass: HomeAssistant,
     mock_huckleberry_api_multiple_children,
@@ -245,18 +283,8 @@ async def test_activity_sensors_multiple_children(
     assert mock_huckleberry_api_multiple_children.setup_activity_listener.await_count == 3
 
     for child in ("first_child", "second_child", "third_child"):
-        for entity in (
-            "activity",
-            "bath",
-            "brush_teeth",
-            "indoor_play",
-            "outdoor_play",
-            "screen_time",
-            "skin_to_skin",
-            "story_time",
-            "tummy_time",
-        ):
-            assert hass.states.get(f"sensor.{child}_{entity}") is not None
+        assert hass.states.get(f"sensor.{child}_activity") is not None
+        assert hass.states.get(f"sensor.{child}_bath") is None
 
     first_callback = (
         mock_huckleberry_api_multiple_children.setup_activity_listener.call_args_list[
@@ -290,9 +318,9 @@ async def test_activity_sensors_multiple_children(
     assert hass.states.get("sensor.first_child_bath").state == _expected_time(
         1700000000
     )
-    assert hass.states.get("sensor.first_child_tummy_time").state == "unknown"
+    assert hass.states.get("sensor.first_child_tummy_time") is None
     assert hass.states.get("sensor.second_child_tummy_time").state == _expected_time(
         1700003600
     )
-    assert hass.states.get("sensor.second_child_bath").state == "unknown"
-    assert hass.states.get("sensor.third_child_bath").state == "unknown"
+    assert hass.states.get("sensor.second_child_bath") is None
+    assert hass.states.get("sensor.third_child_bath") is None

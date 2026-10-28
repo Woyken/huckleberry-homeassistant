@@ -5,12 +5,14 @@ from typing import cast
 
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_registry import RegistryEntryDisabler
 
 from . import HuckleberryEntryData
 from .const import DOMAIN
-from .features.activity import build_activity_sensors
+from .features.activity import HuckleberryActivitySensor, build_activity_sensors
 from .features.bottle import build_bottle_sensors
 from .features.child import build_child_sensors
 from .features.diaper import build_diaper_sensors
@@ -31,19 +33,83 @@ async def async_setup_entry(
 ) -> None:
     """Set up Huckleberry sensors."""
     entry_data = cast(HuckleberryEntryData, hass.data[DOMAIN][entry.entry_id])
+    coordinator = entry_data["coordinator"]
     entities: list[SensorEntity] = []
-    entities.extend(build_child_sensors(entry_data["coordinator"], entry_data["children"]))
-    entities.extend(build_growth_sensors(entry_data["coordinator"], entry_data["children"]))
-    entities.extend(build_medication_sensors(entry_data["coordinator"], entry_data["children"]))
-    entities.extend(build_diaper_sensors(entry_data["coordinator"], entry_data["children"]))
-    entities.extend(build_potty_sensors(entry_data["coordinator"], entry_data["children"]))
-    entities.extend(build_bottle_sensors(entry_data["coordinator"], entry_data["children"]))
-    entities.extend(build_solids_sensors(entry_data["coordinator"], entry_data["children"]))
-    entities.extend(build_nursing_sensors(entry_data["coordinator"], entry_data["children"]))
-    entities.extend(build_pumping_sensors(entry_data["coordinator"], entry_data["children"]))
-    entities.extend(build_sleep_sensors(entry_data["coordinator"], entry_data["children"]))
-    entities.extend(build_activity_sensors(entry_data["coordinator"], entry_data["children"]))
-    entities.extend(build_sweetspot_sensors(entry_data["coordinator"], entry_data["children"]))
+    entities.extend(build_child_sensors(coordinator, entry_data["children"]))
+    entities.extend(build_growth_sensors(coordinator, entry_data["children"]))
+    entities.extend(build_medication_sensors(coordinator, entry_data["children"]))
+    entities.extend(build_diaper_sensors(coordinator, entry_data["children"]))
+    entities.extend(build_potty_sensors(coordinator, entry_data["children"]))
+    entities.extend(build_bottle_sensors(coordinator, entry_data["children"]))
+    entities.extend(build_solids_sensors(coordinator, entry_data["children"]))
+    entities.extend(build_nursing_sensors(coordinator, entry_data["children"]))
+    entities.extend(build_pumping_sensors(coordinator, entry_data["children"]))
+    entities.extend(build_sleep_sensors(coordinator, entry_data["children"]))
+    activity_sensors = build_activity_sensors(coordinator, entry_data["children"])
+    entities.extend(activity_sensors)
+    entities.extend(build_sweetspot_sensors(coordinator, entry_data["children"]))
 
     async_add_entities(entities)
 
+    last_activity_sensors = [
+        entity
+        for entity in activity_sensors
+        if isinstance(entity, HuckleberryActivitySensor)
+    ]
+    handled_unique_ids: set[str] = set()
+    ready = False
+    registry = er.async_get(hass)
+
+    @callback
+    def _async_sync_activity_sensors() -> None:
+        """Enable and add activity sensors whose mode has a completed session."""
+        if entry.pref_disable_new_entities:
+            return
+
+        new_entities: list[SensorEntity] = []
+        for entity in last_activity_sensors:
+            unique_id = entity.unique_id
+            if (
+                unique_id is None
+                or unique_id in handled_unique_ids
+                or not entity.has_activity_entry
+            ):
+                continue
+
+            entity_id = registry.async_get_entity_id("sensor", DOMAIN, unique_id)
+            if entity_id is None:
+                continue
+
+            registry_entry = registry.async_get(entity_id)
+            if registry_entry is None:
+                continue
+            if registry_entry.disabled_by is RegistryEntryDisabler.INTEGRATION:
+                registry.async_update_entity(entity_id, disabled_by=None)
+            elif registry_entry.disabled_by is not None:
+                handled_unique_ids.add(unique_id)
+                continue
+            elif hass.states.get(entity_id) is not None:
+                handled_unique_ids.add(unique_id)
+                continue
+
+            handled_unique_ids.add(unique_id)
+            new_entities.append(entity)
+
+        if new_entities:
+            async_add_entities(new_entities)
+
+    @callback
+    def _async_sync_if_ready() -> None:
+        if ready:
+            _async_sync_activity_sensors()
+
+    entry.async_on_unload(coordinator.async_add_listener(_async_sync_if_ready))
+
+    async def _async_initial_activity_sync() -> None:
+        """Apply activity data after the platform has registered its entities."""
+        nonlocal ready
+        await hass.async_block_till_done()
+        ready = True
+        _async_sync_activity_sensors()
+
+    hass.async_create_task(_async_initial_activity_sync())

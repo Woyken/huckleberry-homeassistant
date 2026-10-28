@@ -109,6 +109,15 @@ def _latest_completed_activity(
     return latest
 
 
+def activity_mode_has_entry(
+    status: FirebaseActivityDocumentData | None,
+    mode: ActivityMode,
+) -> bool:
+    """Return whether a mode has a completed session."""
+    last_activity = _last_activity(status, mode)
+    return last_activity is not None and last_activity.start is not None
+
+
 def build_activity_sensors(
     coordinator: HuckleberryDataUpdateCoordinator,
     children: list[HuckleberryChildProfile],
@@ -140,6 +149,16 @@ class HuckleberryActivitySensor(HuckleberryBaseEntity, SensorEntity):
         self._mode = mode
         self._attr_translation_key = ACTIVITY_TRANSLATION_KEYS[mode]
         self._attr_unique_id = f"{self.child_uid}_{self._attr_translation_key}"
+        self._attr_entity_registry_enabled_default = activity_mode_has_entry(
+            coordinator.get_activity_status(self.child_uid), mode
+        )
+
+    @property
+    def has_activity_entry(self) -> bool:
+        """Return whether this mode has a completed session."""
+        return activity_mode_has_entry(
+            self.coordinator.get_activity_status(self.child_uid), self._mode
+        )
 
     @property
     def native_value(self) -> datetime | None:
@@ -172,6 +191,7 @@ class HuckleberryActivityTimerSensor(HuckleberryBaseEntity, SensorEntity):
     _attr_icon = "mdi:timer"
     _attr_device_class = SensorDeviceClass.ENUM
     _attr_options = ACTIVITY_STATE_OPTIONS
+    _attr_entity_registry_enabled_default = True
     _attr_translation_key = "activity"
 
     def __init__(
