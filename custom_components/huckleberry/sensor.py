@@ -10,6 +10,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import HuckleberryEntryData
 from .const import DOMAIN
+from .features.activity import build_activity_sensors
 from .features.bottle import build_bottle_sensors
 from .features.child import build_child_sensors
 from .features.diaper import build_diaper_sensors
@@ -41,6 +42,7 @@ async def async_setup_entry(
     entities.extend(build_nursing_sensors(entry_data["coordinator"], entry_data["children"]))
     entities.extend(build_pumping_sensors(entry_data["coordinator"], entry_data["children"]))
     entities.extend(build_sleep_sensors(entry_data["coordinator"], entry_data["children"]))
+    entities.extend(build_activity_sensors(entry_data["coordinator"], entry_data["children"]))
     entities.extend(build_sweetspot_sensors(entry_data["coordinator"], entry_data["children"]))
 
     async_add_entities(entities)

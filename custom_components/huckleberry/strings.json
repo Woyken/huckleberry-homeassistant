@@ -855,6 +855,122 @@
             "name": "Previous units"
           }
         }
+      },
+      "activity_bath": {
+        "name": "Bath",
+        "state_attributes": {
+          "time": {
+            "name": "Time"
+          },
+          "duration": {
+            "name": "Duration"
+          }
+        }
+      },
+      "activity_brush_teeth": {
+        "name": "Brush Teeth",
+        "state_attributes": {
+          "time": {
+            "name": "Time"
+          },
+          "duration": {
+            "name": "Duration"
+          }
+        }
+      },
+      "activity_indoor_play": {
+        "name": "Indoor Play",
+        "state_attributes": {
+          "time": {
+            "name": "Time"
+          },
+          "duration": {
+            "name": "Duration"
+          }
+        }
+      },
+      "activity_outdoor_play": {
+        "name": "Outdoor Play",
+        "state_attributes": {
+          "time": {
+            "name": "Time"
+          },
+          "duration": {
+            "name": "Duration"
+          }
+        }
+      },
+      "activity_screen_time": {
+        "name": "Screen Time",
+        "state_attributes": {
+          "time": {
+            "name": "Time"
+          },
+          "duration": {
+            "name": "Duration"
+          }
+        }
+      },
+      "activity_skin_to_skin": {
+        "name": "Skin to Skin",
+        "state_attributes": {
+          "time": {
+            "name": "Time"
+          },
+          "duration": {
+            "name": "Duration"
+          }
+        }
+      },
+      "activity_story_time": {
+        "name": "Story Time",
+        "state_attributes": {
+          "time": {
+            "name": "Time"
+          },
+          "duration": {
+            "name": "Duration"
+          }
+        }
+      },
+      "activity_tummy_time": {
+        "name": "Tummy Time",
+        "state_attributes": {
+          "time": {
+            "name": "Time"
+          },
+          "duration": {
+            "name": "Duration"
+          }
+        }
+      },
+      "activity": {
+        "name": "Activity",
+        "state": {
+          "active": "Active",
+          "paused": "Paused",
+          "none": "None"
+        },
+        "state_attributes": {
+          "current_mode": {
+            "name": "Current mode"
+          },
+          "current_start": {
+            "name": "Current start"
+          },
+          "current_end": {
+            "name": "Current end"
+          },
+          "previous_mode": {
+            "name": "Previous mode"
+          },
+          "previous_start": {
+            "name": "Previous start"
+          },
+          "previous_duration": {
+            "name": "Previous duration"
+          }
+        }
       }
     },
     "switch": {
