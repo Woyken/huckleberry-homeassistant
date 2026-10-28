@@ -771,6 +771,12 @@ log_activity:
             - skinToSkin
             - storyTime
             - tummyTime
+    start_time:
+      name: Start time
+      description: When the activity started. Defaults to now.
+      required: false
+      selector:
+        datetime:
     duration:
       name: Duration
       description: Duration of the activity in seconds

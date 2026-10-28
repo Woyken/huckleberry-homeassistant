@@ -100,7 +100,7 @@ All services support device selection for easy use in automations:
 - `huckleberry.log_solids` - Log a solid food meal with one or more foods, optional notes and reaction (LOVED/MEH/HATED/ALLERGIC)
 
 ### Activity Tracking
-- `huckleberry.log_activity` - Log an activity session (bath, brushTeeth, indoorPlay, outdoorPlay, screenTime, skinToSkin, storyTime, tummyTime) with optional duration and notes
+- `huckleberry.log_activity` - Log an activity session (bath, brushTeeth, indoorPlay, outdoorPlay, screenTime, skinToSkin, storyTime, tummyTime) with optional start time, duration and notes
 
 ### Diaper Changes
 - `huckleberry.log_diaper_pee`

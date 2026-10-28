@@ -802,10 +802,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
 
     async def handle_log_activity(call: ServiceCall) -> None:
+        start_time = cast(datetime | None, call.data.get("start_time"))
         await api_client.log_activity(
             _target_child(call),
             mode=cast(ActivityMode, call.data["mode"]),
-            start_time=dt_util.now(),
+            start_time=dt_util.as_local(start_time) if start_time is not None else dt_util.now(),
             duration=cast(float | None, call.data.get("duration")),
             notes=_string_value(call.data.get("notes")),
         )
@@ -901,7 +902,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         DOMAIN,
         "log_activity",
         handle_log_activity,
-        schema=_build_service_method_schema(include_activity=True),
+        schema=_build_service_method_schema(include_activity=True, include_start_time=True),
     )
     hass.services.async_register(
         DOMAIN,
