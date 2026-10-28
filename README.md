@@ -58,6 +58,8 @@ This integration provides real-time baby tracking in Home Assistant by connectin
   - `sensor.{child_name}_bottle` - Last bottle feeding (time, amount, type)
   - `sensor.{child_name}_solids` - Last solid meal timestamp, with `time`, `foods` as a list of names, optional `notes`, and `reaction` (LOVED/MEH/HATED/ALLERGIC). Updates from the app and `huckleberry.log_solids`.
   - `sensor.{child_name}_diaper` - Last diaper change
+  - `sensor.{child_name}_bath`, `_brush_teeth`, `_indoor_play`, `_outdoor_play`, `_screen_time`, `_skin_to_skin`, `_story_time`, `_tummy_time` - Last completed session for each activity, with `time` and `duration`. Modes without a completed session are disabled by default and can be enabled manually.
+  - `sensor.{child_name}_activity` - Activity timer status (active, paused, none), with the current mode, start, and end plus the previous mode, start, and duration
 
 - **Switches** (3):
   - `switch.{child_name}_sleep_timer` - Start/stop the sleep timer

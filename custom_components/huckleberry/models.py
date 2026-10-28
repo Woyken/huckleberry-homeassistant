@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Sequence
 
 from huckleberry_api.firebase_types import (
+    FirebaseActivityDocumentData,
     FirebaseChildDocument,
     FirebaseDiaperDocumentData,
     FirebaseFeedDocumentData,
@@ -81,6 +82,7 @@ class HuckleberryChildState:
     health_status: FirebaseHealthDocumentData | None = None
     diaper_status: FirebaseDiaperDocumentData | None = None
     pump_status: FirebasePumpDocumentData | None = None
+    activity_status: FirebaseActivityDocumentData | None = None
     child_document: FirebaseChildDocument | None = None
 
     @property

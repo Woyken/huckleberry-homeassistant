@@ -25,6 +25,7 @@ from huckleberry_api.firebase_types import (
     ActivityMode,
     BottleType,
     FeedSide,
+    FirebaseActivityDocumentData,
     FirebaseChildDocument,
     FirebaseCuratedFoodDocument,
     FirebaseCustomFoodTypeDocument,
@@ -974,6 +975,10 @@ class HuckleberryDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Huckleber
                 self._realtime_data[uid].pump_status = data
                 self.hass.loop.call_soon_threadsafe(self.async_set_updated_data, dict(self._realtime_data))
 
+            def activity_callback(data: FirebaseActivityDocumentData, uid: str = child_uid) -> None:
+                self._realtime_data[uid].activity_status = data
+                self.hass.loop.call_soon_threadsafe(self.async_set_updated_data, dict(self._realtime_data))
+
             def child_callback(data: FirebaseChildDocument, uid: str = child_uid) -> None:
                 self._realtime_data[uid].child_document = data
                 self.hass.loop.call_soon_threadsafe(self.async_set_updated_data, dict(self._realtime_data))
@@ -983,6 +988,7 @@ class HuckleberryDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Huckleber
             await self.api.setup_health_listener(child_uid, health_callback)
             await self.api.setup_diaper_listener(child_uid, diaper_callback)
             await self.api.setup_pump_listener(child_uid, pump_callback)
+            await self.api.setup_activity_listener(child_uid, activity_callback)
             await self.api.setup_child_listener(child_uid, child_callback)
 
     async def _async_update_data(self) -> dict[str, HuckleberryChildState]:
@@ -1023,6 +1029,11 @@ class HuckleberryDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Huckleber
         """Return the current diaper document for a child."""
         state = self.get_state(child_uid)
         return state.diaper_status if state is not None else None
+
+    def get_activity_status(self, child_uid: str) -> FirebaseActivityDocumentData | None:
+        """Return the current activities document for a child."""
+        state = self.get_state(child_uid)
+        return state.activity_status if state is not None else None
 
     def get_child_document(self, child_uid: str) -> FirebaseChildDocument | None:
         """Return the current child document for a child."""
