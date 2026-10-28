@@ -232,6 +232,31 @@ async def test_activity_timer_sensor_previous_session(
     assert state.attributes["previous_duration"] == "PT2M"
 
 
+async def test_activity_timer_previous_session_uses_completion_time(
+    hass: HomeAssistant,
+    activity_callback,
+):
+    """A long session that ends later wins over a shorter, later start."""
+    activity_callback(
+        FirebaseActivityDocumentData(
+            prefs=FirebaseActivityPrefs(
+                lastBath=FirebaseLastActivityData(start=1700000000, duration=3600),
+                lastStoryTime=FirebaseLastActivityData(
+                    start=1700001800,
+                    duration=300,
+                ),
+            ),
+        )
+    )
+    await hass.async_block_till_done()
+
+    state = hass.states.get("sensor.test_child_activity")
+    assert state is not None
+    assert state.attributes["previous_mode"] == "Bath"
+    assert state.attributes["previous_start"] == _expected_time(1700000000)
+    assert state.attributes["previous_duration"] == "PT1H"
+
+
 async def test_user_disabled_activity_sensor_stays_disabled(
     hass: HomeAssistant,
     activity_callback,
