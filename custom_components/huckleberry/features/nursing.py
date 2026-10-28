@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Final
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.components.switch import SwitchEntity
@@ -11,13 +10,12 @@ from huckleberry_api import HuckleberryAPI
 from huckleberry_api.firebase_types import FeedSide
 
 from .. import HuckleberryDataUpdateCoordinator
+from ..const import TIMER_STATE_OPTIONS
 from ..entity import HuckleberryBaseEntity
 from ..models import HuckleberryChildProfile
 from ..timestamps import as_iso8601_datetime, as_iso8601_duration
 
 _LOGGER = logging.getLogger(__name__)
-
-FEED_STATE_OPTIONS: Final[list[str]] = ["active", "paused", "none"]
 
 
 def build_nursing_sensors(
@@ -46,7 +44,7 @@ class HuckleberryNursingSensor(HuckleberryBaseEntity, SensorEntity):
 
     _attr_icon = "mdi:baby-bottle"
     _attr_device_class = SensorDeviceClass.ENUM
-    _attr_options = FEED_STATE_OPTIONS
+    _attr_options = list(TIMER_STATE_OPTIONS)
     _attr_translation_key = "nursing"
 
     def __init__(self, coordinator: HuckleberryDataUpdateCoordinator, child: HuckleberryChildProfile) -> None:

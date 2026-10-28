@@ -1,16 +1,13 @@
 """Pumping-related entities for Huckleberry."""
 from __future__ import annotations
 
-from typing import Final
-
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 
 from .. import HuckleberryDataUpdateCoordinator
+from ..const import TIMER_STATE_OPTIONS
 from ..entity import HuckleberryBaseEntity
 from ..models import HuckleberryChildProfile
 from ..timestamps import as_iso8601_datetime, as_iso8601_duration
-
-PUMP_STATE_OPTIONS: Final[list[str]] = ["active", "paused", "none"]
 
 
 def build_pumping_sensors(
@@ -29,7 +26,7 @@ class HuckleberryPumpingSensor(HuckleberryBaseEntity, SensorEntity):
 
     _attr_icon = "mdi:mother-nurse"
     _attr_device_class = SensorDeviceClass.ENUM
-    _attr_options = PUMP_STATE_OPTIONS
+    _attr_options = list(TIMER_STATE_OPTIONS)
     _attr_translation_key = "pumping"
 
     def __init__(self, coordinator: HuckleberryDataUpdateCoordinator, child: HuckleberryChildProfile) -> None:

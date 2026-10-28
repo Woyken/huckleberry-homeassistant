@@ -19,7 +19,7 @@ from huckleberry_api.firebase_types import (
 )
 
 from .. import HuckleberryDataUpdateCoordinator
-from ..const import DOMAIN
+from ..const import DOMAIN, TIMER_STATE_OPTIONS
 from ..entity import HuckleberryBaseEntity
 from ..models import HuckleberryChildProfile
 from ..timestamps import as_datetime, as_iso8601_datetime, as_iso8601_duration
@@ -57,7 +57,6 @@ ACTIVITY_LABELS: Final[dict[ActivityMode, str]] = {
     "storyTime": "Story Time",
     "tummyTime": "Tummy Time",
 }
-ACTIVITY_STATE_OPTIONS: Final[list[str]] = ["active", "paused", "none"]
 
 
 def _last_activity(
@@ -217,7 +216,7 @@ class HuckleberryActivityTimerSensor(HuckleberryBaseEntity, SensorEntity):
 
     _attr_icon = "mdi:timer"
     _attr_device_class = SensorDeviceClass.ENUM
-    _attr_options = ACTIVITY_STATE_OPTIONS
+    _attr_options = list(TIMER_STATE_OPTIONS)
     _attr_entity_registry_enabled_default = True
     _attr_translation_key = "activity"
 

@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Final
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.components.switch import SwitchEntity
@@ -10,13 +9,12 @@ from homeassistant.components.switch import SwitchEntity
 from huckleberry_api import HuckleberryAPI
 
 from .. import HuckleberryDataUpdateCoordinator
+from ..const import TIMER_STATE_OPTIONS
 from ..entity import HuckleberryBaseEntity
 from ..models import HuckleberryChildProfile
 from ..timestamps import as_iso8601_datetime, as_iso8601_duration
 
 _LOGGER = logging.getLogger(__name__)
-
-SLEEP_STATE_OPTIONS: Final[list[str]] = ["active", "paused", "none"]
 
 
 def build_sleep_sensors(
@@ -41,7 +39,7 @@ class HuckleberrySleepSensor(HuckleberryBaseEntity, SensorEntity):
 
     _attr_icon = "mdi:sleep"
     _attr_device_class = SensorDeviceClass.ENUM
-    _attr_options = SLEEP_STATE_OPTIONS
+    _attr_options = list(TIMER_STATE_OPTIONS)
     _attr_translation_key = "sleep"
 
     def __init__(self, coordinator: HuckleberryDataUpdateCoordinator, child: HuckleberryChildProfile) -> None:
