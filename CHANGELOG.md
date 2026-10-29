@@ -4,6 +4,15 @@ All notable changes to the Huckleberry integration are recorded in this file. Fr
 
 <!-- towncrier release notes start -->
 
+# Huckleberry 0.5.7 (2026-10-29)
+
+## Added
+
+- Show pump, activity, medication, temperature, potty, and fuller event details in each child's calendar. (#81)
+- Add an optional `start_time` to the `huckleberry.log_activity` service so activities can be logged after the fact. (#83)
+- Add activity timer and last-completed-session sensors for bath, brush teeth, indoor play, outdoor play, screen time, skin to skin, story time, and tummy time, with each activity mode sensor disabled until that mode has a recorded session. (#84)
+
+
 # Huckleberry 0.5.6 (2026-10-25)
 
 ## Added
