@@ -154,17 +154,17 @@ gh pr checks PR_NUMBER --watch --interval 10
 
 Do not merge while a check is pending, skipped unexpectedly, cancelled, or failed. The expected checks include tests, Ruff, Ty, hassfest, HACS, and any repository security checks.
 
-After every reported check passes, merge using a merge commit and delete the remote branch:
+After every reported check passes, merge the PR with the method the repository allows and delete the remote branch:
 
 ```bash
-gh pr merge PR_NUMBER --merge --delete-branch
+gh pr merge PR_NUMBER --delete-branch
 gh pr view PR_NUMBER --json state,mergedAt,mergeCommit,url
 git switch main
 git pull --ff-only origin main
 git status --short --branch
 ```
 
-The release tag must point to the merge commit on `main`, not the release branch commit.
+The release tag must point to the merged release commit on `main`, not the release branch commit.
 
 ## 6. Write the HACS release notes
 
@@ -205,7 +205,7 @@ Save the final body to a temporary Markdown file such as `/tmp/release-vX.Y.Z.md
 
 ## 7. Publish and verify the GitHub release
 
-Read the merge commit SHA from the merged PR, then publish a non-draft, non-prerelease release:
+Read the merged commit SHA from the merged PR, then publish a non-draft, non-prerelease release:
 
 ```bash
 MERGE_SHA=$(gh pr view PR_NUMBER --json mergeCommit --jq '.mergeCommit.oid')
@@ -229,13 +229,13 @@ git status --short --branch
 The release is complete only when:
 
 - The release PR is merged and every PR check passed.
-- The `vX.Y.Z` tag points to the PR merge commit on `main`.
+- The `vX.Y.Z` tag points to the merged release commit on `main`.
 - The GitHub release is published, not a draft or prerelease.
 - The release body contains the reviewed manual notes that HACS users will see.
 - The local worktree is clean on `main`.
 
 ## Beta channel
 
-Every merge to `main` triggers the `Beta release` workflow, which runs the checks and publishes a beta prerelease tagged `v<next patch>-beta.<YYYYMMDD>.<run number>`. Its notes are rendered from the accumulated `changelog.d/` fragments. Betas don't commit to `main`: the tag points at the merge commit and the bumped manifest lives only in the shipped zip.
+Every merge to `main` triggers the `Beta release` workflow, which runs the checks and publishes a beta prerelease tagged `v<next patch>-beta.<YYYYMMDD>.<run number>`. Its notes are rendered from the accumulated `changelog.d/` fragments. Betas don't commit to `main`: the tag points at the commit on `main` and the bumped manifest lives only in the shipped zip.
 
 HACS offers betas to users who enable "Show beta versions". A stable release published with `--latest` supersedes them; beta tags are left in place.
