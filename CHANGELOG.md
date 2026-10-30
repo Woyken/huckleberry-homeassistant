@@ -4,6 +4,17 @@ All notable changes to the Huckleberry integration are recorded in this file. Fr
 
 <!-- towncrier release notes start -->
 
+# Huckleberry 0.5.8 (2026-10-30)
+
+## Fixed
+
+- Require `google-api-core>=2.28.0` so the integration loads with recent `google-cloud-firestore` releases. (#88)
+
+## Other
+
+- #86
+
+
 # Huckleberry 0.5.7 (2026-10-29)
 
 ## Added
