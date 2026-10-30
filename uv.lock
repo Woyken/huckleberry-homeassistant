@@ -1284,6 +1284,7 @@ name = "huckleberry-homeassistant"
 version = "0.5.7"
 source = { virtual = "." }
 dependencies = [
+    { name = "google-api-core" },
     { name = "huckleberry-api" },
 ]
 
@@ -1299,7 +1300,10 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "huckleberry-api", specifier = "==0.4.9" }]
+requires-dist = [
+    { name = "google-api-core", specifier = ">=2.28.0" },
+    { name = "huckleberry-api", specifier = "==0.4.9" },
+]
 
 [package.metadata.requires-dev]
 dev = [
