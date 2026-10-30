@@ -4,6 +4,13 @@ All notable changes to the Huckleberry integration are recorded in this file. Fr
 
 <!-- towncrier release notes start -->
 
+# Huckleberry 0.5.9 (2026-10-30)
+
+## Fixed
+
+- Update `huckleberry-api` to 0.4.11, which requires `google-api-core>=2.28.0` and normalizes legacy millisecond feed start times. (#90)
+
+
 # Huckleberry 0.5.8 (2026-10-30)
 
 ## Fixed
