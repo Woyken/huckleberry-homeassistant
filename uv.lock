@@ -1266,17 +1266,18 @@ wheels = [
 
 [[package]]
 name = "huckleberry-api"
-version = "0.4.9"
+version = "0.4.11"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
+    { name = "google-api-core" },
     { name = "google-cloud-firestore" },
     { name = "pydantic" },
     { name = "tzdata" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0b/d4/a9f72f84519a1f2288a965e584f706a0561fc2962dd793e71aa5bc6b33cb/huckleberry_api-0.4.9.tar.gz", hash = "sha256:758680410c6537e0a2f0006a99fe1656cdc48efddfa719fb1b039f3fed80db9f", size = 34382, upload-time = "2026-10-22T04:11:30.186Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/55/fe/3143a33154cf21bd6393f5946b2838cc778d8b0704657dcd2e7fc575cb66/huckleberry_api-0.4.11.tar.gz", hash = "sha256:8e2d843b193a4ffc622e1deed9cb4cd0d2cb14338111c0cd75b955a4107930ad", size = 35116, upload-time = "2026-10-30T06:19:31.999Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fd/ed/339ba1a4aa56ee39281d7fe4fdf48c9fec962808766c61cc4b08042304c2/huckleberry_api-0.4.9-py3-none-any.whl", hash = "sha256:735661fffd1e653a589888d2944774d74890f411ec1a45a2c387ef41a2901c61", size = 34833, upload-time = "2026-10-22T04:11:28.625Z" },
+    { url = "https://files.pythonhosted.org/packages/e8/66/cbee5f8168b3e20eef332018a93fdc240a04a236ed85e25ddba1967718e5/huckleberry_api-0.4.11-py3-none-any.whl", hash = "sha256:1a20cc35c054e3ca2793c38aad6eb4fc6385baa7e59c9b0034f841819b805569", size = 35587, upload-time = "2026-10-30T06:19:30.781Z" },
 ]
 
 [[package]]
@@ -1284,7 +1285,6 @@ name = "huckleberry-homeassistant"
 version = "0.5.8"
 source = { virtual = "." }
 dependencies = [
-    { name = "google-api-core" },
     { name = "huckleberry-api" },
 ]
 
@@ -1300,10 +1300,7 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [
-    { name = "google-api-core", specifier = ">=2.28.0" },
-    { name = "huckleberry-api", specifier = "==0.4.9" },
-]
+requires-dist = [{ name = "huckleberry-api", specifier = "==0.4.11" }]
 
 [package.metadata.requires-dev]
 dev = [
