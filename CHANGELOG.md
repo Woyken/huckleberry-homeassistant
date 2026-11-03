@@ -4,6 +4,13 @@ All notable changes to the Huckleberry integration are recorded in this file. Fr
 
 <!-- towncrier release notes start -->
 
+# Huckleberry 0.5.10 (2026-11-03)
+
+## Added
+
+- Add `huckleberry.log_temperature` service for logging body-temperature readings. (#93)
+
+
 # Huckleberry 0.5.9 (2026-10-30)
 
 ## Fixed
