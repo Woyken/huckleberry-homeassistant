@@ -282,6 +282,31 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
         notes="Slight fever",
     )
 
+    # A future temperature time is rejected without calling the API
+    mock_huckleberry_api.log_temperature.reset_mock()
+    with pytest.raises(ServiceValidationError):
+        await hass.services.async_call(
+            DOMAIN,
+            "log_temperature",
+            {
+                "device_id": device.id,
+                "amount": 37.2,
+                "start_time": "2999-01-01T00:00:00+00:00",
+            },
+            blocking=True,
+        )
+    mock_huckleberry_api.log_temperature.assert_not_called()
+
+    # A non-finite amount is rejected without calling the API
+    with pytest.raises(Exception):
+        await hass.services.async_call(
+            DOMAIN,
+            "log_temperature",
+            {"device_id": device.id, "amount": float("nan")},
+            blocking=True,
+        )
+    mock_huckleberry_api.log_temperature.assert_not_called()
+
     # Test log_bottle
     await hass.services.async_call(
         DOMAIN, "log_bottle", {"device_id": device.id, "amount": 4.0, "bottle_type": "formula", "units": "oz"}, blocking=True

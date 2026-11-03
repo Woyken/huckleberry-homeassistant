@@ -591,6 +591,9 @@
     "invalid_nursing_end_time": {
       "message": "The nursing end time cannot be in the future."
     },
+    "invalid_temperature_start_time": {
+      "message": "The temperature time cannot be in the future."
+    },
     "invalid_timer_interval": {
       "message": "The timer times are invalid: {error}"
     }

@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 import logging
+import math
 from datetime import UTC, datetime, timedelta
 from typing import Final, Literal, TypedDict, cast, get_args
 
@@ -237,6 +238,13 @@ def _growth_units_value(value: object) -> GrowthUnits:
     return cast(GrowthUnits, string_value)
 
 
+def _finite_float(value: float) -> float:
+    """Return the value only when it is finite."""
+    if not math.isfinite(value):
+        raise vol.Invalid("Value must be a finite number")
+    return value
+
+
 def _temperature_units_value(value: object) -> TemperatureUnits:
     """Return a validated temperature units literal from service data."""
     string_value = _string_value(value)
@@ -430,7 +438,7 @@ def _build_service_method_schema(
         schema[vol.Optional("head")] = vol.Coerce(float)
         schema[vol.Optional("units", default="metric")] = vol.In(("metric", "imperial"))
     if include_temperature:
-        schema[vol.Required("amount")] = vol.Coerce(float)
+        schema[vol.Required("amount")] = vol.All(vol.Coerce(float), _finite_float)
         schema[vol.Optional("units", default="C")] = vol.In(TEMPERATURE_UNIT_OPTIONS)
         schema[vol.Optional("start_time")] = cv.datetime
         schema[vol.Optional("notes")] = cv.string
@@ -797,6 +805,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     async def handle_log_temperature(call: ServiceCall) -> None:
         start_time = cast(datetime | None, call.data.get("start_time"))
+        if start_time is not None and _utc_datetime(start_time) > _utc_datetime(dt_util.now()):
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="invalid_temperature_start_time",
+            )
         await api_client.log_temperature(
             _target_child(call),
             start_time=dt_util.as_local(start_time) if start_time is not None else dt_util.now(),
