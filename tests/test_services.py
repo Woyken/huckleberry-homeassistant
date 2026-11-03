@@ -249,6 +249,64 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
         units="metric",
     )
 
+    # Test log_temperature with defaults
+    await hass.services.async_call(
+        DOMAIN, "log_temperature", {"device_id": device.id, "amount": 37.2}, blocking=True
+    )
+    mock_huckleberry_api.log_temperature.assert_called_with(
+        "test_child_uid",
+        start_time=ANY,
+        amount=37.2,
+        units="C",
+        notes=None,
+    )
+
+    # Test log_temperature with explicit units, start time, and notes
+    await hass.services.async_call(
+        DOMAIN,
+        "log_temperature",
+        {
+            "device_id": device.id,
+            "amount": 99.1,
+            "units": "F",
+            "start_time": "2026-01-02T03:04:05+00:00",
+            "notes": "Slight fever",
+        },
+        blocking=True,
+    )
+    mock_huckleberry_api.log_temperature.assert_called_with(
+        "test_child_uid",
+        start_time=datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC),
+        amount=99.1,
+        units="F",
+        notes="Slight fever",
+    )
+
+    # A future temperature time is rejected without calling the API
+    mock_huckleberry_api.log_temperature.reset_mock()
+    with pytest.raises(ServiceValidationError):
+        await hass.services.async_call(
+            DOMAIN,
+            "log_temperature",
+            {
+                "device_id": device.id,
+                "amount": 37.2,
+                "start_time": "2999-01-01T00:00:00+00:00",
+            },
+            blocking=True,
+        )
+    mock_huckleberry_api.log_temperature.assert_not_called()
+
+    # A non-finite amount is rejected without calling the API
+    with pytest.raises(Exception):
+        await hass.services.async_call(
+            DOMAIN,
+            "log_temperature",
+            {"device_id": device.id, "amount": float("nan")},
+            blocking=True,
+        )
+    mock_huckleberry_api.log_temperature.assert_not_called()
+
     # Test log_bottle
     await hass.services.async_call(
         DOMAIN, "log_bottle", {"device_id": device.id, "amount": 4.0, "bottle_type": "formula", "units": "oz"}, blocking=True

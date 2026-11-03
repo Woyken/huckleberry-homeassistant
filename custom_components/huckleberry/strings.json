@@ -487,6 +487,32 @@
         }
       }
     },
+    "log_temperature": {
+      "name": "Log temperature",
+      "description": "Log a body-temperature measurement.",
+      "fields": {
+        "device_id": {
+          "name": "Child device",
+          "description": "Select child device"
+        },
+        "amount": {
+          "name": "Temperature",
+          "description": "Body-temperature measurement."
+        },
+        "units": {
+          "name": "Temperature units",
+          "description": "Unit for the temperature measurement."
+        },
+        "start_time": {
+          "name": "Start time",
+          "description": "When the temperature was measured. Defaults to now."
+        },
+        "notes": {
+          "name": "Notes",
+          "description": "Optional notes about this temperature reading"
+        }
+      }
+    },
     "log_bottle": {
       "name": "Log bottle feeding",
       "description": "Log a bottle feeding with amount and type.",
@@ -564,6 +590,9 @@
     },
     "invalid_nursing_end_time": {
       "message": "The nursing end time cannot be in the future."
+    },
+    "invalid_temperature_start_time": {
+      "message": "The temperature time cannot be in the future."
     },
     "invalid_timer_interval": {
       "message": "The timer times are invalid: {error}"

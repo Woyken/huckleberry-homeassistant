@@ -684,6 +684,49 @@ log_growth:
             - metric
             - imperial
 
+log_temperature:
+  name: Log Temperature
+  description: Log a body-temperature measurement.
+  fields:
+    device_id:
+      name: Child device
+      description: Select child device
+      required: true
+      selector:
+        device:
+          integration: huckleberry
+    amount:
+      name: Temperature
+      description: Body-temperature measurement.
+      example: 37.2
+      required: true
+      selector:
+        number:
+          step: 0.1
+          mode: box
+    units:
+      name: Temperature units
+      description: Unit for the temperature measurement.
+      default: C
+      required: false
+      selector:
+        select:
+          options:
+            - C
+            - F
+    start_time:
+      name: Start time
+      description: When the temperature was measured. Defaults to now.
+      required: false
+      selector:
+        datetime:
+    notes:
+      name: Notes
+      description: Optional notes about this temperature reading
+      required: false
+      selector:
+        text:
+
 log_bottle:
   name: Log Bottle Feeding
   description: Log a bottle feeding with amount and type.

@@ -113,6 +113,9 @@ All services support device selection for easy use in automations:
 ### Growth Tracking
 - `huckleberry.log_growth`
 
+### Temperature Tracking
+- `huckleberry.log_temperature` - Log a body-temperature reading in Celsius or Fahrenheit with optional start time and notes
+
 ## Calendar
 
 Each child gets a calendar entity that displays all historical events:
