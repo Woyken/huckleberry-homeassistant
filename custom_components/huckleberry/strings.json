@@ -57,12 +57,6 @@
         "oz": "oz"
       }
     },
-    "temperature_units": {
-      "options": {
-        "C": "Celsius",
-        "F": "Fahrenheit"
-      }
-    },
     "solids_reaction": {
       "options": {
         "loved": "Loved",

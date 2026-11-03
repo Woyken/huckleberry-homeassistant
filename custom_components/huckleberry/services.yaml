@@ -711,7 +711,6 @@ log_temperature:
       required: false
       selector:
         select:
-          translation_key: temperature_units
           options:
             - C
             - F
