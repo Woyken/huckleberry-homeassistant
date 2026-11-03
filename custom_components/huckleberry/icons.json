@@ -23,6 +23,7 @@
     "log_potty_dry": { "service": "mdi:toilet" },
 
     "log_growth": { "service": "mdi:ruler" },
+    "log_temperature": { "service": "mdi:thermometer" },
     "log_bottle": { "service": "mdi:baby-bottle-outline" }
   }
 }

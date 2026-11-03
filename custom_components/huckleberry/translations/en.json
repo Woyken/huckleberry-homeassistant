@@ -57,6 +57,12 @@
         "oz": "oz"
       }
     },
+    "temperature_units": {
+      "options": {
+        "C": "Celsius",
+        "F": "Fahrenheit"
+      }
+    },
     "solids_reaction": {
       "options": {
         "loved": "Loved",
@@ -484,6 +490,32 @@
         "units": {
           "name": "Measurement units",
           "description": "Unit system for measurements"
+        }
+      }
+    },
+    "log_temperature": {
+      "name": "Log temperature",
+      "description": "Log a body-temperature measurement.",
+      "fields": {
+        "device_id": {
+          "name": "Child device",
+          "description": "Select child device"
+        },
+        "amount": {
+          "name": "Temperature",
+          "description": "Body-temperature measurement."
+        },
+        "units": {
+          "name": "Temperature units",
+          "description": "Unit for the temperature measurement."
+        },
+        "start_time": {
+          "name": "Start time",
+          "description": "When the temperature was measured. Defaults to now."
+        },
+        "notes": {
+          "name": "Notes",
+          "description": "Optional notes about this temperature reading"
         }
       }
     },

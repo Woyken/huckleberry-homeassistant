@@ -39,6 +39,7 @@ from huckleberry_api.firebase_types import (
     PooColor,
     PooConsistency,
     SolidsReaction,
+    TemperatureUnits,
 )
 from huckleberry_api.models import SolidsFoodReference
 
@@ -77,6 +78,7 @@ SOLIDS_REACTION_LABELS: Final[dict[str, SolidsReaction]] = {
 }
 SOLIDS_REACTION_OPTIONS: Final[tuple[str, ...]] = tuple(SOLIDS_REACTION_LABELS)
 ACTIVITY_MODE_OPTIONS: Final[tuple[str, ...]] = tuple(get_args(ActivityMode))
+TEMPERATURE_UNIT_OPTIONS: Final[tuple[str, ...]] = tuple(get_args(TemperatureUnits))
 DiaperAmount = Literal["little", "medium", "big"]
 GrowthUnits = Literal["metric", "imperial"]
 BottleUnits = Literal["ml", "oz"]
@@ -235,6 +237,14 @@ def _growth_units_value(value: object) -> GrowthUnits:
     return cast(GrowthUnits, string_value)
 
 
+def _temperature_units_value(value: object) -> TemperatureUnits:
+    """Return a validated temperature units literal from service data."""
+    string_value = _string_value(value)
+    if string_value is None:
+        return "C"
+    return cast(TemperatureUnits, string_value)
+
+
 def _bottle_units_value(value: object) -> BottleUnits:
     """Return a validated bottle units literal from service data."""
     string_value = _string_value(value)
@@ -388,6 +398,7 @@ def _build_service_method_schema(
     *,
     include_side: bool = False,
     include_growth: bool = False,
+    include_temperature: bool = False,
     include_bottle: bool = False,
     include_diaper_fields: bool = False,
     include_solids: bool = False,
@@ -418,6 +429,11 @@ def _build_service_method_schema(
         schema[vol.Optional("height")] = vol.Coerce(float)
         schema[vol.Optional("head")] = vol.Coerce(float)
         schema[vol.Optional("units", default="metric")] = vol.In(("metric", "imperial"))
+    if include_temperature:
+        schema[vol.Required("amount")] = vol.Coerce(float)
+        schema[vol.Optional("units", default="C")] = vol.In(TEMPERATURE_UNIT_OPTIONS)
+        schema[vol.Optional("start_time")] = cv.datetime
+        schema[vol.Optional("notes")] = cv.string
     if include_bottle:
         schema[vol.Optional("start_time")] = cv.datetime
         schema[vol.Required("amount")] = vol.Coerce(float)
@@ -779,6 +795,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
         await coordinator.async_request_refresh()
 
+    async def handle_log_temperature(call: ServiceCall) -> None:
+        start_time = cast(datetime | None, call.data.get("start_time"))
+        await api_client.log_temperature(
+            _target_child(call),
+            start_time=dt_util.as_local(start_time) if start_time is not None else dt_util.now(),
+            amount=cast(float, call.data["amount"]),
+            units=_temperature_units_value(call.data.get("units")),
+            notes=_string_value(call.data.get("notes")),
+        )
+
     async def handle_log_bottle(call: ServiceCall) -> None:
         start_time = cast(datetime | None, call.data.get("start_time"))
         await api_client.log_bottle(
@@ -886,6 +912,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "log_growth",
         handle_log_growth,
         schema=_build_service_method_schema(include_growth=True),
+    )
+    hass.services.async_register(
+        DOMAIN,
+        "log_temperature",
+        handle_log_temperature,
+        schema=_build_service_method_schema(include_temperature=True),
     )
     hass.services.async_register(
         DOMAIN,
