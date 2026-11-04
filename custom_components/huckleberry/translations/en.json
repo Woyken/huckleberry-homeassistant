@@ -265,10 +265,6 @@
           "name": "Child device",
           "description": "Select child device"
         },
-        "start_time": {
-          "name": "Event date and time",
-          "description": "Date and time when the event occurred (defaults to now)"
-        },
         "pee_amount": {
           "name": "Pee amount",
           "description": "Amount of pee (shows indicator in app)"
@@ -290,10 +286,6 @@
         "device_id": {
           "name": "Child device",
           "description": "Select child device"
-        },
-        "start_time": {
-          "name": "Event date and time",
-          "description": "Date and time when the event occurred (defaults to now)"
         },
         "poo_amount": {
           "name": "Poo amount",
@@ -324,10 +316,6 @@
         "device_id": {
           "name": "Child device",
           "description": "Select child device"
-        },
-        "start_time": {
-          "name": "Event date and time",
-          "description": "Date and time when the event occurred (defaults to now)"
         },
         "pee_amount": {
           "name": "Pee amount",
@@ -363,10 +351,6 @@
           "name": "Child device",
           "description": "Select child device"
         },
-        "start_time": {
-          "name": "Event date and time",
-          "description": "Date and time when the event occurred (defaults to now)"
-        },
         "diaper_rash": {
           "name": "Diaper rash",
           "description": "Baby has diaper rash"
@@ -384,10 +368,6 @@
         "device_id": {
           "name": "Child device",
           "description": "Select child device"
-        },
-        "start_time": {
-          "name": "Event date and time",
-          "description": "Date and time when the event occurred (defaults to now)"
         },
         "pee_amount": {
           "name": "Pee amount",
@@ -410,10 +390,6 @@
         "device_id": {
           "name": "Child device",
           "description": "Select child device"
-        },
-        "start_time": {
-          "name": "Event date and time",
-          "description": "Date and time when the event occurred (defaults to now)"
         },
         "poo_amount": {
           "name": "Poo amount",
@@ -444,10 +420,6 @@
         "device_id": {
           "name": "Child device",
           "description": "Select child device"
-        },
-        "start_time": {
-          "name": "Event date and time",
-          "description": "Date and time when the event occurred (defaults to now)"
         },
         "pee_amount": {
           "name": "Pee amount",
@@ -483,10 +455,6 @@
           "name": "Child device",
           "description": "Select child device"
         },
-        "start_time": {
-          "name": "Event date and time",
-          "description": "Date and time when the event occurred (defaults to now)"
-        },
         "notes": {
           "name": "Notes",
           "description": "Optional notes about this potty entry"
@@ -516,6 +484,32 @@
         "units": {
           "name": "Measurement units",
           "description": "Unit system for measurements"
+        }
+      }
+    },
+    "log_temperature": {
+      "name": "Log temperature",
+      "description": "Log a body-temperature measurement.",
+      "fields": {
+        "device_id": {
+          "name": "Child device",
+          "description": "Select child device"
+        },
+        "amount": {
+          "name": "Temperature",
+          "description": "Body-temperature measurement."
+        },
+        "units": {
+          "name": "Temperature units",
+          "description": "Unit for the temperature measurement."
+        },
+        "start_time": {
+          "name": "Start time",
+          "description": "When the temperature was measured. Defaults to now."
+        },
+        "notes": {
+          "name": "Notes",
+          "description": "Optional notes about this temperature reading"
         }
       }
     },
@@ -549,26 +543,6 @@
         }
       }
     },
-    "log_activity": {
-      "name": "Log activity",
-      "description": "Log an activity session.",
-      "fields": {
-        "start_time": {
-          "name": "Event date and time",
-          "description": "Date and time when the event occurred (defaults to now)"
-        }
-      }
-    },
-    "log_pump": {
-      "name": "Log pump",
-      "description": "Log a pumping session.",
-      "fields": {
-        "start_time": {
-          "name": "Event date and time",
-          "description": "Date and time when the event occurred (defaults to now)"
-        }
-      }
-    },
     "log_solids": {
       "name": "Log solids",
       "description": "Log a solid food meal with one or more foods.",
@@ -576,10 +550,6 @@
         "device_id": {
           "name": "Child device",
           "description": "Select child device"
-        },
-        "start_time": {
-          "name": "Event date and time",
-          "description": "Date and time when the event occurred (defaults to now)"
         },
         "foods": {
           "name": "Foods",
@@ -620,6 +590,9 @@
     },
     "invalid_nursing_end_time": {
       "message": "The nursing end time cannot be in the future."
+    },
+    "invalid_temperature_start_time": {
+      "message": "The temperature time cannot be in the future."
     },
     "invalid_timer_interval": {
       "message": "The timer times are invalid: {error}"
@@ -909,6 +882,122 @@
           },
           "previous_units": {
             "name": "Previous units"
+          }
+        }
+      },
+      "activity_bath": {
+        "name": "Bath",
+        "state_attributes": {
+          "time": {
+            "name": "Time"
+          },
+          "duration": {
+            "name": "Duration"
+          }
+        }
+      },
+      "activity_brush_teeth": {
+        "name": "Brush Teeth",
+        "state_attributes": {
+          "time": {
+            "name": "Time"
+          },
+          "duration": {
+            "name": "Duration"
+          }
+        }
+      },
+      "activity_indoor_play": {
+        "name": "Indoor Play",
+        "state_attributes": {
+          "time": {
+            "name": "Time"
+          },
+          "duration": {
+            "name": "Duration"
+          }
+        }
+      },
+      "activity_outdoor_play": {
+        "name": "Outdoor Play",
+        "state_attributes": {
+          "time": {
+            "name": "Time"
+          },
+          "duration": {
+            "name": "Duration"
+          }
+        }
+      },
+      "activity_screen_time": {
+        "name": "Screen Time",
+        "state_attributes": {
+          "time": {
+            "name": "Time"
+          },
+          "duration": {
+            "name": "Duration"
+          }
+        }
+      },
+      "activity_skin_to_skin": {
+        "name": "Skin to Skin",
+        "state_attributes": {
+          "time": {
+            "name": "Time"
+          },
+          "duration": {
+            "name": "Duration"
+          }
+        }
+      },
+      "activity_story_time": {
+        "name": "Story Time",
+        "state_attributes": {
+          "time": {
+            "name": "Time"
+          },
+          "duration": {
+            "name": "Duration"
+          }
+        }
+      },
+      "activity_tummy_time": {
+        "name": "Tummy Time",
+        "state_attributes": {
+          "time": {
+            "name": "Time"
+          },
+          "duration": {
+            "name": "Duration"
+          }
+        }
+      },
+      "activity": {
+        "name": "Activity",
+        "state": {
+          "active": "Active",
+          "paused": "Paused",
+          "none": "None"
+        },
+        "state_attributes": {
+          "current_mode": {
+            "name": "Current mode"
+          },
+          "current_start": {
+            "name": "Current start"
+          },
+          "current_end": {
+            "name": "Current end"
+          },
+          "previous_mode": {
+            "name": "Previous mode"
+          },
+          "previous_start": {
+            "name": "Previous start"
+          },
+          "previous_duration": {
+            "name": "Previous duration"
           }
         }
       }

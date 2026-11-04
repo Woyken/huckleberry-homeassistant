@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 import logging
+import math
 from datetime import UTC, datetime, timedelta
 from typing import Final, Literal, TypedDict, cast, get_args
 
@@ -25,6 +26,7 @@ from huckleberry_api.firebase_types import (
     ActivityMode,
     BottleType,
     FeedSide,
+    FirebaseActivityDocumentData,
     FirebaseChildDocument,
     FirebaseCuratedFoodDocument,
     FirebaseCustomFoodTypeDocument,
@@ -38,6 +40,7 @@ from huckleberry_api.firebase_types import (
     PooColor,
     PooConsistency,
     SolidsReaction,
+    TemperatureUnits,
 )
 from huckleberry_api.models import SolidsFoodReference
 
@@ -76,6 +79,7 @@ SOLIDS_REACTION_LABELS: Final[dict[str, SolidsReaction]] = {
 }
 SOLIDS_REACTION_OPTIONS: Final[tuple[str, ...]] = tuple(SOLIDS_REACTION_LABELS)
 ACTIVITY_MODE_OPTIONS: Final[tuple[str, ...]] = tuple(get_args(ActivityMode))
+TEMPERATURE_UNIT_OPTIONS: Final[tuple[str, ...]] = tuple(get_args(TemperatureUnits))
 DiaperAmount = Literal["little", "medium", "big"]
 GrowthUnits = Literal["metric", "imperial"]
 BottleUnits = Literal["ml", "oz"]
@@ -188,14 +192,6 @@ def _string_value(value: object) -> str | None:
     return value if isinstance(value, str) else None
 
 
-def _event_start_time(call: ServiceCall) -> datetime:
-    """Return the requested event time or the current time."""
-    start_time = call.data.get("start_time")
-    if isinstance(start_time, datetime):
-        return dt_util.as_local(start_time)
-    return dt_util.now()
-
-
 def _local_datetime_value(value: object) -> datetime | None:
     """Return a service datetime in the configured time zone."""
     if not isinstance(value, datetime):
@@ -240,6 +236,21 @@ def _growth_units_value(value: object) -> GrowthUnits:
     if string_value is None:
         return "metric"
     return cast(GrowthUnits, string_value)
+
+
+def _finite_float(value: float) -> float:
+    """Return the value only when it is finite."""
+    if not math.isfinite(value):
+        raise vol.Invalid("Value must be a finite number")
+    return value
+
+
+def _temperature_units_value(value: object) -> TemperatureUnits:
+    """Return a validated temperature units literal from service data."""
+    string_value = _string_value(value)
+    if string_value is None:
+        return "C"
+    return cast(TemperatureUnits, string_value)
 
 
 def _bottle_units_value(value: object) -> BottleUnits:
@@ -391,83 +402,101 @@ async def _async_resolve_solids_food_references(
     return food_refs
 
 
-def _build_service_method_schema(
-    *,
-    include_side: bool = False,
-    include_growth: bool = False,
-    include_bottle: bool = False,
-    include_diaper_fields: bool = False,
-    include_solids: bool = False,
-    include_potty_fields: bool = False,
-    include_pump: bool = False,
-    include_activity: bool = False,
-    include_sleep_interval: bool = False,
-    include_start_time: bool = False,
-    include_timer_times: bool = False,
-    include_notes: bool = False,
-) -> vol.Schema:
-    """Create a service schema from the shared target fields."""
-    schema: dict[object, object] = {
-        vol.Required(CONF_DEVICE_ID): cv.string,
-    }
+_START_TIME_FIELDS: Final[dict[object, object]] = {
+    vol.Optional("start_time"): cv.datetime,
+}
+_TIMER_FIELDS: Final[dict[object, object]] = {
+    vol.Optional("start_time"): cv.datetime,
+    vol.Optional("end_time"): cv.datetime,
+}
+_NOTES_FIELDS: Final[dict[object, object]] = {
+    vol.Optional("notes"): cv.string,
+}
+_SIDE_FIELDS: Final[dict[object, object]] = {
+    vol.Optional("side"): vol.In(FEED_SIDE_OPTIONS),
+}
+_SLEEP_LOG_FIELDS: Final[dict[object, object]] = {
+    vol.Required("start_time"): cv.datetime,
+    vol.Required("end_time"): cv.datetime,
+    **_NOTES_FIELDS,
+}
+_DIAPER_FIELDS: Final[dict[object, object]] = {
+    vol.Optional("pee_amount"): vol.In(("little", "medium", "big")),
+    vol.Optional("poo_amount"): vol.In(("little", "medium", "big")),
+    vol.Optional("color"): vol.In(POO_COLOR_OPTIONS),
+    vol.Optional("consistency"): vol.In(POO_CONSISTENCY_OPTIONS),
+    vol.Optional("diaper_rash", default=False): cv.boolean,
+    **_NOTES_FIELDS,
+}
+_POTTY_FIELDS: Final[dict[object, object]] = {
+    vol.Optional("pee_amount"): vol.In(("little", "medium", "big")),
+    vol.Optional("poo_amount"): vol.In(("little", "medium", "big")),
+    vol.Optional("color"): vol.In(POO_COLOR_OPTIONS),
+    vol.Optional("consistency"): vol.In(POO_CONSISTENCY_OPTIONS),
+    vol.Optional("how_it_happened"): vol.In(["wentPotty", "accident", "satButDry"]),
+    **_NOTES_FIELDS,
+}
+_GROWTH_FIELDS: Final[dict[object, object]] = {
+    vol.Optional("weight"): vol.Coerce(float),
+    vol.Optional("height"): vol.Coerce(float),
+    vol.Optional("head"): vol.Coerce(float),
+    vol.Optional("units", default="metric"): vol.In(("metric", "imperial")),
+}
+_TEMPERATURE_FIELDS: Final[dict[object, object]] = {
+    vol.Required("amount"): vol.All(vol.Coerce(float), _finite_float),
+    vol.Optional("units", default="C"): vol.In(TEMPERATURE_UNIT_OPTIONS),
+    vol.Optional("start_time"): cv.datetime,
+    **_NOTES_FIELDS,
+}
+_BOTTLE_FIELDS: Final[dict[object, object]] = {
+    vol.Optional("start_time"): cv.datetime,
+    vol.Required("amount"): vol.Coerce(float),
+    vol.Required("bottle_type"): vol.In(
+        BOTTLE_TYPE_OPTIONS + BOTTLE_TYPE_LEGACY_OPTIONS
+    ),
+    vol.Optional("units", default="ml"): vol.In(("ml", "oz")),
+    **_NOTES_FIELDS,
+}
+_PUMP_FIELDS: Final[dict[object, object]] = {
+    vol.Required("total_amount"): vol.Coerce(float),
+    vol.Required("duration"): vol.Coerce(int),
+    vol.Optional("duration_unit", default="minutes"): vol.In(("minutes", "seconds")),
+    vol.Optional("units", default="ml"): vol.In(("ml", "oz")),
+}
+_ACTIVITY_FIELDS: Final[dict[object, object]] = {
+    vol.Required("mode"): vol.In(ACTIVITY_MODE_OPTIONS),
+    vol.Optional("duration"): vol.Coerce(float),
+    **_NOTES_FIELDS,
+}
+_SOLIDS_FIELDS: Final[dict[object, object]] = {
+    vol.Required("foods"): list,
+    **_NOTES_FIELDS,
+    vol.Optional("reaction"): vol.In(SOLIDS_REACTION_OPTIONS),
+}
 
-    if include_start_time:
-        schema[vol.Optional("start_time")] = cv.datetime
-    if include_side:
-        schema[vol.Optional("side")] = vol.In(FEED_SIDE_OPTIONS)
-    if include_start_time:
-        schema[vol.Optional("start_time")] = cv.datetime
-    if include_timer_times:
-        schema[vol.Optional("start_time")] = cv.datetime
-        schema[vol.Optional("end_time")] = cv.datetime
-    if include_notes:
-        schema[vol.Optional("notes")] = cv.string
-    if include_growth:
-        schema[vol.Optional("weight")] = vol.Coerce(float)
-        schema[vol.Optional("height")] = vol.Coerce(float)
-        schema[vol.Optional("head")] = vol.Coerce(float)
-        schema[vol.Optional("units", default="metric")] = vol.In(("metric", "imperial"))
-    if include_bottle:
-        schema[vol.Optional("start_time")] = cv.datetime
-        schema[vol.Required("amount")] = vol.Coerce(float)
-        schema[vol.Required("bottle_type")] = vol.In(
-            BOTTLE_TYPE_OPTIONS + BOTTLE_TYPE_LEGACY_OPTIONS
-        )
-        schema[vol.Optional("units", default="ml")] = vol.In(("ml", "oz"))
-        schema[vol.Optional("notes")] = cv.string
-    if include_diaper_fields:
-        schema[vol.Optional("pee_amount")] = vol.In(("little", "medium", "big"))
-        schema[vol.Optional("poo_amount")] = vol.In(("little", "medium", "big"))
-        schema[vol.Optional("color")] = vol.In(POO_COLOR_OPTIONS)
-        schema[vol.Optional("consistency")] = vol.In(POO_CONSISTENCY_OPTIONS)
-        schema[vol.Optional("diaper_rash", default=False)] = cv.boolean
-        schema[vol.Optional("notes")] = cv.string
-    if include_solids:
-        schema[vol.Required("foods")] = list
-        schema[vol.Optional("notes")] = cv.string
-        schema[vol.Optional("reaction")] = vol.In(SOLIDS_REACTION_OPTIONS)
-    if include_potty_fields:
-        schema[vol.Optional("pee_amount")] = vol.In(("little", "medium", "big"))
-        schema[vol.Optional("poo_amount")] = vol.In(("little", "medium", "big"))
-        schema[vol.Optional("color")] = vol.In(POO_COLOR_OPTIONS)
-        schema[vol.Optional("consistency")] = vol.In(POO_CONSISTENCY_OPTIONS)
-        schema[vol.Optional("how_it_happened")] = vol.In(["wentPotty", "accident", "satButDry"])
-        schema[vol.Optional("notes")] = cv.string
-    if include_pump:
-        schema[vol.Required("total_amount")] = vol.Coerce(float)
-        schema[vol.Required("duration")] = vol.Coerce(int)
-        schema[vol.Optional("duration_unit", default="minutes")] = vol.In(("minutes", "seconds"))
-        schema[vol.Optional("units", default="ml")] = vol.In(("ml", "oz"))
-    if include_activity:
-        schema[vol.Required("mode")] = vol.In(ACTIVITY_MODE_OPTIONS)
-        schema[vol.Optional("duration")] = vol.Coerce(float)
-        schema[vol.Optional("notes")] = cv.string
-    if include_sleep_interval:
-        schema[vol.Required("start_time")] = cv.datetime
-        schema[vol.Required("end_time")] = cv.datetime
-        schema[vol.Optional("notes")] = cv.string
 
+def _service_schema(*field_groups: dict[object, object]) -> vol.Schema:
+    """Build a service schema with the shared child target field."""
+    schema: dict[object, object] = {vol.Required(CONF_DEVICE_ID): cv.string}
+    for fields in field_groups:
+        schema.update(fields)
     return vol.Schema(schema)
+
+
+SERVICE_START_SLEEP_SCHEMA: Final = _service_schema(_START_TIME_FIELDS)
+SERVICE_COMPLETE_SLEEP_SCHEMA: Final = _service_schema(_TIMER_FIELDS, _NOTES_FIELDS)
+SERVICE_LOG_SLEEP_SCHEMA: Final = _service_schema(_SLEEP_LOG_FIELDS)
+SERVICE_START_NURSING_SCHEMA: Final = _service_schema(_SIDE_FIELDS, _START_TIME_FIELDS)
+SERVICE_RESUME_NURSING_SCHEMA: Final = _service_schema(_SIDE_FIELDS)
+SERVICE_COMPLETE_NURSING_SCHEMA: Final = _service_schema(_TIMER_FIELDS)
+SERVICE_DIAPER_SCHEMA: Final = _service_schema(_DIAPER_FIELDS)
+SERVICE_POTTY_SCHEMA: Final = _service_schema(_POTTY_FIELDS)
+SERVICE_LOG_GROWTH_SCHEMA: Final = _service_schema(_GROWTH_FIELDS)
+SERVICE_LOG_TEMPERATURE_SCHEMA: Final = _service_schema(_TEMPERATURE_FIELDS)
+SERVICE_LOG_BOTTLE_SCHEMA: Final = _service_schema(_BOTTLE_FIELDS)
+SERVICE_LOG_PUMP_SCHEMA: Final = _service_schema(_PUMP_FIELDS)
+SERVICE_LOG_ACTIVITY_SCHEMA: Final = _service_schema(_ACTIVITY_FIELDS, _START_TIME_FIELDS)
+SERVICE_LOG_SOLIDS_SCHEMA: Final = _service_schema(_SOLIDS_FIELDS)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -692,7 +721,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def handle_log_diaper_pee(call: ServiceCall) -> None:
         await api_client.log_diaper(
             _target_child(call),
-            start_time=_event_start_time(call),
+            start_time=dt_util.now(),
             mode="pee",
             pee_amount=_diaper_amount_value(call.data.get("pee_amount")),
             diaper_rash=bool(call.data.get("diaper_rash", False)),
@@ -702,7 +731,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def handle_log_diaper_poo(call: ServiceCall) -> None:
         await api_client.log_diaper(
             _target_child(call),
-            start_time=_event_start_time(call),
+            start_time=dt_util.now(),
             mode="poo",
             poo_amount=_diaper_amount_value(call.data.get("poo_amount")),
             color=_poo_color_value(call.data.get("color")),
@@ -714,7 +743,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def handle_log_diaper_both(call: ServiceCall) -> None:
         await api_client.log_diaper(
             _target_child(call),
-            start_time=_event_start_time(call),
+            start_time=dt_util.now(),
             mode="both",
             pee_amount=_diaper_amount_value(call.data.get("pee_amount")),
             poo_amount=_diaper_amount_value(call.data.get("poo_amount")),
@@ -727,7 +756,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def handle_log_diaper_dry(call: ServiceCall) -> None:
         await api_client.log_diaper(
             _target_child(call),
-            start_time=_event_start_time(call),
+            start_time=dt_util.now(),
             mode="dry",
             diaper_rash=bool(call.data.get("diaper_rash", False)),
             notes=_string_value(call.data.get("notes")),
@@ -736,7 +765,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def handle_log_potty_pee(call: ServiceCall) -> None:
         await api_client.log_potty(
             _target_child(call),
-            start_time=_event_start_time(call),
+            start_time=dt_util.now(),
             mode="pee",
             pee_amount=_diaper_amount_value(call.data.get("pee_amount")),
             how_it_happened=call.data.get("how_it_happened", "wentPotty"),
@@ -746,7 +775,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def handle_log_potty_poo(call: ServiceCall) -> None:
         await api_client.log_potty(
             _target_child(call),
-            start_time=_event_start_time(call),
+            start_time=dt_util.now(),
             mode="poo",
             poo_amount=_diaper_amount_value(call.data.get("poo_amount")),
             color=_poo_color_value(call.data.get("color")),
@@ -758,7 +787,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def handle_log_potty_both(call: ServiceCall) -> None:
         await api_client.log_potty(
             _target_child(call),
-            start_time=_event_start_time(call),
+            start_time=dt_util.now(),
             mode="both",
             pee_amount=_diaper_amount_value(call.data.get("pee_amount")),
             poo_amount=_diaper_amount_value(call.data.get("poo_amount")),
@@ -771,7 +800,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def handle_log_potty_dry(call: ServiceCall) -> None:
         await api_client.log_potty(
             _target_child(call),
-            start_time=_event_start_time(call),
+            start_time=dt_util.now(),
             mode="dry",
             how_it_happened="satButDry",
             notes=_string_value(call.data.get("notes")),
@@ -788,10 +817,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
         await coordinator.async_request_refresh()
 
+    async def handle_log_temperature(call: ServiceCall) -> None:
+        start_time = cast(datetime | None, call.data.get("start_time"))
+        if start_time is not None and _utc_datetime(start_time) > _utc_datetime(dt_util.now()):
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="invalid_temperature_start_time",
+            )
+        await api_client.log_temperature(
+            _target_child(call),
+            start_time=dt_util.as_local(start_time) if start_time is not None else dt_util.now(),
+            amount=cast(float, call.data["amount"]),
+            units=_temperature_units_value(call.data.get("units")),
+            notes=_string_value(call.data.get("notes")),
+        )
+
     async def handle_log_bottle(call: ServiceCall) -> None:
+        start_time = cast(datetime | None, call.data.get("start_time"))
         await api_client.log_bottle(
             _target_child(call),
-            start_time=_event_start_time(call),
+            start_time=dt_util.as_local(start_time) if start_time is not None else dt_util.now(),
             amount=cast(float, call.data["amount"]),
             bottle_type=_api_bottle_type(_string_value(call.data.get("bottle_type"))),
             units=_bottle_units_value(call.data.get("units")),
@@ -804,17 +849,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         duration_seconds = duration_value * 60 if duration_unit == "minutes" else duration_value
         await api_client.log_pump(
             _target_child(call),
-            start_time=_event_start_time(call),
+            start_time=dt_util.now(),
             total_amount=cast(float, call.data["total_amount"]),
             duration=duration_seconds,
             units=_bottle_units_value(call.data.get("units")),
         )
 
     async def handle_log_activity(call: ServiceCall) -> None:
+        start_time = cast(datetime | None, call.data.get("start_time"))
         await api_client.log_activity(
             _target_child(call),
             mode=cast(ActivityMode, call.data["mode"]),
-            start_time=_event_start_time(call),
+            start_time=dt_util.as_local(start_time) if start_time is not None else dt_util.now(),
             duration=cast(float | None, call.data.get("duration")),
             notes=_string_value(call.data.get("notes")),
         )
@@ -830,7 +876,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
         await api_client.log_solids(
             child_uid,
-            start_time=_event_start_time(call),
+            start_time=dt_util.now(),
             foods=food_refs,
             notes=_string_value(call.data.get("notes")) or "",
             reaction=_solids_reaction_value(call.data.get("reaction")),
@@ -840,7 +886,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         DOMAIN,
         "start_sleep",
         handle_start_sleep,
-        schema=_build_service_method_schema(include_start_time=True),
+        schema=SERVICE_START_SLEEP_SCHEMA,
     )
     hass.services.async_register(DOMAIN, "pause_sleep", handle_pause_sleep, schema=SERVICE_CHILD_SCHEMA)
     hass.services.async_register(DOMAIN, "resume_sleep", handle_resume_sleep, schema=SERVICE_CHILD_SCHEMA)
@@ -849,74 +895,77 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         DOMAIN,
         "complete_sleep",
         handle_complete_sleep,
-        schema=_build_service_method_schema(include_timer_times=True, include_notes=True),
+        schema=SERVICE_COMPLETE_SLEEP_SCHEMA,
     )
     hass.services.async_register(
         DOMAIN,
         "log_sleep",
         handle_log_sleep,
-        schema=_build_service_method_schema(include_sleep_interval=True),
+        schema=SERVICE_LOG_SLEEP_SCHEMA,
     )
 
-    nursing_schema = _build_service_method_schema(include_side=True)
     hass.services.async_register(
         DOMAIN,
         "start_nursing",
         handle_start_nursing,
-        schema=_build_service_method_schema(include_side=True, include_start_time=True),
+        schema=SERVICE_START_NURSING_SCHEMA,
     )
     hass.services.async_register(DOMAIN, "pause_nursing", handle_pause_nursing, schema=SERVICE_CHILD_SCHEMA)
-    hass.services.async_register(DOMAIN, "resume_nursing", handle_resume_nursing, schema=nursing_schema)
+    hass.services.async_register(DOMAIN, "resume_nursing", handle_resume_nursing, schema=SERVICE_RESUME_NURSING_SCHEMA)
     hass.services.async_register(DOMAIN, "switch_nursing_side", handle_switch_nursing_side, schema=SERVICE_CHILD_SCHEMA)
     hass.services.async_register(DOMAIN, "cancel_nursing", handle_cancel_nursing, schema=SERVICE_CHILD_SCHEMA)
     hass.services.async_register(
         DOMAIN,
         "complete_nursing",
         handle_complete_nursing,
-        schema=_build_service_method_schema(include_timer_times=True),
+        schema=SERVICE_COMPLETE_NURSING_SCHEMA,
     )
 
-    diaper_schema = _build_service_method_schema(include_diaper_fields=True, include_start_time=True)
-    hass.services.async_register(DOMAIN, "log_diaper_pee", handle_log_diaper_pee, schema=diaper_schema)
-    hass.services.async_register(DOMAIN, "log_diaper_poo", handle_log_diaper_poo, schema=diaper_schema)
-    hass.services.async_register(DOMAIN, "log_diaper_both", handle_log_diaper_both, schema=diaper_schema)
-    hass.services.async_register(DOMAIN, "log_diaper_dry", handle_log_diaper_dry, schema=diaper_schema)
+    hass.services.async_register(DOMAIN, "log_diaper_pee", handle_log_diaper_pee, schema=SERVICE_DIAPER_SCHEMA)
+    hass.services.async_register(DOMAIN, "log_diaper_poo", handle_log_diaper_poo, schema=SERVICE_DIAPER_SCHEMA)
+    hass.services.async_register(DOMAIN, "log_diaper_both", handle_log_diaper_both, schema=SERVICE_DIAPER_SCHEMA)
+    hass.services.async_register(DOMAIN, "log_diaper_dry", handle_log_diaper_dry, schema=SERVICE_DIAPER_SCHEMA)
 
-    potty_schema = _build_service_method_schema(include_potty_fields=True, include_start_time=True)
-    hass.services.async_register(DOMAIN, "log_potty_pee", handle_log_potty_pee, schema=potty_schema)
-    hass.services.async_register(DOMAIN, "log_potty_poo", handle_log_potty_poo, schema=potty_schema)
-    hass.services.async_register(DOMAIN, "log_potty_both", handle_log_potty_both, schema=potty_schema)
-    hass.services.async_register(DOMAIN, "log_potty_dry", handle_log_potty_dry, schema=potty_schema)
+    hass.services.async_register(DOMAIN, "log_potty_pee", handle_log_potty_pee, schema=SERVICE_POTTY_SCHEMA)
+    hass.services.async_register(DOMAIN, "log_potty_poo", handle_log_potty_poo, schema=SERVICE_POTTY_SCHEMA)
+    hass.services.async_register(DOMAIN, "log_potty_both", handle_log_potty_both, schema=SERVICE_POTTY_SCHEMA)
+    hass.services.async_register(DOMAIN, "log_potty_dry", handle_log_potty_dry, schema=SERVICE_POTTY_SCHEMA)
 
     hass.services.async_register(
         DOMAIN,
         "log_growth",
         handle_log_growth,
-        schema=_build_service_method_schema(include_growth=True),
+        schema=SERVICE_LOG_GROWTH_SCHEMA,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        "log_temperature",
+        handle_log_temperature,
+        schema=SERVICE_LOG_TEMPERATURE_SCHEMA,
     )
     hass.services.async_register(
         DOMAIN,
         "log_bottle",
         handle_log_bottle,
-        schema=_build_service_method_schema(include_bottle=True, include_start_time=True),
+        schema=SERVICE_LOG_BOTTLE_SCHEMA,
     )
     hass.services.async_register(
         DOMAIN,
         "log_pump",
         handle_log_pump,
-        schema=_build_service_method_schema(include_pump=True, include_start_time=True),
+        schema=SERVICE_LOG_PUMP_SCHEMA,
     )
     hass.services.async_register(
         DOMAIN,
         "log_activity",
         handle_log_activity,
-        schema=_build_service_method_schema(include_activity=True, include_start_time=True),
+        schema=SERVICE_LOG_ACTIVITY_SCHEMA,
     )
     hass.services.async_register(
         DOMAIN,
         "log_solids",
         handle_log_solids,
-        schema=_build_service_method_schema(include_solids=True, include_start_time=True),
+        schema=SERVICE_LOG_SOLIDS_SCHEMA,
     )
 
     return True
@@ -982,6 +1031,10 @@ class HuckleberryDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Huckleber
                 self._realtime_data[uid].pump_status = data
                 self.hass.loop.call_soon_threadsafe(self.async_set_updated_data, dict(self._realtime_data))
 
+            def activity_callback(data: FirebaseActivityDocumentData, uid: str = child_uid) -> None:
+                self._realtime_data[uid].activity_status = data
+                self.hass.loop.call_soon_threadsafe(self.async_set_updated_data, dict(self._realtime_data))
+
             def child_callback(data: FirebaseChildDocument, uid: str = child_uid) -> None:
                 self._realtime_data[uid].child_document = data
                 self.hass.loop.call_soon_threadsafe(self.async_set_updated_data, dict(self._realtime_data))
@@ -991,6 +1044,7 @@ class HuckleberryDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Huckleber
             await self.api.setup_health_listener(child_uid, health_callback)
             await self.api.setup_diaper_listener(child_uid, diaper_callback)
             await self.api.setup_pump_listener(child_uid, pump_callback)
+            await self.api.setup_activity_listener(child_uid, activity_callback)
             await self.api.setup_child_listener(child_uid, child_callback)
 
     async def _async_update_data(self) -> dict[str, HuckleberryChildState]:
@@ -1031,6 +1085,11 @@ class HuckleberryDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Huckleber
         """Return the current diaper document for a child."""
         state = self.get_state(child_uid)
         return state.diaper_status if state is not None else None
+
+    def get_activity_status(self, child_uid: str) -> FirebaseActivityDocumentData | None:
+        """Return the current activities document for a child."""
+        state = self.get_state(child_uid)
+        return state.activity_status if state is not None else None
 
     def get_child_document(self, child_uid: str) -> FirebaseChildDocument | None:
         """Return the current child document for a child."""

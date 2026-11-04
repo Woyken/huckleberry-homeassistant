@@ -4,6 +4,40 @@ All notable changes to the Huckleberry integration are recorded in this file. Fr
 
 <!-- towncrier release notes start -->
 
+# Huckleberry 0.5.10 (2026-11-03)
+
+## Added
+
+- Add `huckleberry.log_temperature` service for logging body-temperature readings. (#93)
+
+
+# Huckleberry 0.5.9 (2026-10-30)
+
+## Fixed
+
+- Update `huckleberry-api` to 0.4.11, which requires `google-api-core>=2.28.0` and normalizes legacy millisecond feed start times. (#90)
+
+
+# Huckleberry 0.5.8 (2026-10-30)
+
+## Fixed
+
+- Require `google-api-core>=2.28.0` so the integration loads with recent `google-cloud-firestore` releases. (#88)
+
+## Other
+
+- #86
+
+
+# Huckleberry 0.5.7 (2026-10-29)
+
+## Added
+
+- Show pump, activity, medication, temperature, potty, and fuller event details in each child's calendar. (#81)
+- Add an optional `start_time` to the `huckleberry.log_activity` service so activities can be logged after the fact. (#83)
+- Add activity timer and last-completed-session sensors for bath, brush teeth, indoor play, outdoor play, screen time, skin to skin, story time, and tummy time, with each activity mode sensor disabled until that mode has a recorded session. (#84)
+
+
 # Huckleberry 0.5.6 (2026-10-25)
 
 ## Added

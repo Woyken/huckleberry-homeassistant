@@ -10,6 +10,10 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import HuckleberryEntryData
 from .const import DOMAIN
+from .features.activity import (
+    build_activity_sensors,
+    setup_activity_sensor_activation,
+)
 from .features.bottle import build_bottle_sensors
 from .features.child import build_child_sensors
 from .features.diaper import build_diaper_sensors
@@ -30,18 +34,29 @@ async def async_setup_entry(
 ) -> None:
     """Set up Huckleberry sensors."""
     entry_data = cast(HuckleberryEntryData, hass.data[DOMAIN][entry.entry_id])
+    coordinator = entry_data["coordinator"]
     entities: list[SensorEntity] = []
-    entities.extend(build_child_sensors(entry_data["coordinator"], entry_data["children"]))
-    entities.extend(build_growth_sensors(entry_data["coordinator"], entry_data["children"]))
-    entities.extend(build_medication_sensors(entry_data["coordinator"], entry_data["children"]))
-    entities.extend(build_diaper_sensors(entry_data["coordinator"], entry_data["children"]))
-    entities.extend(build_potty_sensors(entry_data["coordinator"], entry_data["children"]))
-    entities.extend(build_bottle_sensors(entry_data["coordinator"], entry_data["children"]))
-    entities.extend(build_solids_sensors(entry_data["coordinator"], entry_data["children"]))
-    entities.extend(build_nursing_sensors(entry_data["coordinator"], entry_data["children"]))
-    entities.extend(build_pumping_sensors(entry_data["coordinator"], entry_data["children"]))
-    entities.extend(build_sleep_sensors(entry_data["coordinator"], entry_data["children"]))
-    entities.extend(build_sweetspot_sensors(entry_data["coordinator"], entry_data["children"]))
+    entities.extend(build_child_sensors(coordinator, entry_data["children"]))
+    entities.extend(build_growth_sensors(coordinator, entry_data["children"]))
+    entities.extend(build_medication_sensors(coordinator, entry_data["children"]))
+    entities.extend(build_diaper_sensors(coordinator, entry_data["children"]))
+    entities.extend(build_potty_sensors(coordinator, entry_data["children"]))
+    entities.extend(build_bottle_sensors(coordinator, entry_data["children"]))
+    entities.extend(build_solids_sensors(coordinator, entry_data["children"]))
+    entities.extend(build_nursing_sensors(coordinator, entry_data["children"]))
+    entities.extend(build_pumping_sensors(coordinator, entry_data["children"]))
+    entities.extend(build_sleep_sensors(coordinator, entry_data["children"]))
+    activity_sensors = build_activity_sensors(coordinator, entry_data["children"])
+    entities.extend(activity_sensors)
+    entities.extend(build_sweetspot_sensors(coordinator, entry_data["children"]))
 
     async_add_entities(entities)
 
+    setup_activity_sensor_activation(
+        hass,
+        entry,
+        coordinator,
+        entry_data["children"],
+        activity_sensors,
+        async_add_entities,
+    )

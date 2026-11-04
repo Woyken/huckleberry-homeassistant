@@ -1,5 +1,5 @@
 """Test Huckleberry services."""
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, datetime
 from unittest.mock import ANY, AsyncMock, patch
 import pytest
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
@@ -249,6 +249,64 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
         units="metric",
     )
 
+    # Test log_temperature with defaults
+    await hass.services.async_call(
+        DOMAIN, "log_temperature", {"device_id": device.id, "amount": 37.2}, blocking=True
+    )
+    mock_huckleberry_api.log_temperature.assert_called_with(
+        "test_child_uid",
+        start_time=ANY,
+        amount=37.2,
+        units="C",
+        notes=None,
+    )
+
+    # Test log_temperature with explicit units, start time, and notes
+    await hass.services.async_call(
+        DOMAIN,
+        "log_temperature",
+        {
+            "device_id": device.id,
+            "amount": 99.1,
+            "units": "F",
+            "start_time": "2026-01-02T03:04:05+00:00",
+            "notes": "Slight fever",
+        },
+        blocking=True,
+    )
+    mock_huckleberry_api.log_temperature.assert_called_with(
+        "test_child_uid",
+        start_time=datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC),
+        amount=99.1,
+        units="F",
+        notes="Slight fever",
+    )
+
+    # A future temperature time is rejected without calling the API
+    mock_huckleberry_api.log_temperature.reset_mock()
+    with pytest.raises(ServiceValidationError):
+        await hass.services.async_call(
+            DOMAIN,
+            "log_temperature",
+            {
+                "device_id": device.id,
+                "amount": 37.2,
+                "start_time": "2999-01-01T00:00:00+00:00",
+            },
+            blocking=True,
+        )
+    mock_huckleberry_api.log_temperature.assert_not_called()
+
+    # A non-finite amount is rejected without calling the API
+    with pytest.raises(Exception):
+        await hass.services.async_call(
+            DOMAIN,
+            "log_temperature",
+            {"device_id": device.id, "amount": float("nan")},
+            blocking=True,
+        )
+    mock_huckleberry_api.log_temperature.assert_not_called()
+
     # Test log_bottle
     await hass.services.async_call(
         DOMAIN, "log_bottle", {"device_id": device.id, "amount": 4.0, "bottle_type": "formula", "units": "oz"}, blocking=True
@@ -256,53 +314,6 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
     mock_huckleberry_api.log_bottle.assert_called_with(
         "test_child_uid",
         start_time=ANY,
-        amount=4.0,
-        bottle_type="Formula",
-        units="oz",
-        notes=None,
-    )
-
-    # Test log_bottle with an explicit event time
-    event_time = datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
-    await hass.services.async_call(
-        DOMAIN,
-        "log_bottle",
-        {
-            "device_id": device.id,
-            "amount": 4.0,
-            "bottle_type": "formula",
-            "units": "oz",
-            "start_time": event_time.isoformat(),
-        },
-        blocking=True,
-    )
-    mock_huckleberry_api.log_bottle.assert_called_with(
-        "test_child_uid",
-        start_time=event_time,
-        amount=4.0,
-        bottle_type="Formula",
-        units="oz",
-        notes=None,
-    )
-
-    # Naive service times use Home Assistant's configured timezone.
-    await hass.config.async_set_time_zone("Etc/GMT+5")
-    local_event_time = datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone(timedelta(hours=-5)))
-    await hass.services.async_call(
-        DOMAIN,
-        "log_bottle",
-        {
-            "device_id": device.id,
-            "amount": 4.0,
-            "bottle_type": "formula",
-            "units": "oz",
-            "start_time": "2026-01-02T03:04:05",
-        },
-        blocking=True,
-    )
-    mock_huckleberry_api.log_bottle.assert_called_with(
-        "test_child_uid",
-        start_time=local_event_time,
         amount=4.0,
         bottle_type="Formula",
         units="oz",
@@ -337,7 +348,7 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
     )
     mock_huckleberry_api.log_bottle.assert_called_with(
         "test_child_uid",
-        start_time=ANY,
+        start_time=datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC),
         amount=90.0,
         bottle_type="Formula",
         units="ml",
@@ -387,6 +398,21 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
         start_time=ANY,
         duration=None,
         notes="Used lavender soap",
+    )
+
+    # Test log_activity with an explicit start time
+    await hass.services.async_call(
+        DOMAIN,
+        "log_activity",
+        {"device_id": device.id, "mode": "tummyTime", "start_time": "2026-01-02T03:04:05+00:00"},
+        blocking=True,
+    )
+    mock_huckleberry_api.log_activity.assert_called_with(
+        "test_child_uid",
+        mode="tummyTime",
+        start_time=datetime(2026, 1, 2, 3, 4, 5, tzinfo=UTC),
+        duration=None,
+        notes=None,
     )
 
     # Configure mock food catalogs

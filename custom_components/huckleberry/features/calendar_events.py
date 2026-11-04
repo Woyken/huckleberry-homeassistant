@@ -25,6 +25,8 @@ from huckleberry_api.firebase_types import (
     HealthDataEntry,
 )
 
+from .activity import ACTIVITY_LABELS
+
 DIAPER_EMOJI: Final[dict[str, str]] = {
     "pee": "💧",
     "poo": "💩",
@@ -43,16 +45,6 @@ MEASUREMENT_UNIT_LABELS: Final[dict[str, str]] = {
     "hin": "in",
     "C": "°C",
     "F": "°F",
-}
-ACTIVITY_LABELS: Final[dict[ActivityMode, str]] = {
-    "bath": "Bath",
-    "brushTeeth": "Brush Teeth",
-    "indoorPlay": "Indoor Play",
-    "outdoorPlay": "Outdoor Play",
-    "screenTime": "Screen Time",
-    "skinToSkin": "Skin to Skin",
-    "storyTime": "Story Time",
-    "tummyTime": "Tummy Time",
 }
 ACTIVITY_EMOJI: Final[dict[ActivityMode, str]] = {
     "bath": "🛁",

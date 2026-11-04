@@ -77,6 +77,7 @@ def _build_mock_api(
     mock.setup_health_listener = AsyncMock()
     mock.setup_diaper_listener = AsyncMock()
     mock.setup_pump_listener = AsyncMock()
+    mock.setup_activity_listener = AsyncMock()
     mock.setup_child_listener = AsyncMock()
     mock.stop_all_listeners = AsyncMock()
 
@@ -97,6 +98,7 @@ def _build_mock_api(
     mock.log_diaper = AsyncMock()
     mock.log_potty = AsyncMock()
     mock.log_growth = AsyncMock()
+    mock.log_temperature = AsyncMock()
     mock.log_bottle = AsyncMock()
     mock.log_pump = AsyncMock()
     mock.log_activity = AsyncMock()
