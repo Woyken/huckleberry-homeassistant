@@ -594,6 +594,9 @@
     "invalid_temperature_start_time": {
       "message": "The temperature time cannot be in the future."
     },
+    "invalid_event_start_time": {
+      "message": "The start time cannot be in the future."
+    },
     "invalid_timer_interval": {
       "message": "The timer times are invalid: {error}"
     }

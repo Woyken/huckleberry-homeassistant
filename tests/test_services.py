@@ -852,3 +852,71 @@ async def test_timer_times_and_bottle_notes(hass: HomeAssistant, mock_huckleberr
         units="ml",
         notes="Fussy",
     )
+
+
+async def test_event_start_times(hass: HomeAssistant, mock_huckleberry_api):
+    """Test explicit start times on the instant logging services."""
+    await hass.config.async_set_time_zone("Europe/Copenhagen")
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_EMAIL: "test@example.com",
+            CONF_PASSWORD: "test_password",
+        },
+    )
+    entry.add_to_hass(hass)
+
+    with patch(
+        "custom_components.huckleberry.HuckleberryAPI",
+        return_value=mock_huckleberry_api,
+    ):
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+    device_registry = dr.async_get(hass)
+    device = device_registry.async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, "test_child_uid")},
+        name="Test Child",
+    )
+
+    cases = [
+        ("log_diaper_pee", {"pee_amount": "medium"}, "log_diaper"),
+        ("log_diaper_poo", {"poo_amount": "big"}, "log_diaper"),
+        ("log_diaper_both", {"pee_amount": "little", "poo_amount": "medium"}, "log_diaper"),
+        ("log_diaper_dry", {}, "log_diaper"),
+        ("log_potty_pee", {"pee_amount": "medium"}, "log_potty"),
+        ("log_potty_poo", {"poo_amount": "big"}, "log_potty"),
+        ("log_potty_both", {"pee_amount": "little", "poo_amount": "medium"}, "log_potty"),
+        ("log_potty_dry", {}, "log_potty"),
+        ("log_growth", {"weight": 5.1}, "log_growth"),
+        ("log_pump", {"total_amount": 100, "duration": 15}, "log_pump"),
+        ("log_solids", {"foods": ["Banana"]}, "log_solids"),
+        ("log_bottle", {"amount": 120, "bottle_type": "formula"}, "log_bottle"),
+        ("log_activity", {"mode": "tummyTime"}, "log_activity"),
+    ]
+
+    # 12:10 wall-clock time in Copenhagen (CEST) is 10:10 UTC
+    expected_start_time = datetime(2026, 8, 28, 10, 10, tzinfo=UTC)
+    for service, data, api_method in cases:
+        api_mock = getattr(mock_huckleberry_api, api_method)
+        api_mock.reset_mock()
+        await hass.services.async_call(
+            DOMAIN,
+            service,
+            {"device_id": device.id, "start_time": "2026-08-28 12:10:00", **data},
+            blocking=True,
+        )
+        assert api_mock.call_args.kwargs["start_time"] == expected_start_time, service
+
+    for service, data, api_method in cases:
+        api_mock = getattr(mock_huckleberry_api, api_method)
+        api_mock.reset_mock()
+        with pytest.raises(ServiceValidationError):
+            await hass.services.async_call(
+                DOMAIN,
+                service,
+                {"device_id": device.id, "start_time": "2999-01-01 00:00:00", **data},
+                blocking=True,
+            )
+        api_mock.assert_not_called()
