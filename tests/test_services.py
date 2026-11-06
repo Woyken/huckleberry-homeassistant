@@ -1,5 +1,5 @@
 """Test Huckleberry services."""
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from unittest.mock import ANY, AsyncMock, patch
 import pytest
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
@@ -7,6 +7,7 @@ from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import device_registry as dr
 from custom_components.huckleberry.const import DOMAIN
 from homeassistant.core import HomeAssistant
+from homeassistant.util import dt as dt_util
 from huckleberry_api.firebase_types import (
     FirebaseCuratedFoodDocument,
     FirebaseCustomFoodTypeDocument,
@@ -920,3 +921,48 @@ async def test_event_start_times(hass: HomeAssistant, mock_huckleberry_api):
                 blocking=True,
             )
         api_mock.assert_not_called()
+
+
+async def test_event_start_time_uses_configured_time_zone(
+    hass: HomeAssistant, mock_huckleberry_api
+):
+    """Test the future check reads naive times in the configured time zone."""
+    await hass.config.async_set_time_zone("Europe/Copenhagen")
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_EMAIL: "test@example.com",
+            CONF_PASSWORD: "test_password",
+        },
+    )
+    entry.add_to_hass(hass)
+
+    with patch(
+        "custom_components.huckleberry.HuckleberryAPI",
+        return_value=mock_huckleberry_api,
+    ):
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+    device_registry = dr.async_get(hass)
+    device = device_registry.async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, "test_child_uid")},
+        name="Test Child",
+    )
+
+    # A naive wall-clock time one minute ago in Home Assistant's zone. A host
+    # running in UTC would read the same value as hours in the future.
+    start_time = (dt_util.now() - timedelta(minutes=1)).replace(tzinfo=None)
+    await hass.services.async_call(
+        DOMAIN,
+        "log_diaper_pee",
+        {
+            "device_id": device.id,
+            "pee_amount": "medium",
+            "start_time": start_time,
+        },
+        blocking=True,
+    )
+
+    mock_huckleberry_api.log_diaper.assert_called_once()
