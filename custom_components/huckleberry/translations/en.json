@@ -265,6 +265,10 @@
           "name": "Child device",
           "description": "Select child device"
         },
+        "start_time": {
+          "name": "Start time",
+          "description": "When the diaper change happened. Defaults to now."
+        },
         "pee_amount": {
           "name": "Pee amount",
           "description": "Amount of pee (shows indicator in app)"
@@ -286,6 +290,10 @@
         "device_id": {
           "name": "Child device",
           "description": "Select child device"
+        },
+        "start_time": {
+          "name": "Start time",
+          "description": "When the diaper change happened. Defaults to now."
         },
         "poo_amount": {
           "name": "Poo amount",
@@ -316,6 +324,10 @@
         "device_id": {
           "name": "Child device",
           "description": "Select child device"
+        },
+        "start_time": {
+          "name": "Start time",
+          "description": "When the diaper change happened. Defaults to now."
         },
         "pee_amount": {
           "name": "Pee amount",
@@ -351,6 +363,10 @@
           "name": "Child device",
           "description": "Select child device"
         },
+        "start_time": {
+          "name": "Start time",
+          "description": "When the diaper change happened. Defaults to now."
+        },
         "diaper_rash": {
           "name": "Diaper rash",
           "description": "Baby has diaper rash"
@@ -368,6 +384,10 @@
         "device_id": {
           "name": "Child device",
           "description": "Select child device"
+        },
+        "start_time": {
+          "name": "Start time",
+          "description": "When the potty entry happened. Defaults to now."
         },
         "pee_amount": {
           "name": "Pee amount",
@@ -390,6 +410,10 @@
         "device_id": {
           "name": "Child device",
           "description": "Select child device"
+        },
+        "start_time": {
+          "name": "Start time",
+          "description": "When the potty entry happened. Defaults to now."
         },
         "poo_amount": {
           "name": "Poo amount",
@@ -420,6 +444,10 @@
         "device_id": {
           "name": "Child device",
           "description": "Select child device"
+        },
+        "start_time": {
+          "name": "Start time",
+          "description": "When the potty entry happened. Defaults to now."
         },
         "pee_amount": {
           "name": "Pee amount",
@@ -455,6 +483,10 @@
           "name": "Child device",
           "description": "Select child device"
         },
+        "start_time": {
+          "name": "Start time",
+          "description": "When the potty entry happened. Defaults to now."
+        },
         "notes": {
           "name": "Notes",
           "description": "Optional notes about this potty entry"
@@ -468,6 +500,10 @@
         "device_id": {
           "name": "Child device",
           "description": "Select child device"
+        },
+        "start_time": {
+          "name": "Start time",
+          "description": "When the measurements were taken. Defaults to now."
         },
         "weight": {
           "name": "Weight",
@@ -551,6 +587,10 @@
           "name": "Child device",
           "description": "Select child device"
         },
+        "start_time": {
+          "name": "Start time",
+          "description": "When the meal happened. Defaults to now."
+        },
         "foods": {
           "name": "Foods",
           "description": "List of food names eaten in this meal (one or more)"
@@ -562,6 +602,36 @@
         "reaction": {
           "name": "Reaction",
           "description": "Optional reaction to the meal"
+        }
+      }
+    },
+    "log_pump": {
+      "name": "Log pump",
+      "description": "Log a pumping session with total amount and duration.",
+      "fields": {
+        "device_id": {
+          "name": "Child device",
+          "description": "Select child device"
+        },
+        "start_time": {
+          "name": "Start time",
+          "description": "When the pumping session started. Defaults to now."
+        },
+        "total_amount": {
+          "name": "Total amount",
+          "description": "Total amount pumped (split evenly across left and right)"
+        },
+        "duration": {
+          "name": "Duration",
+          "description": "Duration of the pumping session (in the unit selected below)"
+        },
+        "duration_unit": {
+          "name": "Duration unit",
+          "description": "Unit for the duration value"
+        },
+        "units": {
+          "name": "Units",
+          "description": "Measurement units for amount"
         }
       }
     }
@@ -593,6 +663,9 @@
     },
     "invalid_temperature_start_time": {
       "message": "The temperature time cannot be in the future."
+    },
+    "invalid_event_start_time": {
+      "message": "The start time cannot be in the future."
     },
     "invalid_timer_interval": {
       "message": "The timer times are invalid: {error}"

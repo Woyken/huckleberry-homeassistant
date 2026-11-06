@@ -489,14 +489,14 @@ SERVICE_LOG_SLEEP_SCHEMA: Final = _service_schema(_SLEEP_LOG_FIELDS)
 SERVICE_START_NURSING_SCHEMA: Final = _service_schema(_SIDE_FIELDS, _START_TIME_FIELDS)
 SERVICE_RESUME_NURSING_SCHEMA: Final = _service_schema(_SIDE_FIELDS)
 SERVICE_COMPLETE_NURSING_SCHEMA: Final = _service_schema(_TIMER_FIELDS)
-SERVICE_DIAPER_SCHEMA: Final = _service_schema(_DIAPER_FIELDS)
-SERVICE_POTTY_SCHEMA: Final = _service_schema(_POTTY_FIELDS)
-SERVICE_LOG_GROWTH_SCHEMA: Final = _service_schema(_GROWTH_FIELDS)
+SERVICE_DIAPER_SCHEMA: Final = _service_schema(_DIAPER_FIELDS, _START_TIME_FIELDS)
+SERVICE_POTTY_SCHEMA: Final = _service_schema(_POTTY_FIELDS, _START_TIME_FIELDS)
+SERVICE_LOG_GROWTH_SCHEMA: Final = _service_schema(_GROWTH_FIELDS, _START_TIME_FIELDS)
 SERVICE_LOG_TEMPERATURE_SCHEMA: Final = _service_schema(_TEMPERATURE_FIELDS)
 SERVICE_LOG_BOTTLE_SCHEMA: Final = _service_schema(_BOTTLE_FIELDS)
-SERVICE_LOG_PUMP_SCHEMA: Final = _service_schema(_PUMP_FIELDS)
+SERVICE_LOG_PUMP_SCHEMA: Final = _service_schema(_PUMP_FIELDS, _START_TIME_FIELDS)
 SERVICE_LOG_ACTIVITY_SCHEMA: Final = _service_schema(_ACTIVITY_FIELDS, _START_TIME_FIELDS)
-SERVICE_LOG_SOLIDS_SCHEMA: Final = _service_schema(_SOLIDS_FIELDS)
+SERVICE_LOG_SOLIDS_SCHEMA: Final = _service_schema(_SOLIDS_FIELDS, _START_TIME_FIELDS)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -719,9 +719,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             ) from err
 
     async def handle_log_diaper_pee(call: ServiceCall) -> None:
+        start_time = _local_datetime_value(call.data.get("start_time"))
+        if start_time is not None and _utc_datetime(start_time) > _utc_datetime(dt_util.now()):
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="invalid_event_start_time",
+            )
         await api_client.log_diaper(
             _target_child(call),
-            start_time=dt_util.now(),
+            start_time=dt_util.as_local(start_time) if start_time is not None else dt_util.now(),
             mode="pee",
             pee_amount=_diaper_amount_value(call.data.get("pee_amount")),
             diaper_rash=bool(call.data.get("diaper_rash", False)),
@@ -729,9 +735,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
 
     async def handle_log_diaper_poo(call: ServiceCall) -> None:
+        start_time = _local_datetime_value(call.data.get("start_time"))
+        if start_time is not None and _utc_datetime(start_time) > _utc_datetime(dt_util.now()):
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="invalid_event_start_time",
+            )
         await api_client.log_diaper(
             _target_child(call),
-            start_time=dt_util.now(),
+            start_time=dt_util.as_local(start_time) if start_time is not None else dt_util.now(),
             mode="poo",
             poo_amount=_diaper_amount_value(call.data.get("poo_amount")),
             color=_poo_color_value(call.data.get("color")),
@@ -741,9 +753,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
 
     async def handle_log_diaper_both(call: ServiceCall) -> None:
+        start_time = _local_datetime_value(call.data.get("start_time"))
+        if start_time is not None and _utc_datetime(start_time) > _utc_datetime(dt_util.now()):
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="invalid_event_start_time",
+            )
         await api_client.log_diaper(
             _target_child(call),
-            start_time=dt_util.now(),
+            start_time=dt_util.as_local(start_time) if start_time is not None else dt_util.now(),
             mode="both",
             pee_amount=_diaper_amount_value(call.data.get("pee_amount")),
             poo_amount=_diaper_amount_value(call.data.get("poo_amount")),
@@ -754,18 +772,30 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
 
     async def handle_log_diaper_dry(call: ServiceCall) -> None:
+        start_time = _local_datetime_value(call.data.get("start_time"))
+        if start_time is not None and _utc_datetime(start_time) > _utc_datetime(dt_util.now()):
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="invalid_event_start_time",
+            )
         await api_client.log_diaper(
             _target_child(call),
-            start_time=dt_util.now(),
+            start_time=dt_util.as_local(start_time) if start_time is not None else dt_util.now(),
             mode="dry",
             diaper_rash=bool(call.data.get("diaper_rash", False)),
             notes=_string_value(call.data.get("notes")),
         )
 
     async def handle_log_potty_pee(call: ServiceCall) -> None:
+        start_time = _local_datetime_value(call.data.get("start_time"))
+        if start_time is not None and _utc_datetime(start_time) > _utc_datetime(dt_util.now()):
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="invalid_event_start_time",
+            )
         await api_client.log_potty(
             _target_child(call),
-            start_time=dt_util.now(),
+            start_time=dt_util.as_local(start_time) if start_time is not None else dt_util.now(),
             mode="pee",
             pee_amount=_diaper_amount_value(call.data.get("pee_amount")),
             how_it_happened=call.data.get("how_it_happened", "wentPotty"),
@@ -773,9 +803,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
 
     async def handle_log_potty_poo(call: ServiceCall) -> None:
+        start_time = _local_datetime_value(call.data.get("start_time"))
+        if start_time is not None and _utc_datetime(start_time) > _utc_datetime(dt_util.now()):
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="invalid_event_start_time",
+            )
         await api_client.log_potty(
             _target_child(call),
-            start_time=dt_util.now(),
+            start_time=dt_util.as_local(start_time) if start_time is not None else dt_util.now(),
             mode="poo",
             poo_amount=_diaper_amount_value(call.data.get("poo_amount")),
             color=_poo_color_value(call.data.get("color")),
@@ -785,9 +821,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
 
     async def handle_log_potty_both(call: ServiceCall) -> None:
+        start_time = _local_datetime_value(call.data.get("start_time"))
+        if start_time is not None and _utc_datetime(start_time) > _utc_datetime(dt_util.now()):
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="invalid_event_start_time",
+            )
         await api_client.log_potty(
             _target_child(call),
-            start_time=dt_util.now(),
+            start_time=dt_util.as_local(start_time) if start_time is not None else dt_util.now(),
             mode="both",
             pee_amount=_diaper_amount_value(call.data.get("pee_amount")),
             poo_amount=_diaper_amount_value(call.data.get("poo_amount")),
@@ -798,18 +840,30 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
 
     async def handle_log_potty_dry(call: ServiceCall) -> None:
+        start_time = _local_datetime_value(call.data.get("start_time"))
+        if start_time is not None and _utc_datetime(start_time) > _utc_datetime(dt_util.now()):
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="invalid_event_start_time",
+            )
         await api_client.log_potty(
             _target_child(call),
-            start_time=dt_util.now(),
+            start_time=dt_util.as_local(start_time) if start_time is not None else dt_util.now(),
             mode="dry",
             how_it_happened="satButDry",
             notes=_string_value(call.data.get("notes")),
         )
 
     async def handle_log_growth(call: ServiceCall) -> None:
+        start_time = _local_datetime_value(call.data.get("start_time"))
+        if start_time is not None and _utc_datetime(start_time) > _utc_datetime(dt_util.now()):
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="invalid_event_start_time",
+            )
         await api_client.log_growth(
             _target_child(call),
-            start_time=dt_util.now(),
+            start_time=dt_util.as_local(start_time) if start_time is not None else dt_util.now(),
             weight=cast(float | None, call.data.get("weight")),
             height=cast(float | None, call.data.get("height")),
             head=cast(float | None, call.data.get("head")),
@@ -818,7 +872,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await coordinator.async_request_refresh()
 
     async def handle_log_temperature(call: ServiceCall) -> None:
-        start_time = cast(datetime | None, call.data.get("start_time"))
+        start_time = _local_datetime_value(call.data.get("start_time"))
         if start_time is not None and _utc_datetime(start_time) > _utc_datetime(dt_util.now()):
             raise ServiceValidationError(
                 translation_domain=DOMAIN,
@@ -833,7 +887,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
 
     async def handle_log_bottle(call: ServiceCall) -> None:
-        start_time = cast(datetime | None, call.data.get("start_time"))
+        start_time = _local_datetime_value(call.data.get("start_time"))
+        if start_time is not None and _utc_datetime(start_time) > _utc_datetime(dt_util.now()):
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="invalid_event_start_time",
+            )
         await api_client.log_bottle(
             _target_child(call),
             start_time=dt_util.as_local(start_time) if start_time is not None else dt_util.now(),
@@ -844,19 +903,30 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
 
     async def handle_log_pump(call: ServiceCall) -> None:
+        start_time = _local_datetime_value(call.data.get("start_time"))
+        if start_time is not None and _utc_datetime(start_time) > _utc_datetime(dt_util.now()):
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="invalid_event_start_time",
+            )
         duration_value = cast(int, call.data["duration"])
         duration_unit = _string_value(call.data.get("duration_unit")) or "minutes"
         duration_seconds = duration_value * 60 if duration_unit == "minutes" else duration_value
         await api_client.log_pump(
             _target_child(call),
-            start_time=dt_util.now(),
+            start_time=dt_util.as_local(start_time) if start_time is not None else dt_util.now(),
             total_amount=cast(float, call.data["total_amount"]),
             duration=duration_seconds,
             units=_bottle_units_value(call.data.get("units")),
         )
 
     async def handle_log_activity(call: ServiceCall) -> None:
-        start_time = cast(datetime | None, call.data.get("start_time"))
+        start_time = _local_datetime_value(call.data.get("start_time"))
+        if start_time is not None and _utc_datetime(start_time) > _utc_datetime(dt_util.now()):
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="invalid_event_start_time",
+            )
         await api_client.log_activity(
             _target_child(call),
             mode=cast(ActivityMode, call.data["mode"]),
@@ -866,6 +936,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
 
     async def handle_log_solids(call: ServiceCall) -> None:
+        start_time = _local_datetime_value(call.data.get("start_time"))
+        if start_time is not None and _utc_datetime(start_time) > _utc_datetime(dt_util.now()):
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="invalid_event_start_time",
+            )
         child_uid = _target_child(call)
         food_names = _solids_food_list(call.data.get("foods"))
         food_refs = await _async_resolve_solids_food_references(
@@ -876,7 +952,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
         await api_client.log_solids(
             child_uid,
-            start_time=dt_util.now(),
+            start_time=dt_util.as_local(start_time) if start_time is not None else dt_util.now(),
             foods=food_refs,
             notes=_string_value(call.data.get("notes")) or "",
             reaction=_solids_reaction_value(call.data.get("reaction")),
