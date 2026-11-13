@@ -3,6 +3,7 @@ from unittest.mock import patch
 import aiohttp
 import os
 import logging
+import socket
 import pytest
 import pytest_socket
 from homeassistant.core import HomeAssistant
@@ -11,8 +12,17 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 _LOGGER = logging.getLogger(__name__)
 
-async def test_live_connection(hass: HomeAssistant, socket_enabled):
+# pytest-homeassistant-custom-component replaces socket.getaddrinfo with a
+# DNS-blocking stub during test setup. This test needs real DNS, so capture the
+# original resolver at import time and restore it for this test.
+_REAL_GETADDRINFO = socket.getaddrinfo
+
+async def test_live_connection(
+    hass: HomeAssistant, socket_enabled, monkeypatch: pytest.MonkeyPatch
+):
     """Test live connection to Huckleberry API."""
+
+    monkeypatch.setattr(socket, "getaddrinfo", _REAL_GETADDRINFO)
 
     # Explicitly allow Google hosts
     pytest_socket.socket_allow_hosts(["127.0.0.1", "identitytoolkit.googleapis.com", "firestore.googleapis.com", "oauth2.googleapis.com"])
