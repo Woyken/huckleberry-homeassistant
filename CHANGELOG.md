@@ -4,6 +4,17 @@ All notable changes to the Huckleberry integration are recorded in this file. Fr
 
 <!-- towncrier release notes start -->
 
+# Huckleberry 0.5.11 (2026-11-13)
+
+## Added
+
+- Add an optional `start_time` to the diaper, potty, growth, pumping and solids logging services so those events can be recorded after the fact. All event logging services now reject start times in the future. (#61)
+
+## Other
+
+- #13, #25, #36, #39, #43, #46, #95, #96, #97, #98, #99, #100, #101, #104, #106
+
+
 # Huckleberry 0.5.10 (2026-11-03)
 
 ## Added
