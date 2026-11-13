@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/devcontainers/python:3.14
+FROM mcr.microsoft.com/devcontainers/python:3.15
 
 ENV UV_LINK_MODE=copy \
     UV_COMPILE_BYTECODE=1
