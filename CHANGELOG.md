@@ -4,6 +4,13 @@ All notable changes to the Huckleberry integration are recorded in this file. Fr
 
 <!-- towncrier release notes start -->
 
+# Huckleberry 0.5.12 (2026-11-14)
+
+## Fixed
+
+- Update `huckleberry-api` to 0.5.1 so logging a medication dose in the Huckleberry app no longer stops the health listener and leaves medication sensors unknown. (#111)
+
+
 # Huckleberry 0.5.11 (2026-11-13)
 
 ## Added
