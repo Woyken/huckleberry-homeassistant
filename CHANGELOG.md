@@ -4,6 +4,13 @@ All notable changes to the Huckleberry integration are recorded in this file. Fr
 
 <!-- towncrier release notes start -->
 
+# Huckleberry 0.6.0 (2026-11-16)
+
+## Added
+
+- Add `huckleberry.log_medication` service for logging medication doses by name, reusing or creating the medication automatically. (#115)
+
+
 # Huckleberry 0.5.12 (2026-11-14)
 
 ## Fixed
