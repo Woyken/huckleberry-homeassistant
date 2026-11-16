@@ -2,6 +2,7 @@
 from datetime import UTC, datetime, timedelta
 from unittest.mock import ANY, AsyncMock, patch
 import pytest
+import voluptuous as vol
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import device_registry as dr
@@ -584,11 +585,21 @@ async def test_log_medication(hass: HomeAssistant, mock_huckleberry_api):
 
     # A blank medication name is rejected before any API call
     mock_huckleberry_api.log_medicine.reset_mock()
-    with pytest.raises(Exception):
+    with pytest.raises(vol.Invalid):
         await hass.services.async_call(
             DOMAIN,
             "log_medication",
             {"device_id": device.id, "medication": "   ", "amount": 1},
+            blocking=True,
+        )
+    mock_huckleberry_api.log_medicine.assert_not_called()
+
+    # A negative dose is rejected before any API call
+    with pytest.raises(vol.Invalid):
+        await hass.services.async_call(
+            DOMAIN,
+            "log_medication",
+            {"device_id": device.id, "medication": "Paracetamol", "amount": -1},
             blocking=True,
         )
     mock_huckleberry_api.log_medicine.assert_not_called()

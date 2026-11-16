@@ -470,7 +470,7 @@ _GROWTH_FIELDS: Final[dict[object, object]] = {
 }
 _MEDICATION_FIELDS: Final[dict[object, object]] = {
     vol.Required("medication"): vol.All(cv.string, str.strip, vol.Length(min=1)),
-    vol.Required("amount"): vol.All(vol.Coerce(float), _finite_float),
+    vol.Required("amount"): vol.All(vol.Coerce(float), _finite_float, vol.Range(min=0)),
     vol.Optional("units", default="ml"): vol.In(MEDICATION_UNIT_OPTIONS),
     **_NOTES_FIELDS,
 }
