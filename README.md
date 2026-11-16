@@ -54,7 +54,7 @@ This integration provides real-time baby tracking in Home Assistant by connectin
   - `sensor.{child_name}_pumping` - Pumping session status (active, paused, none)
   - `sensor.{child_name}_profile` - Child profile information
   - `sensor.{child_name}_growth` - Latest growth measurements
-  - `sensor.{child_name}_medication` - Last medication dose (name, amount, units, and notes)
+  - `sensor.{child_name}_medication` - Last medication dose (name, amount, units, and notes). Updates from the app and `huckleberry.log_medication`.
   - `sensor.{child_name}_bottle` - Last bottle feeding (time, amount, type)
   - `sensor.{child_name}_solids` - Last solid meal timestamp, with `time`, `foods` as a list of names, optional `notes`, and `reaction` (LOVED/MEH/HATED/ALLERGIC). Updates from the app and `huckleberry.log_solids`.
   - `sensor.{child_name}_diaper` - Last diaper change
@@ -115,6 +115,9 @@ All services support device selection for easy use in automations:
 
 ### Temperature Tracking
 - `huckleberry.log_temperature` - Log a body-temperature reading in Celsius or Fahrenheit with optional start time and notes
+
+### Medication Tracking
+- `huckleberry.log_medication` - Log a medication dose by name in ml, oz, tsp, or drops. An existing medication is reused, otherwise it is created, with optional start time and notes
 
 ## Calendar
 

@@ -24,6 +24,7 @@
 
     "log_growth": { "service": "mdi:ruler" },
     "log_temperature": { "service": "mdi:thermometer" },
+    "log_medication": { "service": "mdi:pill" },
     "log_bottle": { "service": "mdi:baby-bottle-outline" }
   }
 }

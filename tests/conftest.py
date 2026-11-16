@@ -9,6 +9,7 @@ import pytest
 from huckleberry_api.firebase_types import (
     FirebaseChildDocument,
     FirebaseCustomFoodTypeDocument,
+    FirebaseMedicationTypeDocument,
     FirebaseUserChildRef,
     FirebaseUserDocument,
 )
@@ -103,6 +104,18 @@ def _build_mock_api(
     mock.log_pump = AsyncMock()
     mock.log_activity = AsyncMock()
     mock.log_solids = AsyncMock()
+    mock.log_medicine = AsyncMock()
+    mock.list_medicine_types = AsyncMock(return_value=[])
+
+    def _mock_create_medicine_type(child_uid: str, name: str) -> FirebaseMedicationTypeDocument:
+        return FirebaseMedicationTypeDocument(
+            _id=f"med_{name.strip().lower().replace(' ', '_')}",
+            active=True,
+            mode="medication",
+            name=name.strip(),
+        )
+
+    mock.create_medicine_type = AsyncMock(side_effect=_mock_create_medicine_type)
 
     def _mock_create_solids_custom_food(child_uid: str, name: str, image: str = "") -> FirebaseCustomFoodTypeDocument:
         return FirebaseCustomFoodTypeDocument(
