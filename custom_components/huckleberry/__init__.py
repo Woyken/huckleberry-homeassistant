@@ -33,10 +33,12 @@ from huckleberry_api.firebase_types import (
     FirebaseDiaperDocumentData,
     FirebaseFeedDocumentData,
     FirebaseHealthDocumentData,
+    FirebaseMedicationTypeDocument,
     FirebasePumpDocumentData,
     FirebaseSleepDetails,
     FirebaseSleepDocumentData,
     FirebaseUserDocument,
+    MedicationUnits,
     PooColor,
     PooConsistency,
     SolidsReaction,
@@ -80,6 +82,7 @@ SOLIDS_REACTION_LABELS: Final[dict[str, SolidsReaction]] = {
 SOLIDS_REACTION_OPTIONS: Final[tuple[str, ...]] = tuple(SOLIDS_REACTION_LABELS)
 ACTIVITY_MODE_OPTIONS: Final[tuple[str, ...]] = tuple(get_args(ActivityMode))
 TEMPERATURE_UNIT_OPTIONS: Final[tuple[str, ...]] = tuple(get_args(TemperatureUnits))
+MEDICATION_UNIT_OPTIONS: Final[tuple[str, ...]] = tuple(get_args(MedicationUnits))
 DiaperAmount = Literal["little", "medium", "big"]
 GrowthUnits = Literal["metric", "imperial"]
 BottleUnits = Literal["ml", "oz"]
@@ -261,6 +264,14 @@ def _bottle_units_value(value: object) -> BottleUnits:
     return cast(BottleUnits, string_value)
 
 
+def _medication_units_value(value: object) -> MedicationUnits:
+    """Return a validated medication units literal from service data."""
+    string_value = _string_value(value)
+    if string_value is None:
+        return "ml"
+    return cast(MedicationUnits, string_value)
+
+
 def _api_bottle_type(value: str | None) -> BottleType:
     """Normalize bottle type values to the API's expected literals."""
     if value is None:
@@ -402,6 +413,21 @@ async def _async_resolve_solids_food_references(
     return food_refs
 
 
+async def _async_resolve_medicine_type(
+    api_client: HuckleberryAPI,
+    child_uid: str,
+    medication_name: str,
+) -> FirebaseMedicationTypeDocument:
+    """Return the child's medicine type for a name, creating it when missing."""
+    medicine_types = await api_client.list_medicine_types(child_uid)
+    name_key = medication_name.casefold()
+    for medicine_type in medicine_types:
+        if medicine_type.name.strip().casefold() == name_key:
+            return medicine_type
+
+    return await api_client.create_medicine_type(child_uid, medication_name)
+
+
 _START_TIME_FIELDS: Final[dict[object, object]] = {
     vol.Optional("start_time"): cv.datetime,
 }
@@ -441,6 +467,12 @@ _GROWTH_FIELDS: Final[dict[object, object]] = {
     vol.Optional("height"): vol.Coerce(float),
     vol.Optional("head"): vol.Coerce(float),
     vol.Optional("units", default="metric"): vol.In(("metric", "imperial")),
+}
+_MEDICATION_FIELDS: Final[dict[object, object]] = {
+    vol.Required("medication"): vol.All(cv.string, str.strip, vol.Length(min=1)),
+    vol.Required("amount"): vol.All(vol.Coerce(float), _finite_float, vol.Range(min=0)),
+    vol.Optional("units", default="ml"): vol.In(MEDICATION_UNIT_OPTIONS),
+    **_NOTES_FIELDS,
 }
 _TEMPERATURE_FIELDS: Final[dict[object, object]] = {
     vol.Required("amount"): vol.All(vol.Coerce(float), _finite_float),
@@ -493,6 +525,7 @@ SERVICE_DIAPER_SCHEMA: Final = _service_schema(_DIAPER_FIELDS, _START_TIME_FIELD
 SERVICE_POTTY_SCHEMA: Final = _service_schema(_POTTY_FIELDS, _START_TIME_FIELDS)
 SERVICE_LOG_GROWTH_SCHEMA: Final = _service_schema(_GROWTH_FIELDS, _START_TIME_FIELDS)
 SERVICE_LOG_TEMPERATURE_SCHEMA: Final = _service_schema(_TEMPERATURE_FIELDS)
+SERVICE_LOG_MEDICATION_SCHEMA: Final = _service_schema(_MEDICATION_FIELDS, _START_TIME_FIELDS)
 SERVICE_LOG_BOTTLE_SCHEMA: Final = _service_schema(_BOTTLE_FIELDS)
 SERVICE_LOG_PUMP_SCHEMA: Final = _service_schema(_PUMP_FIELDS, _START_TIME_FIELDS)
 SERVICE_LOG_ACTIVITY_SCHEMA: Final = _service_schema(_ACTIVITY_FIELDS, _START_TIME_FIELDS)
@@ -886,6 +919,28 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             notes=_string_value(call.data.get("notes")),
         )
 
+    async def handle_log_medication(call: ServiceCall) -> None:
+        start_time = _local_datetime_value(call.data.get("start_time"))
+        if start_time is not None and _utc_datetime(start_time) > _utc_datetime(dt_util.now()):
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="invalid_event_start_time",
+            )
+        child_uid = _target_child(call)
+        medicine_type = await _async_resolve_medicine_type(
+            api_client,
+            child_uid,
+            cast(str, call.data["medication"]),
+        )
+        await api_client.log_medicine(
+            child_uid,
+            start_time=dt_util.as_local(start_time) if start_time is not None else dt_util.now(),
+            medicine_type=medicine_type,
+            amount=cast(float, call.data["amount"]),
+            units=_medication_units_value(call.data.get("units")),
+            notes=_string_value(call.data.get("notes")) or "",
+        )
+
     async def handle_log_bottle(call: ServiceCall) -> None:
         start_time = _local_datetime_value(call.data.get("start_time"))
         if start_time is not None and _utc_datetime(start_time) > _utc_datetime(dt_util.now()):
@@ -1018,6 +1073,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "log_temperature",
         handle_log_temperature,
         schema=SERVICE_LOG_TEMPERATURE_SCHEMA,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        "log_medication",
+        handle_log_medication,
+        schema=SERVICE_LOG_MEDICATION_SCHEMA,
     )
     hass.services.async_register(
         DOMAIN,

@@ -2,6 +2,7 @@
 from datetime import UTC, datetime, timedelta
 from unittest.mock import ANY, AsyncMock, patch
 import pytest
+import voluptuous as vol
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import device_registry as dr
@@ -11,6 +12,7 @@ from homeassistant.util import dt as dt_util
 from huckleberry_api.firebase_types import (
     FirebaseCuratedFoodDocument,
     FirebaseCustomFoodTypeDocument,
+    FirebaseMedicationTypeDocument,
     FirebaseSleepCondition,
     FirebaseSleepDetails,
     FirebaseSleepDocumentData,
@@ -510,6 +512,99 @@ async def test_services(hass: HomeAssistant, mock_huckleberry_api):
             blocking=True,
         )
 
+async def test_log_medication(hass: HomeAssistant, mock_huckleberry_api):
+    """Test log_medication reuses or creates a medicine type before logging."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            CONF_EMAIL: "test@example.com",
+            CONF_PASSWORD: "test_password",
+        },
+    )
+    entry.add_to_hass(hass)
+
+    with patch(
+        "custom_components.huckleberry.HuckleberryAPI",
+        return_value=mock_huckleberry_api,
+    ):
+        await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+
+    device_registry = dr.async_get(hass)
+    device = device_registry.async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, "test_child_uid")},
+        name="Test Child",
+    )
+    mock_huckleberry_api.list_medicine_types.return_value = [
+        FirebaseMedicationTypeDocument(
+            _id="med_vitamin_d",
+            active=True,
+            mode="medication",
+            name="Vitamin D",
+        )
+    ]
+
+    # An existing medication is matched case-insensitively and reused
+    await hass.services.async_call(
+        DOMAIN,
+        "log_medication",
+        {
+            "device_id": device.id,
+            "medication": " vitamin d ",
+            "amount": 2,
+            "units": "drops",
+            "notes": "After breakfast",
+        },
+        blocking=True,
+    )
+    mock_huckleberry_api.create_medicine_type.assert_not_called()
+    call_args = mock_huckleberry_api.log_medicine.call_args
+    assert call_args.args == ("test_child_uid",)
+    assert call_args.kwargs["medicine_type"].id_ == "med_vitamin_d"
+    assert call_args.kwargs["amount"] == 2.0
+    assert call_args.kwargs["units"] == "drops"
+    assert call_args.kwargs["notes"] == "After breakfast"
+
+    # An unknown medication is created, then logged with the created type
+    mock_huckleberry_api.log_medicine.reset_mock()
+    await hass.services.async_call(
+        DOMAIN,
+        "log_medication",
+        {"device_id": device.id, "medication": "Paracetamol", "amount": 5},
+        blocking=True,
+    )
+    mock_huckleberry_api.create_medicine_type.assert_called_once_with(
+        "test_child_uid", "Paracetamol"
+    )
+    call_args = mock_huckleberry_api.log_medicine.call_args
+    assert call_args.kwargs["medicine_type"].id_ == "med_paracetamol"
+    assert call_args.kwargs["amount"] == 5.0
+    assert call_args.kwargs["units"] == "ml"
+    assert call_args.kwargs["notes"] == ""
+
+    # A blank medication name is rejected before any API call
+    mock_huckleberry_api.log_medicine.reset_mock()
+    with pytest.raises(vol.Invalid):
+        await hass.services.async_call(
+            DOMAIN,
+            "log_medication",
+            {"device_id": device.id, "medication": "   ", "amount": 1},
+            blocking=True,
+        )
+    mock_huckleberry_api.log_medicine.assert_not_called()
+
+    # A negative dose is rejected before any API call
+    with pytest.raises(vol.Invalid):
+        await hass.services.async_call(
+            DOMAIN,
+            "log_medication",
+            {"device_id": device.id, "medication": "Paracetamol", "amount": -1},
+            blocking=True,
+        )
+    mock_huckleberry_api.log_medicine.assert_not_called()
+
+
 async def test_service_no_target_raises(hass: HomeAssistant, mock_huckleberry_api):
     """Test that calling a service without device_id raises an error."""
     import pytest
@@ -891,6 +986,7 @@ async def test_event_start_times(hass: HomeAssistant, mock_huckleberry_api):
         ("log_potty_both", {"pee_amount": "little", "poo_amount": "medium"}, "log_potty"),
         ("log_potty_dry", {}, "log_potty"),
         ("log_growth", {"weight": 5.1}, "log_growth"),
+        ("log_medication", {"medication": "Paracetamol", "amount": 5}, "log_medicine"),
         ("log_pump", {"total_amount": 100, "duration": 15}, "log_pump"),
         ("log_solids", {"foods": ["Banana"]}, "log_solids"),
         ("log_bottle", {"amount": 120, "bottle_type": "formula"}, "log_bottle"),

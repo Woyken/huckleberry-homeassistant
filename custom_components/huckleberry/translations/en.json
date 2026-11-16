@@ -549,6 +549,36 @@
         }
       }
     },
+    "log_medication": {
+      "name": "Log medication",
+      "description": "Log a medication dose for the selected child.",
+      "fields": {
+        "device_id": {
+          "name": "Child device",
+          "description": "Select child device"
+        },
+        "medication": {
+          "name": "Medication",
+          "description": "Medication name. An existing medication is reused, otherwise it is created."
+        },
+        "amount": {
+          "name": "Amount",
+          "description": "Dose amount in the selected units."
+        },
+        "units": {
+          "name": "Units",
+          "description": "Unit for the dose amount."
+        },
+        "start_time": {
+          "name": "Start time",
+          "description": "When the dose was given. Defaults to now."
+        },
+        "notes": {
+          "name": "Notes",
+          "description": "Optional notes about this dose"
+        }
+      }
+    },
     "log_bottle": {
       "name": "Log bottle feeding",
       "description": "Log a bottle feeding with amount and type.",
