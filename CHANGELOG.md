@@ -4,6 +4,13 @@ All notable changes to the Huckleberry integration are recorded in this file. Fr
 
 <!-- towncrier release notes start -->
 
+# Huckleberry 0.6.1 (2026-11-17)
+
+## Fixed
+
+- Update `huckleberry-api` to 0.5.2 so `huckleberry.log_medication`, growth, and temperature logging keep working after a growth entry is recorded in the Huckleberry app. (#118)
+
+
 # Huckleberry 0.6.0 (2026-11-16)
 
 ## Added

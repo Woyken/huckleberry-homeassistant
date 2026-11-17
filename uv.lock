@@ -1746,7 +1746,7 @@ wheels = [
 
 [[package]]
 name = "huckleberry-api"
-version = "0.5.1"
+version = "0.5.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp", version = "3.11.11", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.14.2'" },
@@ -1757,14 +1757,14 @@ dependencies = [
     { name = "pydantic", version = "2.13.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.14.2'" },
     { name = "tzdata" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/1c/08/030e2f03970bc43d9a901b69ea650e862179c3a1eb2250e6232503e83a5f/huckleberry_api-0.5.1.tar.gz", hash = "sha256:4283a5d1743100f6e33f28ad1516b50d597a26866867ebdb76d196ae0dbccfd4", size = 39052, upload-time = "2026-11-14T06:12:59.56Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d9/ea/d8e696232d0dc25525a7b3192728420b17758bf57668bca343dc4ab1fbae/huckleberry_api-0.5.2.tar.gz", hash = "sha256:f2b146cfc1b4ed5fc4a059c1e4d8c4a0c2bde0ba12aca43eba0346cd4a931e2c", size = 39060, upload-time = "2026-11-17T15:37:13.438Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d2/d6/5627668a140730f89cb7e91d4ee25bfe97f0613f0aa763163d19934898df/huckleberry_api-0.5.1-py3-none-any.whl", hash = "sha256:b0cf31e87f4d2ff9487a774ac4e830f81f5db110f968c9332f36c3ea37d13b33", size = 46239, upload-time = "2026-11-14T06:12:58.087Z" },
+    { url = "https://files.pythonhosted.org/packages/8e/e7/711d756c8a2e021dbf74a08d45494a728d52cb2a206f739470a7b93f7535/huckleberry_api-0.5.2-py3-none-any.whl", hash = "sha256:92b9eb606fa3d9cb8a11652b420d2bbca1b3ab5364799b49bfbde4c3a0c9fa1d", size = 46244, upload-time = "2026-11-17T15:37:12.152Z" },
 ]
 
 [[package]]
 name = "huckleberry-homeassistant"
-version = "0.6.0"
+version = "0.6.1"
 source = { virtual = "." }
 dependencies = [
     { name = "huckleberry-api" },
@@ -1783,7 +1783,7 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "huckleberry-api", specifier = "==0.5.1" }]
+requires-dist = [{ name = "huckleberry-api", specifier = "==0.5.2" }]
 
 [package.metadata.requires-dev]
 dev = [
